@@ -1,0 +1,42 @@
+/* DoctorProfile.css */
+
+/* Main layout container */
+.doctor-profile-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f9fafb; /* Tailwind: bg-gray-50 */
+}
+
+/* Main content area */
+.doctor-profile-content {
+  flex: 1; /* Tailwind: flex-1 */
+  padding: 2rem; /* Tailwind: p-8 */
+}
+
+/* Page title */
+.doctor-profile-title {
+  font-size: 1.875rem; /* Tailwind: text-3xl */
+  line-height: 2.25rem;
+  font-weight: 700; /* Tailwind: font-bold */
+  color: #0e7490; /* Tailwind: text-cyan-700 */
+  margin-bottom: 1.5rem; /* Tailwind: mb-6 */
+}
+
+/* Profile details card */
+.profile-details-card {
+  background-color: #ffffff; /* Tailwind: bg-white */
+  padding: 2rem; /* Tailwind: p-8 */
+  border-radius: 1rem; /* Tailwind: rounded-2xl */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); /* Tailwind: shadow-md */
+  max-width: 28rem; /* Tailwind: max-w-xl */
+}
+
+.profile-details-card p {
+  color: #374151; /* Tailwind: text-gray-700 */
+  margin-bottom: 0.5rem; /* Tailwind: mb-2 */
+  line-height: 1.5; /* Default line-height for readability */
+}
+
+.profile-details-card p strong {
+  font-weight: 700; /* Ensures bold is strong */
+}

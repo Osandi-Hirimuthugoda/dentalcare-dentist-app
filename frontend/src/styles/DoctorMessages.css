@@ -1,0 +1,126 @@
+/* Base Page Layout */
+.messages-page {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f8fafc; /* Soft background */
+}
+
+/* Main Content Area */
+.messages-main-content {
+  flex: 1;
+  padding: 2.5rem; /* Consistent padding */
+}
+
+/* Page Title */
+.messages-page-title {
+  font-size: 2.5rem; /* Larger title */
+  font-weight: 700;
+  color: #0e7490; /* text-cyan-700 */
+  margin-bottom: 2.5rem;
+  position: relative;
+  padding-bottom: 0.5rem;
+}
+
+.messages-page-title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 60px;
+  height: 4px;
+  background-color: #0e7490;
+  border-radius: 2px;
+}
+
+/* Messages Container */
+.messages-container {
+  background-color: white;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Enhanced shadow */
+  border-radius: 1rem; /* rounded-2xl */
+  padding: 1.5rem; /* p-6 */
+  border: 1px solid #e2e8f0; /* Subtle border */
+}
+
+/* Message List */
+.message-list {
+  list-style: none; /* Remove default list bullets */
+  padding: 0;
+  margin: 0;
+}
+
+.message-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1rem; /* py-4 px-3 */
+  border-bottom: 1px solid #f1f5f9; /* Soft divider */
+  transition: background-color 0.2s ease-in-out, transform 0.2s ease-in-out; /* Smooth transitions */
+  cursor: pointer; /* Indicate interactivity */
+}
+
+.message-list-item:first-child {
+  border-top-left-radius: 0.75rem; /* rounded-xl for the first item */
+  border-top-right-radius: 0.75rem;
+}
+
+.message-list-item:last-child {
+  border-bottom: none; /* No border on the last item */
+  border-bottom-left-radius: 0.75rem; /* rounded-xl for the last item */
+  border-bottom-right-radius: 0.75rem;
+}
+
+.message-list-item:hover {
+  background-color: #f8fafc; /* hover:bg-gray-50 */
+  transform: translateX(5px); /* Subtle slide effect on hover */
+}
+
+.message-sender {
+  font-weight: 600; /* font-semibold */
+  color: #1a202c; /* Darker text for sender name */
+  margin-bottom: 0.25rem; /* Small space between sender and message */
+  font-size: 1.05rem; /* Slightly larger sender name */
+}
+
+.message-content {
+  color: #4a5568; /* text-gray-600 */
+  font-size: 0.95rem; /* Slightly larger message content */
+}
+
+.message-time {
+  color: #718096; /* text-gray-500 */
+  font-size: 0.85rem; /* text-sm */
+  min-width: 80px; /* Ensure time takes consistent space */
+  text-align: right;
+}
+
+/* No Messages State */
+.no-messages {
+  text-align: center;
+  color: #718096; /* text-gray-500 */
+  padding: 2rem;
+  font-size: 1.1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .messages-main-content {
+    padding: 1.5rem;
+  }
+
+  .messages-page-title {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .message-list-item {
+    flex-direction: column; /* Stack sender/message and time on small screens */
+    align-items: flex-start;
+    padding: 0.75rem 1rem;
+  }
+
+  .message-time {
+    margin-top: 0.5rem;
+    text-align: left;
+    min-width: unset;
+  }
+}

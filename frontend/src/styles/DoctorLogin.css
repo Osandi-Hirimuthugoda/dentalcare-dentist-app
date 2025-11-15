@@ -1,0 +1,182 @@
+/* src/styles/DoctorLogin.css */
+
+/*
+  Global styles or imports for fonts, etc., can go in index.css
+  or be added here if DoctorLogin is a standalone page.
+*/
+
+/* --- Background and Page Container --- */
+body, html, #root {
+  height: 100%;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* This gradient will create the soft blue background seen in the image */
+  background: linear-gradient(135deg, #e0f2fe 0%, #e3f2fd 50%, #bbdefb 100%); /* Light blue to slightly darker blue */
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  overflow: hidden; /* To contain any background elements like window light */
+}
+
+/* --- Animated Window Light Effect (Optional, but adds to the image's feel) --- */
+.login-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.4) 0%, transparent 40%),
+              radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.2) 0%, transparent 30%);
+  opacity: 0.8;
+  pointer-events: none;
+  animation: subtleGlow 15s infinite alternate ease-in-out;
+}
+
+@keyframes subtleGlow {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.05); opacity: 1; }
+}
+
+
+/* --- Login Card Styling --- */
+.login-card {
+  background-color: rgba(255, 255, 255, 0.7); /* White with 70% opacity */
+  backdrop-filter: blur(15px); /* Stronger blur for the glass effect */
+  padding: 2.5rem; /* p-10 equivalent */
+  border-radius: 1.5rem; /* rounded-3xl equivalent */
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), /* Deeper shadow for elevation */
+              0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  width: 90%;
+  max-width: 24rem; /* sm:w-96 equivalent */
+  box-sizing: border-box; /* Ensures padding doesn't increase width */
+  border: 1px solid rgba(255, 255, 255, 0.3); /* Subtle white border */
+  position: relative; /* For the subtle inner glow effect */
+}
+
+/* Subtle inner blue glow for the card */
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, rgba(30, 144, 255, 0.3), rgba(65, 105, 225, 0.3));
+  border-radius: 1.6rem; /* Slightly larger than card border-radius */
+  filter: blur(8px);
+  z-index: -1;
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}
+
+/* --- Heading --- */
+.login-title {
+  font-size: 2.5rem; /* text-4xl equivalent, slightly larger for impact */
+  font-weight: 700; /* font-bold equivalent */
+  text-align: center;
+  color: #1a73e8; /* A vibrant blue */
+  margin-bottom: 1.5rem; /* mb-6 equivalent */
+  letter-spacing: -0.025em; /* Tracking tight */
+}
+
+/* --- Form Elements --- */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem; /* space-y-5 equivalent */
+}
+
+.login-input {
+  width: 100%;
+  padding: 0.9rem 1.25rem; /* Adjusted padding */
+  border-radius: 0.75rem; /* rounded-xl equivalent */
+  border: 1px solid rgba(200, 200, 200, 0.5); /* Lighter border */
+  background-color: rgba(255, 255, 255, 0.6); /* Slightly more opaque background */
+  font-size: 1rem;
+  color: #333;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  outline: none; /* Remove default outline */
+}
+
+.login-input::placeholder {
+  color: #777; /* Softer placeholder color */
+}
+
+.login-input:focus {
+  border-color: #4a90e2; /* Blue focus border */
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.3); /* Blue glowing outline */
+  background-color: rgba(255, 255, 255, 0.8); /* Slightly less translucent on focus */
+}
+
+.login-button {
+  width: 100%;
+  padding: 0.9rem; /* py-3 equivalent */
+  background-color: #1a73e8; /* Main blue */
+  color: white;
+  font-weight: 600; /* font-semibold equivalent */
+  border-radius: 0.75rem; /* rounded-xl equivalent */
+  box-shadow: 0 4px 10px rgba(26, 115, 232, 0.4); /* Shadow for button */
+  transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+.login-button:hover {
+  background-color: #1565c0; /* Darker blue on hover */
+  transform: translateY(-2px); /* Slight lift */
+  box-shadow: 0 6px 15px rgba(26, 115, 232, 0.5);
+}
+
+.login-button:active {
+  transform: translateY(0); /* Press effect */
+  box-shadow: 0 2px 5px rgba(26, 115, 232, 0.3);
+}
+
+/* --- Error Message --- */
+.error-message {
+  color: #ef4444; /* text-red-500 equivalent */
+  font-size: 0.875rem; /* text-sm equivalent */
+  text-align: center;
+  margin-top: 0.75rem; /* mt-3 equivalent */
+}
+
+/* --- Register Link --- */
+.register-text {
+  text-align: center;
+  color: #4b5563; /* text-gray-600 equivalent */
+  margin-top: 1.5rem; /* mt-6 equivalent */
+  font-size: 0.95rem;
+}
+
+.register-link {
+  color: #1a73e8; /* Blue link */
+  font-weight: 600; /* font-semibold equivalent */
+  text-decoration: none; /* Remove default underline */
+  transition: color 0.2s ease;
+}
+
+.register-link:hover {
+  text-decoration: underline; /* Underline on hover */
+  color: #1565c0; /* Darker blue on hover */
+}
+
+/* Responsive adjustments for smaller screens if needed (though already handled by max-width) */
+@media (max-width: 640px) {
+  .login-card {
+    padding: 2rem;
+  }
+  .login-title {
+    font-size: 2rem;
+  }
+}

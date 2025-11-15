@@ -1,0 +1,104 @@
+/* Base Page Layout */
+.patients-page {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f8fafc; /* A lighter, more modern background than plain gray-50 */
+}
+
+/* Main Content Area */
+.patients-main-content {
+  flex: 1;
+  padding: 2.5rem; /* p-10 equivalent */
+}
+
+/* Page Title */
+.patients-page-title {
+  font-size: 2.5rem; /* Slightly larger for emphasis */
+  font-weight: 700;
+  color: #0e7490; /* text-cyan-700 */
+  margin-bottom: 2.5rem; /* Increased margin for better separation */
+  position: relative;
+  padding-bottom: 0.5rem; /* Space for an underline effect */
+}
+
+.patients-page-title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 60px; /* Short underline */
+  height: 4px;
+  background-color: #0e7490; /* Accent color for the underline */
+  border-radius: 2px;
+}
+
+/* Table Container */
+.patients-table-container {
+  background-color: white;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Stronger shadow */
+  border-radius: 1rem; /* rounded-2xl */
+  overflow: hidden; /* Ensures rounded corners clip table content */
+  border: 1px solid #e2e8f0; /* Subtle border */
+}
+
+/* Table Styling */
+.patients-table {
+  min-width: 100%;
+  text-align: left;
+  border-collapse: collapse; /* For clean table borders */
+}
+
+.patients-table thead {
+  background-color: #0891b2; /* A slightly deeper cyan for the header */
+  color: white;
+}
+
+.patients-table th {
+  padding: 1rem 1.5rem; /* py-3 px-6 */
+  font-weight: 600; /* Semi-bold for headers */
+  letter-spacing: 0.05em; /* A little spacing for readability */
+  text-transform: uppercase; /* Uppercase headers */
+  font-size: 0.875rem; /* Smaller font size for headers */
+}
+
+.patients-table tbody tr {
+  border-bottom: 1px solid #f1f5f9; /* Lighter border between rows */
+  transition: background-color 0.2s ease-in-out;
+}
+
+.patients-table tbody tr:last-child {
+  border-bottom: none; /* No border on the last row */
+}
+
+.patients-table tbody tr:hover {
+  background-color: #f8fafc; /* hover:bg-gray-50, but slightly lighter */
+}
+
+.patients-table td {
+  padding: 1rem 1.5rem; /* py-3 px-6 */
+  color: #4a5568; /* Default text-gray-600 */
+}
+
+.patients-table td.patient-name {
+  font-weight: 600; /* font-semibold */
+  color: #1a202c; /* text-gray-800 */
+}
+
+/* Responsive Table (Optional but recommended for smaller screens) */
+@media (max-width: 768px) {
+  .patients-table-container {
+    overflow-x: auto; /* Allows horizontal scrolling on small screens */
+  }
+
+  .patients-table {
+    min-width: 600px; /* Ensure table doesn't collapse too much */
+  }
+
+  .patients-main-content {
+    padding: 1.5rem; /* Adjust padding for smaller screens */
+  }
+
+  .patients-page-title {
+    font-size: 2rem;
+  }
+}

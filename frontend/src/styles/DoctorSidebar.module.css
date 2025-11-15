@@ -1,0 +1,136 @@
+/* src/styles/DoctorSidebar.module.css */
+
+.sidebarContainer {
+  width: 16rem; /* Fixed width */
+  min-width: 16rem; /* Prevent shrinking */
+  background-color: white;
+  box-shadow: 5px 0 15px rgba(0, 0, 0, 0.05); /* Subtle shadow on the right */
+  padding: 2.5rem 0; /* Padding top/bottom */
+  display: flex;
+  flex-direction: column;
+  position: sticky; /* Makes it stay put while main content scrolls */
+  top: 0;
+  left: 0;
+  height: 100vh; /* Full viewport height */
+  z-index: 10; /* Ensure it stays above other content */
+  border-right: 1px solid #e5e7eb; /* Subtle border on the right */
+}
+
+.sidebarHeader {
+  padding: 0 2rem 2.5rem; /* Padding for the header/logo area */
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e3a8a; /* Dark blue */
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sidebarNav {
+  flex-grow: 1; /* Takes up available space */
+  list-style: none; /* Remove bullet points */
+  padding: 0;
+  margin: 0;
+}
+
+.navItem {
+  margin-bottom: 0.5rem; /* Space between nav items */
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem; /* Space between icon and text */
+  padding: 0.9rem 2rem; /* Vertical padding and consistent horizontal padding */
+  color: #6b7280; /* Gray text */
+  font-weight: 500;
+  text-decoration: none; /* Remove underline */
+  transition: all 0.2s ease-in-out;
+  border-left: 4px solid transparent; /* Placeholder for active indicator */
+}
+
+.navLink:hover {
+  background-color: #f3f6fc; /* Light blue background on hover */
+  color: #3b82f6; /* Blue text on hover */
+  border-left-color: #a5d3f4; /* Lighter blue border on hover */
+}
+
+.navLink.active {
+  background-color: #e0f2fe; /* Light blue background for active item */
+  color: #2563eb; /* Strong blue for active text */
+  font-weight: 600;
+  border-left-color: #2563eb; /* Solid blue active indicator */
+}
+
+.navIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  /* You'll typically use an SVG icon component here */
+}
+
+/* Optional: Sidebar footer for settings/logout */
+.sidebarFooter {
+  padding: 1.5rem 2rem 0;
+  border-top: 1px solid #edf2f7;
+}
+
+.logoutButton {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #fef2f2; /* Light red */
+  color: #ef4444; /* Red text */
+  border: 1px solid #fca5a5;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.logoutButton:hover {
+  background-color: #fee2e2;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+  .sidebarContainer {
+    width: 100%; /* Full width on small screens */
+    height: auto;
+    position: relative; /* Not sticky on mobile, or hidden/toggled */
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    border-right: none;
+    padding-bottom: 0;
+  }
+  .sidebarNav {
+    flex-direction: row; /* Horizontal navigation */
+    overflow-x: auto; /* Scroll if too many items */
+    padding-bottom: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+  }
+  .navItem {
+    margin-bottom: 0;
+  }
+  .navLink {
+    white-space: nowrap; /* Prevent text wrapping */
+    padding: 0.75rem 1.25rem;
+    border-left: none; /* No vertical border on mobile */
+    border-bottom: 3px solid transparent; /* Horizontal active indicator */
+  }
+  .navLink:hover, .navLink.active {
+    border-left-color: transparent;
+    border-bottom-color: #2563eb;
+  }
+  .sidebarHeader, .sidebarFooter {
+    display: none; /* Hide header/footer on mobile, or redesign */
+  }
+  .active {
+  background-color: #0891b2; /* Teal highlight */
+  color: white;
+  font-weight: 600;
+  border-radius: 10px;
+}
+.navLink:hover {
+  background-color: #cffafe;
+}
+
+}

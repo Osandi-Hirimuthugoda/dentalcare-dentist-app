@@ -1,0 +1,96 @@
+/* Base Page Layout */
+.doctor-appointments-page {
+  display: flex;
+  min-height: 100vh;
+  background-image: linear-gradient(to bottom right, #eff6ff, white, #dbeafe); /* from-cyan-50 via-white to-blue-100 */
+}
+
+/* Main Content Area */
+.main-content {
+  flex: 1;
+  padding: 2.5rem; /* p-10 */
+  /* For Framer Motion animations, you'd typically handle these with JS/React, not static CSS */
+}
+
+/* Page Title */
+.page-title {
+  font-size: 2.25rem; /* text-4xl */
+  font-weight: 700; /* font-bold */
+  color: #0e7490; /* text-cyan-700 */
+  margin-bottom: 2rem; /* mb-8 */
+  /* For Framer Motion animations, you'd typically handle these with JS/React, not static CSS */
+}
+
+/* Appointment Cards Grid */
+.appointment-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr)); /* grid-cols-1 */
+  gap: 1.5rem; /* gap-6 */
+}
+
+@media (min-width: 640px) { /* sm breakpoint */
+  .appointment-cards-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* sm:grid-cols-2 */
+  }
+}
+
+@media (min-width: 1024px) { /* lg breakpoint */
+  .appointment-cards-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)); /* lg:grid-cols-3 */
+  }
+}
+
+/* Individual Appointment Card */
+.appointment-card {
+  padding: 1.5rem; /* p-6 */
+  background-color: white; /* bg-white */
+  border-radius: 1rem; /* rounded-2xl */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+  border: 1px solid #f3f4f6; /* border border-gray-100 */
+  transition: all 0.2s ease-in-out; /* transition-all */
+}
+
+.appointment-card:hover {
+  transform: scale(1.05); /* whileHover={{ scale: 1.05 }} - this is typically JS, but for CSS we can use hover */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* hover:shadow-lg */
+}
+
+.appointment-card h3 {
+  font-size: 1.25rem; /* text-xl */
+  font-weight: 600; /* font-semibold */
+  color: #2d3748; /* text-gray-800 */
+  margin-bottom: 0.5rem; /* mb-2 */
+}
+
+.appointment-card p {
+  color: #4a5568; /* text-gray-600 */
+}
+
+.appointment-card p strong { /* For the <span className="font-medium"> */
+  font-weight: 500;
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-block;
+  margin-top: 1rem; /* mt-4 */
+  padding: 0.25rem 0.75rem; /* px-3 py-1 */
+  border-radius: 9999px; /* rounded-full */
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 600; /* font-semibold */
+}
+
+.status-badge.confirmed {
+  color: #047857; /* text-green-600 */
+  background-color: #d1fae5; /* bg-green-100 */
+}
+
+.status-badge.pending {
+  color: #b45309; /* text-yellow-600 */
+  background-color: #fef3c7; /* bg-yellow-100 */
+}
+
+.status-badge.cancelled {
+  color: #dc2626; /* text-red-600 */
+  background-color: #fee2e2; /* bg-red-100 */
+}

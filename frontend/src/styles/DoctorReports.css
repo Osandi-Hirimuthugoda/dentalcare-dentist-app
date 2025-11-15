@@ -1,0 +1,89 @@
+/* DoctorReports.css */
+
+/* Main layout container */
+.doctor-reports-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f9fafb; /* Tailwind: bg-gray-50 */
+}
+
+/* Main content area */
+.doctor-reports-content {
+  flex: 1; /* Tailwind: flex-1 */
+  padding: 2rem; /* Tailwind: p-8 */
+}
+
+/* Page title */
+.doctor-reports-title {
+  font-size: 1.875rem; /* Tailwind: text-3xl */
+  line-height: 2.25rem;
+  font-weight: 700; /* Tailwind: font-bold */
+  color: #0e7490; /* Tailwind: text-cyan-700 */
+  margin-bottom: 2rem; /* Tailwind: mb-8 */
+}
+
+/* Stats grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr; /* Tailwind: grid-cols-1 */
+  gap: 1.5rem; /* Tailwind: gap-6 */
+}
+
+@media (min-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* Tailwind: md:grid-cols-2 */
+  }
+}
+
+@media (min-width: 1024px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)); /* Tailwind: lg:grid-cols-4 */
+  }
+}
+
+/* Individual stat card */
+.stat-card {
+  background-color: #ffffff; /* Tailwind: bg-white */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); /* Tailwind: shadow-md */
+  border-radius: 1rem; /* Tailwind: rounded-2xl */
+  padding: 1.5rem; /* Tailwind: p-6 */
+  text-align: center;
+  border-width: 1px; /* Tailwind: border */
+  border-color: #f3f4f6; /* Tailwind: border-gray-100 */
+  transition: transform 0.2s ease-in-out; /* For whileHover scale effect */
+}
+
+/* Stat card hover effect */
+.stat-card:hover {
+  transform: scale(1.05); /* Tailwind: whileHover={{ scale: 1.05 }} */
+}
+
+.stat-card-label {
+  color: #4b5563; /* Tailwind: text-gray-600 */
+}
+
+.stat-card-value {
+  font-size: 1.875rem; /* Tailwind: text-3xl */
+  line-height: 2.25rem;
+  font-weight: 700; /* Tailwind: font-bold */
+  color: #0e7490; /* Tailwind: text-cyan-700 */
+  margin-top: 0.5rem; /* Tailwind: mt-2 */
+}
+
+/* Monthly summary section */
+.monthly-summary-card {
+  margin-top: 3rem; /* Tailwind: mt-12 */
+  background-color: #ffffff; /* Tailwind: bg-white */
+  border-radius: 1rem; /* Tailwind: rounded-2xl */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); /* Tailwind: shadow-md */
+  padding: 2rem; /* Tailwind: p-8 */
+  color: #4b5563; /* Tailwind: text-gray-600 */
+}
+
+.monthly-summary-card h3 {
+  font-size: 1.25rem; /* Tailwind: text-xl */
+  line-height: 1.75rem;
+  font-weight: 600; /* Tailwind: font-semibold */
+  color: #0e7490; /* Tailwind: text-cyan-700 */
+  margin-bottom: 1rem; /* Tailwind: mb-4 */
+}
