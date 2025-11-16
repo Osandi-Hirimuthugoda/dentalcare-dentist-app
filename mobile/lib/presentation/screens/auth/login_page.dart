@@ -1,19 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_application_1/core/constants/route_names.dart';
+import 'package:flutter_application_1/core/utils/validators.dart';
 import 'package:flutter_application_1/presentation/bloc/auth/auth_block.dart';
 import 'package:flutter_application_1/presentation/bloc/auth/auth_event.dart';
 import 'package:flutter_application_1/presentation/bloc/auth/auth_state.dart';
 import 'package:flutter_application_1/injection_container.dart' as di;
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
+  State<LoginPage> createState() => _LoginPageState();
+}
 
+class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => AuthBloc(
         loginUseCase: di.getIt(),
@@ -41,77 +48,88 @@ class LoginPage extends StatelessWidget {
             
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("Welcome\nDentalCare+",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 40),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text("Welcome\nDentalCare+",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 40),
 
-                  // Email
-                  TextField(
-                    controller: emailController,
-                    enabled: !isLoading,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      hintText: "Email",
-                      border: OutlineInputBorder(),
+                    // Email
+                    TextFormField(
+                      controller: emailController,
+                      enabled: !isLoading,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      validator: Validators.validateEmail,
+                      decoration: const InputDecoration(
+                        hintText: "Email",
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.email),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 15),
+                    const SizedBox(height: 15),
 
-                  // Password
-                  TextField(
-                    controller: passwordController,
-                    enabled: !isLoading,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      hintText: "Password",
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Forgot password
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: GestureDetector(
-                      onTap: isLoading ? null : () {
-                        Navigator.pushNamed(context, RouteNames.forgotPassword);
+                    // Password
+                    TextFormField(
+                      controller: passwordController,
+                      enabled: !isLoading,
+                      obscureText: true,
+                      textInputAction: TextInputAction.done,
+                      validator: Validators.validatePassword,
+                      decoration: const InputDecoration(
+                        hintText: "Password",
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.lock),
+                      ),
+                      onFieldSubmitted: (_) {
+                        if (_formKey.currentState!.validate()) {
+                          context.read<AuthBloc>().add(
+                            LoginRequested(
+                              email: emailController.text.trim(),
+                              password: passwordController.text,
+                            ),
+                          );
+                        }
                       },
-                      child: const Text("Forgot Password?",
-                          style: TextStyle(color: Colors.grey)),
                     ),
-                  ),
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 10),
 
-                  // Login button
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25)),
-                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 80),
+                    // Forgot password
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: GestureDetector(
+                        onTap: isLoading ? null : () {
+                          Navigator.pushNamed(context, RouteNames.forgotPassword);
+                        },
+                        child: const Text("Forgot Password?",
+                            style: TextStyle(color: Colors.grey)),
+                      ),
                     ),
-                    onPressed: isLoading ? null : () {
-                      if (emailController.text.isEmpty || passwordController.text.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Please fill in all fields"),
-                            backgroundColor: Colors.orange,
-                          ),
-                        );
-                        return;
-                      }
-                      
-                      context.read<AuthBloc>().add(
-                        LoginRequested(
-                          email: emailController.text.trim(),
-                          password: passwordController.text,
-                        ),
-                      );
-                    },
+                    const SizedBox(height: 20),
+
+                    // Login button
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25)),
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 80),
+                        minimumSize: const Size(double.infinity, 50),
+                      ),
+                      onPressed: isLoading ? null : () {
+                        if (_formKey.currentState!.validate()) {
+                          context.read<AuthBloc>().add(
+                            LoginRequested(
+                              email: emailController.text.trim(),
+                              password: passwordController.text,
+                            ),
+                          );
+                        }
+                      },
                     child: isLoading
                         ? const SizedBox(
                             height: 20,
@@ -138,9 +156,10 @@ class LoginPage extends StatelessWidget {
 
                   const Spacer(),
 
-                  // Logo at bottom
-                  Image.asset("assets/images/logo.png", height: 100),
-                ],
+                    // Logo at bottom
+                    Image.asset("assets/images/logo.png", height: 100),
+                  ],
+                ),
               ),
             );
           },
