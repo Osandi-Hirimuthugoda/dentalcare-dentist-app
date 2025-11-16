@@ -49,10 +49,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _nextPage() {
     if (_currentPage < _pages.length - 1) {
+      // Go to next page
       _controller.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeIn);
     } else {
+      // Last page - go to home
       _goToHome();
     }
+  }
+  
+  void _onFinishPressed() {
+    // Finish button on last page - go directly to home
+    _goToHome();
   }
 
   void _goToHome() {
@@ -137,7 +144,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   ),
-                  onPressed: _nextPage,
+                  onPressed: _currentPage == _pages.length - 1 ? _onFinishPressed : _nextPage,
                   child: Text(_currentPage == _pages.length - 1 ? "Finish" : "Next",
                       style: const TextStyle(fontSize: 16)),
                 ),

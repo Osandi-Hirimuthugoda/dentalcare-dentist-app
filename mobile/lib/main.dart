@@ -19,6 +19,7 @@ import 'package:flutter_application_1/presentation/screens/onboarding/onboarding
 import 'package:flutter_application_1/presentation/screens/onboarding/splashscreen.dart';
 import 'package:flutter_application_1/presentation/screens/treatments/my_treatments_screen.dart';
 import 'package:flutter_application_1/features/payment/card_payment_screen.dart';
+import 'package:flutter_application_1/presentation/widgets/auth/protected_route.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,31 +40,54 @@ class DentalCareApp extends StatelessWidget {
       routes: {
         RouteNames.splash: (context) => const SplashScreen(),
         RouteNames.onboarding: (context) => const OnboardingScreen(),
-        RouteNames.home: (context) => const HomeScreen(),
-        RouteNames.login: (context) => const LoginPage(),
+        RouteNames.login: (context) {
+          final email = ModalRoute.of(context)?.settings.arguments as String?;
+          return LoginPage(preFilledEmail: email);
+        },
         RouteNames.register: (context) => const RegisterPage(),
         RouteNames.forgotPassword: (context) => const ForgotPasswordPage(),
         RouteNames.verifyEmail: (context) => const VerifyEmailPage(),
         
-        // Home Navigation
-        '/appointments': (context) => const AppointmentsScreen(),
-        '/profile': (context) => const ProfileScreen(),
-        '/health': (context) => const HealthScreen(),
-        '/notification': (context) => const NotificationsScreen(),
-        // Features
-        '/teeth-scan': (context) => const TeethScanScreen(),
-        '/book-appointment': (context) => const BookAppointmentScreen(),
-        '/my-treatments': (context) => const MyTreatmentsScreen(),
-        '/my-bills': (context) => const MyBillsScreen(),
-        '/find-dentists': (context) => const FindDentistsScreen(),
+        // Home page - accessible without login
+        RouteNames.home: (context) => const HomeScreen(),
+        '/appointments': (context) => const ProtectedRoute(
+          child: AppointmentsScreen(),
+        ),
+        '/profile': (context) => const ProtectedRoute(
+          child: ProfileScreen(),
+        ),
+        '/health': (context) => const ProtectedRoute(
+          child: HealthScreen(),
+        ),
+        '/notification': (context) => const ProtectedRoute(
+          child: NotificationsScreen(),
+        ),
+        // Features - Protected
+        '/teeth-scan': (context) => const ProtectedRoute(
+          child: TeethScanScreen(),
+        ),
+        '/book-appointment': (context) => const ProtectedRoute(
+          child: BookAppointmentScreen(),
+        ),
+        '/my-treatments': (context) => const ProtectedRoute(
+          child: MyTreatmentsScreen(),
+        ),
+        '/my-bills': (context) => const ProtectedRoute(
+          child: MyBillsScreen(),
+        ),
+        '/find-dentists': (context) => const ProtectedRoute(
+          child: FindDentistsScreen(),
+        ),
         '/card-payment': (context) {
           final bill = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
-          return CardPaymentScreen(
-            bill: bill ?? {},
-            onPaymentSuccess: () {
-              // Handle payment success
-              Navigator.pop(context);
-            },
+          return ProtectedRoute(
+            child: CardPaymentScreen(
+              bill: bill ?? {},
+              onPaymentSuccess: () {
+                // Handle payment success
+                Navigator.pop(context);
+              },
+            ),
           );
         },
       },
@@ -71,13 +95,15 @@ class DentalCareApp extends StatelessWidget {
         // Handle dynamic routes with arguments
         switch (settings.name) {
           case '/card-payment':
-            final bill = settings.arguments as Map<String, dynamic>;
+            final bill = settings.arguments as Map<String, dynamic>?;
             return MaterialPageRoute(
-              builder: (context) => CardPaymentScreen(
-                bill: bill,
-                onPaymentSuccess: () {
-                  Navigator.pop(context);
-                },
+              builder: (context) => ProtectedRoute(
+                child: CardPaymentScreen(
+                  bill: bill ?? {},
+                  onPaymentSuccess: () {
+                    Navigator.pop(context);
+                  },
+                ),
               ),
             );
           default:

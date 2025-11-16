@@ -8,7 +8,9 @@ import 'package:flutter_application_1/presentation/bloc/auth/auth_state.dart';
 import 'package:flutter_application_1/injection_container.dart' as di;
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  final String? preFilledEmail;
+  
+  const LoginPage({super.key, this.preFilledEmail});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -18,9 +20,28 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill email if provided
+    if (widget.preFilledEmail != null) {
+      emailController.text = widget.preFilledEmail!;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Check if email was passed from registration
+    final emailFromArgs = ModalRoute.of(context)?.settings.arguments as String?;
+    if (emailFromArgs != null && emailController.text.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() {
+          emailController.text = emailFromArgs;
+        });
+      });
+    }
     return BlocProvider(
       create: (context) => AuthBloc(
         loginUseCase: di.getIt(),
@@ -77,13 +98,23 @@ class _LoginPageState extends State<LoginPage> {
                     TextFormField(
                       controller: passwordController,
                       enabled: !isLoading,
-                      obscureText: true,
+                      obscureText: _obscurePassword,
                       textInputAction: TextInputAction.done,
                       validator: Validators.validatePassword,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: "Password",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.lock),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.lock),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
                       ),
                       onFieldSubmitted: (_) {
                         if (_formKey.currentState!.validate()) {

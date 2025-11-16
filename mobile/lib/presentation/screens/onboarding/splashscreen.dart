@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/constants/route_names.dart';
 
-class SplashScreen extends StatelessWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  void _onGetStartedPressed() {
+    // Navigate to onboarding pages
+    Navigator.pushReplacementNamed(context, RouteNames.onboarding);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,9 +53,7 @@ class SplashScreen extends StatelessWidget {
           const SizedBox(height: 30),
           // Get Started Button
           ElevatedButton(
-            onPressed: () {
-              Navigator.pushReplacementNamed(context, RouteNames.onboarding);
-            },
+            onPressed: _onGetStartedPressed,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.teal,
               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
@@ -55,7 +63,7 @@ class SplashScreen extends StatelessWidget {
             ),
             child: const Text(
               "Get Started",
-              style: TextStyle(fontSize: 16),
+              style: TextStyle(fontSize: 16, color: Colors.white),
             ),
           ),
         ],

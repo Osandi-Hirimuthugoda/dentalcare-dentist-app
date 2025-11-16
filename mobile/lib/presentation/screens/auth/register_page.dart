@@ -21,8 +21,12 @@ class _RegisterPageState extends State<RegisterPage> {
   final emailController = TextEditingController();
   final phoneController = TextEditingController();
   final passwordController = TextEditingController();
-  final genderController = TextEditingController();
   final ageController = TextEditingController();
+  
+  bool _obscurePassword = true;
+  String? _selectedGender;
+  
+  final List<String> _genderOptions = ['male', 'female', 'other'];
 
   @override
   Widget build(BuildContext context) {
@@ -36,8 +40,20 @@ class _RegisterPageState extends State<RegisterPage> {
         body: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
             if (state is AuthAuthenticated) {
-              // Navigate to home on successful registration
-              Navigator.pushReplacementNamed(context, RouteNames.home);
+              // Navigate to login page with email pre-filled after successful registration
+              Navigator.pushReplacementNamed(
+                context,
+                RouteNames.login,
+                arguments: emailController.text.trim(),
+              );
+              // Show success message
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Registration successful! Please login."),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 2),
+                ),
+              );
             } else if (state is AuthError) {
               // Show error message
               ScaffoldMessenger.of(context).showSnackBar(
@@ -109,27 +125,52 @@ class _RegisterPageState extends State<RegisterPage> {
                       TextFormField(
                         controller: passwordController,
                         enabled: !isLoading,
-                        obscureText: true,
+                        obscureText: _obscurePassword,
                         textInputAction: TextInputAction.next,
                         validator: Validators.validatePasswordStrength,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: "Password (min 6 chars, with letter & number)",
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.lock),
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.lock),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
 
-                      TextFormField(
-                        controller: genderController,
-                        enabled: !isLoading,
-                        textInputAction: TextInputAction.next,
-                        validator: Validators.validateGender,
+                      // Gender Dropdown
+                      DropdownButtonFormField<String>(
+                        value: _selectedGender,
                         decoration: const InputDecoration(
-                          hintText: "Gender (male/female/other)",
+                          hintText: "Select Gender",
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.person_outline),
                         ),
+                        items: _genderOptions.map((String gender) {
+                          return DropdownMenuItem<String>(
+                            value: gender,
+                            child: Text(gender.toUpperCase()),
+                          );
+                        }).toList(),
+                        onChanged: isLoading ? null : (String? newValue) {
+                          setState(() {
+                            _selectedGender = newValue;
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Gender is required';
+                          }
+                          return Validators.validateGender(value);
+                        },
                       ),
                       const SizedBox(height: 12),
 
@@ -217,7 +258,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
     // Get age and gender from form
     final age = int.tryParse(ageController.text.trim());
-    final gender = genderController.text.trim().toLowerCase();
+    final gender = _selectedGender?.toLowerCase() ?? 'other';
 
     // Register user with age and gender
     context.read<AuthBloc>().add(

@@ -6,6 +6,7 @@ import 'package:dartz/dartz.dart';
 // import 'package:dental_care/data/models/user_model.dart';
 // import 'package:dental_care/domain/entities/user_entity.dart';
 // import 'package:dental_care/domain/repositories/auth_repository.dart';
+import 'package:flutter_application_1/core/constants/app_constants.dart';
 import 'package:flutter_application_1/core/errors/exceptions.dart';
 import 'package:flutter_application_1/core/errors/failures.dart';
 import 'package:flutter_application_1/data/data_sources/local/shared_prefs.dart';
@@ -26,11 +27,20 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, UserEntity>> login(String email, String password) async {
     try {
-      final userModel = await remoteDataSource.login(email, password);
+      final response = await remoteDataSource.login(email, password);
+      final userData = response['user'] as Map<String, dynamic>;
+      final token = response['token'] as String?;
+      
+      final userModel = UserModel.fromJson(userData);
       
       // Save user data and token to local storage
       await localDataSource.setString('user_data', userModel.toJson().toString());
-      await localDataSource.setBool('is_logged_in', true);
+      await localDataSource.setBool(AppConstants.isLoggedInKey, true);
+      
+      // Save token if available
+      if (token != null && token.isNotEmpty) {
+        await localDataSource.setString(AppConstants.tokenKey, token);
+      }
       
       final userEntity = UserEntity(
         id: userModel.id,
@@ -63,7 +73,16 @@ class AuthRepositoryImpl implements AuthRepository {
         gender: gender,
       );
       
-      final registeredUser = await remoteDataSource.register(userModel, password);
+      final response = await remoteDataSource.register(userModel, password);
+      final userData = response['user'] as Map<String, dynamic>;
+      final token = response['token'] as String?;
+      
+      final registeredUser = UserModel.fromJson(userData);
+      
+      // Save token if available (but don't set is_logged_in yet - user needs to login)
+      if (token != null && token.isNotEmpty) {
+        await localDataSource.setString(AppConstants.tokenKey, token);
+      }
       
       final userEntity = UserEntity(
         id: registeredUser.id,
@@ -130,8 +149,14 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, bool>> isUserLoggedIn() async {
     try {
-      final isLoggedIn = await localDataSource.getBool('is_logged_in');
-      return Right(isLoggedIn ?? false);
+      // Check both login status and token to ensure user is truly logged in
+      final isLoggedIn = await localDataSource.getBool(AppConstants.isLoggedInKey);
+      final token = await localDataSource.getString(AppConstants.tokenKey);
+      
+      // User is logged in only if both flag is true AND token exists
+      final isAuthenticated = (isLoggedIn == true) && (token != null && token.isNotEmpty);
+      
+      return Right(isAuthenticated);
     } on CacheException catch (e) {
       return Left(CacheFailure(e.message));
     } catch (e) {

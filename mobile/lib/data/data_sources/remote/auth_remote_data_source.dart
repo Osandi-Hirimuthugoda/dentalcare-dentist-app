@@ -8,8 +8,8 @@ import 'package:http/http.dart' as http;
 // import 'package:dental_care/data/models/user_model.dart';
 
 abstract class AuthRemoteDataSource {
-  Future<UserModel> login(String email, String password);
-  Future<UserModel> register(UserModel user, String password);
+  Future<Map<String, dynamic>> login(String email, String password); // Returns user and token
+  Future<Map<String, dynamic>> register(UserModel user, String password); // Returns user and token
   Future<void> forgotPassword(String email);
   Future<void> verifyEmail(String email, String otp);
   Future<void> logout();
@@ -21,7 +21,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   AuthRemoteDataSourceImpl({required this.client});
 
   @override
-  Future<UserModel> login(String email, String password) async {
+  Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await client.post(
         Uri.parse('${AppConstants.baseUrl}${AppConstants.loginEndpoint}'),
@@ -34,8 +34,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        // Backend returns user object directly
-        return UserModel.fromJson(data['user']);
+        // Backend returns user and token
+        return {
+          'user': data['user'],
+          'token': data['token'] ?? '',
+        };
       } else if (response.statusCode == 401) {
         throw InvalidCredentialsException();
       } else {
@@ -49,7 +52,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<UserModel> register(UserModel user, String password) async {
+  Future<Map<String, dynamic>> register(UserModel user, String password) async {
     try {
       // Backend expects: name, email, password, phone, age, gender
       final userJson = user.toJson();
@@ -68,7 +71,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
-        return UserModel.fromJson(data['user']);
+        // Backend returns user and token
+        return {
+          'user': data['user'],
+          'token': data['token'] ?? '',
+        };
       } else if (response.statusCode == 409) {
         throw EmailAlreadyExistsException();
       } else {
