@@ -1,0 +1,67 @@
+/* src/styles/StatCard.module.css */
+
+.statCard {
+  background-color: white;
+  padding: 2.25rem; /* Generous padding */
+  border-radius: 1.25rem; /* Rounded corners */
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.04); /* Soft, elevated shadow */
+  border: 1px solid #e5e7eb; /* Subtle light gray border */
+  transition: all 0.3s ease-out; /* Smooth transition for hover effects */
+  cursor: pointer;
+  display: flex;
+  flex-direction: column; /* Stack title and count vertically */
+  justify-content: space-between;
+  height: 200px;
+  width: 300px; /* Ensure cards fill grid space */
+}
+
+.statCard:hover {
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.12), 0 6px 10px rgba(0, 0, 0, 0.06); /* Stronger shadow on hover */
+  transform: translateY(-5px) scale(1.02); /* Slight lift and scale */
+}
+
+.statCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem; /* Space between header and count */
+}
+
+.statTitle {
+  font-size: 1.15rem; /* Text size for title */
+  font-weight: 600; /* Semi-bold */
+  color: #4a5568; /* Darker gray */
+}
+
+.iconBackground {
+  background-color: #dbeafe; /* Light blue background for icon */
+  padding: 0.75rem; /* Padding inside the circle */
+  border-radius: 50%; /* Perfect circle */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 5px rgba(0,0,0,0.05); /* Very subtle inner shadow */
+}
+
+/* Assuming you use an icon library like Lucide, Feather, or React Icons */
+.statIcon {
+  color: #3b82f6; /* Blue-500 for the icon */
+  width: 1.5rem; /* Icon size */
+  height: 1.5rem;
+}
+
+.statCount {
+  font-size: 3.75rem; /* Larger font size for the count */
+  font-weight: 800; /* Extra bold */
+  color: #2563eb; /* Strong blue */
+  line-height: 1; /* Prevent extra line spacing */
+}
+
+/* Specific icon colors if needed (e.g., for different types of stats) */
+.iconGreen .statIcon {
+  color: #22c55e; /* Green-500 */
+}
+.iconPurple .statIcon {
+  color: #a855f7; /* Purple-500 */
+}
+/* Add more as needed */
