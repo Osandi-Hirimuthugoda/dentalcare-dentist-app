@@ -22,11 +22,18 @@ class LoginRequested extends AuthEvent {
 class RegisterRequested extends AuthEvent {
   final UserEntity user;
   final String password;
+  final int? age;
+  final String? gender;
 
-  const RegisterRequested({required this.user, required this.password});
+  const RegisterRequested({
+    required this.user,
+    required this.password,
+    this.age,
+    this.gender,
+  });
 
   @override
-  List<Object> get props => [user, password];
+  List<Object?> get props => [user, password, age, gender];
 }
 
 class LogoutRequested extends AuthEvent {}

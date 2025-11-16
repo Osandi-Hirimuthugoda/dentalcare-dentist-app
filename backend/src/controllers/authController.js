@@ -60,9 +60,13 @@ export const registerPatient = async (req, res) => {
     // Generate token
     const token = jwt.sign({ id: patient._id, role: "patient" }, JWT_SECRET, { expiresIn: "7d" });
 
-    // Remove password from response
+    // Remove password from response and format for mobile app
     const patientResponse = patient.toObject();
     delete patientResponse.passwordHash;
+    
+    // Convert _id to id for mobile app compatibility
+    patientResponse.id = patientResponse._id.toString();
+    delete patientResponse._id;
 
     res.status(201).json({
       message: "Patient registered successfully",
@@ -90,9 +94,13 @@ export const loginPatient = async (req, res) => {
 
     const token = jwt.sign({ id: patient._id, role: "patient" }, JWT_SECRET, { expiresIn: "7d" });
 
-    // Remove password from response
+    // Remove password from response and format for mobile app
     const patientResponse = patient.toObject();
     delete patientResponse.passwordHash;
+    
+    // Convert _id to id for mobile app compatibility
+    patientResponse.id = patientResponse._id.toString();
+    delete patientResponse._id;
 
     res.json({
       message: "Login successful",

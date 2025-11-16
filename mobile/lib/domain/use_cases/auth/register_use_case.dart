@@ -11,7 +11,7 @@ class RegisterUseCase {
 
   RegisterUseCase({required this.repository});
 
-  Future<Either<Failure, UserEntity>> execute(UserEntity user, String password) {
-    return repository.register(user, password);
+  Future<Either<Failure, UserEntity>> execute(UserEntity user, String password, {int? age, String? gender}) {
+    return repository.register(user, password, age: age, gender: gender);
   }
 }

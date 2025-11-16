@@ -6,7 +6,7 @@ import 'package:flutter_application_1/domain/entities/user_entity.dart';
 
 abstract class AuthRepository {
   Future<Either<Failure, UserEntity>> login(String email, String password);
-  Future<Either<Failure, UserEntity>> register(UserEntity user, String password);
+  Future<Either<Failure, UserEntity>> register(UserEntity user, String password, {int? age, String? gender});
   Future<Either<Failure, void>> forgotPassword(String email);
   Future<Either<Failure, void>> verifyEmail(String email, String otp);
   Future<Either<Failure, void>> logout();
