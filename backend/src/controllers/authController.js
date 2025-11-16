@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Admin from "../models/Admin.js";
 import Doctor from "../models/Doctor.js";
+import Patient from "../models/Patient.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "secretkey";
 
@@ -32,5 +33,113 @@ export const registerDoctor = async (req, res) => {
     res.status(201).json({ message: "Doctor registered successfully", doctor });
   } catch (err) {
     res.status(400).json({ message: err.message });
+  }
+};
+
+// 👤 Patient registration
+export const registerPatient = async (req, res) => {
+  const { name, email, password, phone, age, gender } = req.body;
+  try {
+    // Check if patient already exists
+    const existingPatient = await Patient.findOne({ email });
+    if (existingPatient) {
+      return res.status(409).json({ message: "Patient with this email already exists" });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const patient = new Patient({
+      name,
+      email,
+      passwordHash,
+      phone,
+      age,
+      gender,
+    });
+    await patient.save();
+
+    // Generate token
+    const token = jwt.sign({ id: patient._id, role: "patient" }, JWT_SECRET, { expiresIn: "7d" });
+
+    // Remove password from response
+    const patientResponse = patient.toObject();
+    delete patientResponse.passwordHash;
+
+    res.status(201).json({
+      message: "Patient registered successfully",
+      user: patientResponse,
+      token,
+    });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+// 👤 Patient login
+export const loginPatient = async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const patient = await Patient.findOne({ email });
+    if (!patient) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const isValid = await bcrypt.compare(password, patient.passwordHash);
+    if (!isValid) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const token = jwt.sign({ id: patient._id, role: "patient" }, JWT_SECRET, { expiresIn: "7d" });
+
+    // Remove password from response
+    const patientResponse = patient.toObject();
+    delete patientResponse.passwordHash;
+
+    res.json({
+      message: "Login successful",
+      user: patientResponse,
+      token,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// 🔐 Forgot password
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  try {
+    const patient = await Patient.findOne({ email });
+    if (!patient) {
+      // Don't reveal if email exists for security
+      return res.status(200).json({ message: "If email exists, password reset link will be sent" });
+    }
+
+    // TODO: Implement email sending logic here
+    // For now, just return success
+    res.status(200).json({ message: "Password reset instructions sent to email" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ✅ Verify email
+export const verifyEmail = async (req, res) => {
+  const { email, otp } = req.body;
+  try {
+    const patient = await Patient.findOne({ email });
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+
+    if (patient.emailVerificationOTP === otp) {
+      patient.isEmailVerified = true;
+      patient.emailVerificationOTP = undefined;
+      await patient.save();
+      res.status(200).json({ message: "Email verified successfully" });
+    } else {
+      res.status(400).json({ message: "Invalid OTP" });
+    }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };

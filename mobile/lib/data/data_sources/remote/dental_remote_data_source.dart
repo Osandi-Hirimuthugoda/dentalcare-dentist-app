@@ -28,7 +28,8 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['appointments'];
+        // Backend returns array directly or wrapped in appointments key
+        return data is List ? data : (data['appointments'] ?? []);
       } else {
         throw ServerException('Failed to fetch appointments', response.statusCode);
       }
@@ -46,7 +47,7 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
         headers: {'Content-Type': 'application/json'},
       );
 
-      if (response.statusCode == 201) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return jsonDecode(response.body);
       } else {
         throw ServerException('Failed to book appointment', response.statusCode);
@@ -59,14 +60,16 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
   @override
   Future<List<dynamic>> getDentists() async {
     try {
+      // Backend route is /api/doctors/all to get all doctors
       final response = await client.get(
-        Uri.parse('${AppConstants.baseUrl}/dentists'),
+        Uri.parse('${AppConstants.baseUrl}/doctors/all'),
         headers: {'Content-Type': 'application/json'},
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['dentists'];
+        // Backend returns array directly or wrapped in doctors key
+        return data is List ? data : (data['doctors'] ?? []);
       } else {
         throw ServerException('Failed to fetch dentists', response.statusCode);
       }

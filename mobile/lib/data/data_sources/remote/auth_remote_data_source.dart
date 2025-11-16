@@ -34,6 +34,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        // Backend returns user object directly
         return UserModel.fromJson(data['user']);
       } else if (response.statusCode == 401) {
         throw InvalidCredentialsException();
@@ -50,11 +51,17 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<UserModel> register(UserModel user, String password) async {
     try {
+      // Backend expects: name, email, password, phone, age, gender
+      final userJson = user.toJson();
       final response = await client.post(
         Uri.parse('${AppConstants.baseUrl}${AppConstants.registerEndpoint}'),
         body: jsonEncode({
-          'user': user.toJson(),
+          'name': userJson['name'] ?? userJson['fullName'] ?? '',
+          'email': userJson['email'] ?? '',
           'password': password,
+          'phone': userJson['phone'] ?? userJson['phoneNumber'] ?? '',
+          'age': userJson['age'],
+          'gender': userJson['gender'] ?? 'other',
         }),
         headers: {'Content-Type': 'application/json'},
       );

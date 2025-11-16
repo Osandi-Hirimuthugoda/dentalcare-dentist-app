@@ -4,6 +4,7 @@ const patientSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   phone: { type: String, required: true },
+  passwordHash: { type: String, required: true }, // For authentication
   age: { type: Number },
   gender: { type: String, enum: ["male", "female", "other"] },
   // Medical information
@@ -15,6 +16,9 @@ const patientSchema = new mongoose.Schema({
   selectedDoctor: { type: mongoose.Schema.Types.ObjectId, ref: "Doctor" },
   // Status
   status: { type: String, enum: ["active", "inactive"], default: "active" },
+  // Email verification
+  isEmailVerified: { type: Boolean, default: false },
+  emailVerificationOTP: { type: String },
 }, { timestamps: true });
 
 export default mongoose.model("Patient", patientSchema);

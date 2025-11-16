@@ -7,6 +7,7 @@ import adminRoutes from "./src/routes/adminRoutes.js";
 import patientRoutes from "./src/routes/patientRoutes.js";
 import appointmentRoutes from "./src/routes/appointmentRoutes.js";
 import messageRoutes from "./src/routes/messageRoutes.js";
+import authRoutes from "./src/routes/authRoutes.js";
 
 dotenv.config();
 connectDB();
@@ -21,6 +22,7 @@ app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
+app.use("/api/auth", authRoutes);
 app.use("/api/admins", adminRoutes);
 app.use("/api/patients", patientRoutes);
 app.use("/api/appointments", appointmentRoutes);
