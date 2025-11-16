@@ -72,14 +72,30 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
         // Backend returns user and token
+        if (data['user'] == null) {
+          throw ServerException('Invalid response: user data missing', response.statusCode);
+        }
         return {
           'user': data['user'],
           'token': data['token'] ?? '',
         };
       } else if (response.statusCode == 409) {
-        throw EmailAlreadyExistsException();
+        final errorData = jsonDecode(response.body);
+        throw ServerException(
+          errorData['message'] ?? 'Email already exists',
+          response.statusCode,
+        );
       } else {
-        throw ServerException('Registration failed', response.statusCode);
+        // Try to parse error message from response
+        try {
+          final errorData = jsonDecode(response.body);
+          throw ServerException(
+            errorData['message'] ?? 'Registration failed',
+            response.statusCode,
+          );
+        } catch (_) {
+          throw ServerException('Registration failed', response.statusCode);
+        }
       }
     } on ServerException {
       rethrow;

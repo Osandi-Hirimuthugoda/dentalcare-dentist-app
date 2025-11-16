@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import Doctor from "../models/Doctor.js";
+import Doctor from "../models/doctorModel.js";
 
 export const protect = async (req, res, next) => {
   let token = req.headers.authorization?.split(" ")[1];

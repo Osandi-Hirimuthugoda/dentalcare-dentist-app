@@ -52,8 +52,21 @@ class _LoginPageState extends State<LoginPage> {
         body: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
             if (state is AuthAuthenticated) {
-              // Navigate to home on successful login
-              Navigator.pushReplacementNamed(context, RouteNames.home);
+              // Show success message
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Login successful!'),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 1),
+                ),
+              );
+              // Navigate to home on successful login after a brief delay
+              // All data is saved at this point (awaited in repository)
+              Future.delayed(const Duration(milliseconds: 500), () {
+                if (context.mounted) {
+                  Navigator.pushReplacementNamed(context, RouteNames.home);
+                }
+              });
             } else if (state is AuthError) {
               // Show error message
               ScaffoldMessenger.of(context).showSnackBar(

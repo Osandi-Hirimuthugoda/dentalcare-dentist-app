@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dartz/dartz.dart';
 // import 'package:dental_care/core/errors/exceptions.dart';
 // import 'package:dental_care/core/errors/failures.dart';
@@ -34,7 +35,8 @@ class AuthRepositoryImpl implements AuthRepository {
       final userModel = UserModel.fromJson(userData);
       
       // Save user data and token to local storage
-      await localDataSource.setString('user_data', userModel.toJson().toString());
+      // Use jsonEncode to properly convert Map to JSON string
+      await localDataSource.setString(AppConstants.userKey, jsonEncode(userModel.toJson()));
       await localDataSource.setBool(AppConstants.isLoggedInKey, true);
       
       // Save token if available
@@ -74,14 +76,24 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       
       final response = await remoteDataSource.register(userModel, password);
+      
+      // Validate response structure
+      if (response['user'] == null) {
+        return Left(ServerFailure('Invalid response from server: user data missing', 500));
+      }
+      
       final userData = response['user'] as Map<String, dynamic>;
       final token = response['token'] as String?;
       
+      // Parse user data
       final registeredUser = UserModel.fromJson(userData);
       
-      // Save token if available (but don't set is_logged_in yet - user needs to login)
+      // Save token in background (don't await - user needs to login anyway)
+      // This speeds up registration response
       if (token != null && token.isNotEmpty) {
-        await localDataSource.setString(AppConstants.tokenKey, token);
+        localDataSource.setString(AppConstants.tokenKey, token).catchError((_) {
+          // Ignore errors - token will be saved on login
+        });
       }
       
       final userEntity = UserEntity(
@@ -96,8 +108,11 @@ class AuthRepositoryImpl implements AuthRepository {
       return Left(ServerFailure(e.message, e.statusCode));
     } on NetworkException catch (e) {
       return Left(NetworkFailure(e.message));
+    } on AuthException catch (e) {
+      return Left(ServerFailure(e.message, 400));
     } catch (e) {
-      return Left(UnexpectedFailure());
+      // Catch any other exceptions and provide a meaningful error
+      return Left(ServerFailure('Registration failed: ${e.toString()}', 500));
     }
   }
 
@@ -167,15 +182,17 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, UserEntity?>> getCurrentUser() async {
     try {
-      final userData = await localDataSource.getString('user_data');
-      if (userData != null) {
-        // Parse user data and return UserEntity
-        // This is simplified - you'd need proper parsing
+      final userDataString = await localDataSource.getString(AppConstants.userKey);
+      if (userDataString != null && userDataString.isNotEmpty) {
+        // Parse JSON string back to Map and create UserModel
+        final userDataMap = jsonDecode(userDataString) as Map<String, dynamic>;
+        final userModel = UserModel.fromJson(userDataMap);
+        
         final userEntity = UserEntity(
-          id: '1',
-          name: 'Current User',
-          email: 'user@example.com',
-          phone: '1234567890',
+          id: userModel.id,
+          name: userModel.name,
+          email: userModel.email,
+          phone: userModel.phone,
         );
         return Right(userEntity);
       }

@@ -37,3 +37,7 @@ class RegisterRequested extends AuthEvent {
 }
 
 class LogoutRequested extends AuthEvent {}
+
+class AuthReset extends AuthEvent {
+  const AuthReset();
+}

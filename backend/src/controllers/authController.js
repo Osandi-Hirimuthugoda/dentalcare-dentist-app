@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Admin from "../models/Admin.js";
-import Doctor from "../models/Doctor.js";
+import Doctor from "../models/doctorModel.js";
 import Patient from "../models/Patient.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "secretkey";
@@ -25,12 +25,25 @@ export const loginAdmin = async (req, res) => {
 
 // ➕ Register new doctor (admin only)
 export const registerDoctor = async (req, res) => {
-  const { name, email, password } = req.body;
+  const { fullName, email, password, phone, licenseNumber, specialization, qualifications, hospital, experience } = req.body;
   try {
-    const passwordHash = await bcrypt.hash(password, 10);
-    const doctor = new Doctor({ name, email, passwordHash });
+    // doctorModel.js has a pre-save hook that hashes the password automatically
+    const doctor = new Doctor({ 
+      fullName: fullName || req.body.name || 'Doctor', // Support both name and fullName
+      email, 
+      password, // Will be hashed by pre-save hook
+      phone: phone || '0000000000',
+      licenseNumber: licenseNumber || 'N/A',
+      specialization,
+      qualifications,
+      hospital,
+      experience,
+    });
     await doctor.save();
-    res.status(201).json({ message: "Doctor registered successfully", doctor });
+    // Remove password from response
+    const doctorResponse = doctor.toObject();
+    delete doctorResponse.password;
+    res.status(201).json({ message: "Doctor registered successfully", doctor: doctorResponse });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -39,10 +52,14 @@ export const registerDoctor = async (req, res) => {
 // 👤 Patient registration
 export const registerPatient = async (req, res) => {
   const { name, email, password, phone, age, gender } = req.body;
+  
+  console.log("📝 Registration request received:", { name, email, phone, age, gender });
+  
   try {
     // Check if patient already exists
     const existingPatient = await Patient.findOne({ email });
     if (existingPatient) {
+      console.log("❌ Email already exists:", email);
       return res.status(409).json({ message: "Patient with this email already exists" });
     }
 
@@ -55,7 +72,10 @@ export const registerPatient = async (req, res) => {
       age,
       gender,
     });
+    
+    console.log("💾 Saving patient to database...");
     await patient.save();
+    console.log("✅ Patient saved successfully with ID:", patient._id);
 
     // Generate token
     const token = jwt.sign({ id: patient._id, role: "patient" }, JWT_SECRET, { expiresIn: "7d" });
@@ -68,12 +88,15 @@ export const registerPatient = async (req, res) => {
     patientResponse.id = patientResponse._id.toString();
     delete patientResponse._id;
 
+    console.log("✅ Registration successful, sending response");
     res.status(201).json({
       message: "Patient registered successfully",
       user: patientResponse,
       token,
     });
   } catch (err) {
+    console.error("❌ Registration error:", err.message);
+    console.error("Error stack:", err.stack);
     res.status(400).json({ message: err.message });
   }
 };

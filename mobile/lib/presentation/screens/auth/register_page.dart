@@ -40,26 +40,35 @@ class _RegisterPageState extends State<RegisterPage> {
         body: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
             if (state is AuthAuthenticated) {
-              // Navigate to login page with email pre-filled after successful registration
+              // Get email before navigation
+              final email = emailController.text.trim();
+              
+              // Navigate to login page immediately
               Navigator.pushReplacementNamed(
                 context,
                 RouteNames.login,
-                arguments: emailController.text.trim(),
+                arguments: email,
               );
-              // Show success message
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Registration successful! Please login."),
-                  backgroundColor: Colors.green,
-                  duration: Duration(seconds: 2),
-                ),
-              );
+              
+              // Show success message after a short delay
+              Future.delayed(const Duration(milliseconds: 300), () {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Registration successful! Please login."),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              });
             } else if (state is AuthError) {
               // Show error message
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(state.message),
                   backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 3),
                 ),
               );
             }
