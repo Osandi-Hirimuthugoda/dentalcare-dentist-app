@@ -3,20 +3,33 @@ import Patient from "../models/Patient.js";
 import Doctor from "../models/doctorModel.js";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "secretkey";
+const JWT_SECRET = process.env.JWT_SECRET || "dentalcare_secret_key_change_in_production";
 
 // Helper function to extract user from token
 const getUserFromToken = (req) => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader) return null;
+    if (!authHeader) {
+      console.log("⚠️ No Authorization header in request");
+      return null;
+    }
     
     const token = authHeader.split(" ")[1];
-    if (!token) return null;
+    if (!token) {
+      console.log("⚠️ No token found in Authorization header");
+      return null;
+    }
     
     const decoded = jwt.verify(token, JWT_SECRET);
+    console.log(`✅ Token decoded successfully - ID: ${decoded.id}, Role: ${decoded.role || 'undefined'}`);
     return decoded;
   } catch (err) {
+    console.error(`❌ Token verification failed: ${err.message}`);
+    if (err.name === 'JsonWebTokenError') {
+      console.error("   Token is invalid or malformed");
+    } else if (err.name === 'TokenExpiredError') {
+      console.error("   Token has expired");
+    }
     return null;
   }
 };
@@ -53,6 +66,123 @@ export const getAppointmentsByPatient = async (req, res) => {
   }
 };
 
+// 🩺 Get patient treatments (for My Treatments page)
+export const getPatientTreatments = async (req, res) => {
+  try {
+    const user = getUserFromToken(req);
+    if (!user || user.role !== "patient") {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    const appointments = await Appointment.find({ patient: user.id })
+      .populate("patient", "name email phone age gender")
+      .populate("doctor", "fullName specialization email phone hospital")
+      .sort({ startTime: -1 });
+    
+    // Convert appointments to treatments format
+    const treatments = appointments.map((appt) => {
+      // Extract service name from notes (format: "Service Name: notes" or just "Service Name")
+      let serviceName = 'Dental Checkup'; // Default
+      if (appt.notes) {
+        const parts = appt.notes.split(':');
+        if (parts.length > 0) {
+          serviceName = parts[0].trim();
+        }
+      }
+      
+      // Map appointment status to treatment status
+      let treatmentStatus = 'Upcoming';
+      if (appt.status === 'completed') {
+        treatmentStatus = 'Completed';
+      } else if (appt.status === 'confirmed' || appt.status === 'pending') {
+        const now = new Date();
+        const startTime = new Date(appt.startTime);
+        if (startTime < now) {
+          treatmentStatus = 'Ongoing';
+        } else {
+          treatmentStatus = 'Upcoming';
+        }
+      } else if (appt.status === 'cancelled') {
+        treatmentStatus = 'Cancelled';
+      }
+      
+      // Determine treatment type from service name or doctor specialization
+      let treatmentType = 'General';
+      const serviceLower = serviceName.toLowerCase();
+      if (serviceLower.includes('cleaning') || serviceLower.includes('scaling')) {
+        treatmentType = 'Hygiene';
+      } else if (serviceLower.includes('filling') || serviceLower.includes('cavity')) {
+        treatmentType = 'Restorative';
+      } else if (serviceLower.includes('root canal') || serviceLower.includes('rct')) {
+        treatmentType = 'Endodontic';
+      } else if (serviceLower.includes('braces') || serviceLower.includes('orthodont')) {
+        treatmentType = 'Orthodontic';
+      } else if (serviceLower.includes('whitening') || serviceLower.includes('cosmetic')) {
+        treatmentType = 'Cosmetic';
+      } else if (serviceLower.includes('crown') || serviceLower.includes('bridge') || serviceLower.includes('implant') || serviceLower.includes('denture')) {
+        treatmentType = 'Restorative';
+      } else if (serviceLower.includes('extraction') || serviceLower.includes('surgery')) {
+        treatmentType = 'Surgical';
+      } else if (serviceLower.includes('emergency')) {
+        treatmentType = 'Emergency';
+      }
+      
+      // Format date
+      const appointmentDate = new Date(appt.startTime);
+      const formattedDate = appointmentDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+      
+      // Default cost (can be added to appointment model later)
+      const defaultCosts = {
+        'Dental Checkups & Consultations': 2500,
+        'Teeth Cleaning (Scaling & Polishing)': 3000,
+        'Cavity Filling': 4500,
+        'Tooth Extraction': 5000,
+        'Root Canal Treatment (RCT)': 12000,
+        'Braces & Teeth Alignment (Orthodontics)': 5000,
+        'Teeth Whitening': 8000,
+        'Dental Crowns & Bridges': 15000,
+        'Dental Implants & Dentures': 50000,
+        'Emergency Dental Care': 4000,
+      };
+      
+      let cost = 0;
+      for (const [key, value] of Object.entries(defaultCosts)) {
+        if (serviceName.toLowerCase().includes(key.toLowerCase().split(' ')[0])) {
+          cost = value;
+          break;
+        }
+      }
+      if (cost === 0) {
+        cost = 3000; // Default cost
+      }
+      
+      return {
+        _id: appt._id,
+        id: appt._id.toString(),
+        title: serviceName,
+        doctor: appt.doctor ? appt.doctor.fullName : 'Unknown Doctor',
+        date: formattedDate,
+        status: treatmentStatus,
+        cost: `LKR ${cost.toLocaleString()}`,
+        type: treatmentType,
+        appointmentStatus: appt.status,
+        startTime: appt.startTime,
+        notes: appt.notes || '',
+        doctorId: appt.doctor ? appt.doctor._id.toString() : null,
+      };
+    });
+    
+    res.status(200).json(treatments);
+  } catch (err) {
+    console.error("❌ Error fetching patient treatments:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // 📋 Get appointments by doctor ID (for web app)
 export const getAppointmentsByDoctor = async (req, res) => {
   try {
@@ -78,11 +208,19 @@ export const createAppointment = async (req, res) => {
     // If token exists and user is a patient, use token's patient ID
     if (user && user.role === "patient") {
       patientId = user.id;
+      console.log(`✅ Patient ID extracted from token: ${patientId}`);
+    } else if (user) {
+      console.log(`⚠️ Token found but user role is: ${user.role || 'undefined'}, expected 'patient'`);
+    } else {
+      console.log(`⚠️ No valid token found in request. Headers:`, req.headers.authorization ? "Present but invalid" : "Missing");
     }
     
     // Validate required fields
     if (!patientId) {
-      return res.status(400).json({ message: "Patient ID is required" });
+      console.error("❌ Patient ID missing - Token user:", user ? `Present (role: ${user.role || 'undefined'}, id: ${user.id || 'undefined'})` : "Missing", "- Body patient:", req.body.patient || "Missing");
+      return res.status(400).json({ 
+        message: "Patient ID is required. Please ensure you are logged in as a patient. If you just logged in, please try again." 
+      });
     }
     
     if (!req.body.startTime) {

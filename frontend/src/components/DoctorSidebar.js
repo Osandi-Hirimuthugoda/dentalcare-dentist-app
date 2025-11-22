@@ -106,6 +106,17 @@ export default function DoctorSidebar() {
 
           <li className={sidebarStyles.navItem}>
             <Link
+              to="/doctor/availability"
+              className={`${sidebarStyles.navLink} ${
+                isActive("/doctor/availability") ? sidebarStyles.active : ""
+              }`}
+            >
+              <Calendar size={20} className={sidebarStyles.navIcon} /> Availability
+            </Link>
+          </li>
+
+          <li className={sidebarStyles.navItem}>
+            <Link
               to="/doctor/settings"
               className={`${sidebarStyles.navLink} ${
                 isActive("/doctor/settings") ? sidebarStyles.active : ""

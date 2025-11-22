@@ -10,6 +10,7 @@ import DoctorAppointments from "./pages/DoctorAppointments";
 import DoctorReports from "./pages/DoctorReports";
 import DoctorProfile from "./pages/DoctorProfile";
 import DoctorSettings from "./pages/DoctorSettings";
+import DoctorAvailability from "./pages/DoctorAvailability";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminRegisterDoctor from "./pages/AdminRegisterDoctor";
@@ -95,6 +96,14 @@ const App = () => {
           element={
             <DoctorProtectedRoute>
               <DoctorSettings />
+            </DoctorProtectedRoute>
+          }
+        />
+        <Route
+          path="/doctor/availability"
+          element={
+            <DoctorProtectedRoute>
+              <DoctorAvailability />
             </DoctorProtectedRoute>
           }
         />

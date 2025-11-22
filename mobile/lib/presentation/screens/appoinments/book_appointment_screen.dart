@@ -125,7 +125,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             'rating': 4.5, // Default rating if not available
             'experience': dentist['experience'] ?? 'N/A',
             'services': dentist['services'] ?? [], // Services doctor offers
-            'availableSlots': _generateTimeSlots(), // Generate default time slots
+            'availableSlots': _generateTimeSlots(), // Default slots until availability is loaded
           };
         }).toList();
         _isLoadingDentists = false;
@@ -138,8 +138,49 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     }
   }
 
+  Future<void> _loadDoctorAvailability(String doctorId) async {
+    try {
+      debugPrint('📅 Loading availability for doctor: $doctorId');
+      final availability = await _dentalDataSource.getDoctorAvailability(doctorId);
+      
+      final availableSlots = availability['availableSlots'] as List<dynamic>? ?? [];
+      debugPrint('📅 Available slots: ${availableSlots.length}');
+      
+      // Group slots by date
+      final slotsByDate = <String, List<String>>{};
+      for (var slot in availableSlots) {
+        final date = slot['date']?.toString() ?? '';
+        final time = slot['time']?.toString() ?? slot['display']?.toString() ?? '';
+        if (date.isNotEmpty && time.isNotEmpty) {
+          if (!slotsByDate.containsKey(date)) {
+            slotsByDate[date] = [];
+          }
+          slotsByDate[date]!.add(time);
+        }
+      }
+      
+      // Update selected dentist with availability
+      setState(() {
+        if (_selectedDentist != null && _selectedDentist!['id'] == doctorId) {
+          _selectedDentist!['availableSlots'] = slotsByDate;
+          _selectedDentist!['availableDates'] = slotsByDate.keys.toList();
+        }
+        
+        // Also update in dentists list
+        final index = _dentists.indexWhere((d) => d['id'] == doctorId);
+        if (index != -1) {
+          _dentists[index]['availableSlots'] = slotsByDate;
+          _dentists[index]['availableDates'] = slotsByDate.keys.toList();
+        }
+      });
+    } catch (e) {
+      debugPrint('❌ Error loading doctor availability: $e');
+      // Continue with default slots if availability load fails
+    }
+  }
+
   List<String> _generateTimeSlots() {
-    // Generate time slots from 9 AM to 5 PM
+    // Generate default time slots from 9 AM to 5 PM
     final slots = <String>[];
     for (int hour = 9; hour < 17; hour++) {
       for (int minute = 0; minute < 60; minute += 30) {
@@ -148,6 +189,20 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       }
     }
     return slots;
+  }
+
+  Future<List<String>> _getAvailableTimesForDate(DateTime date) async {
+    if (_selectedDentist == null) return [];
+    
+    final dateStr = date.toIso8601String().split('T')[0]; // YYYY-MM-DD
+    final availableSlots = _selectedDentist!['availableSlots'] as Map<String, List<String>>?;
+    
+    if (availableSlots == null || availableSlots.isEmpty) {
+      // If no availability set, use default slots
+      return _generateTimeSlots();
+    }
+    
+    return availableSlots[dateStr] ?? [];
   }
 
   void _selectDate() async {
@@ -499,8 +554,11 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         onTap: () {
           setState(() {
             _selectedDentist = dentist;
+            _selectedDate = null;
             _selectedTime = null;
           });
+          // Load doctor availability when selected
+          _loadDoctorAvailability(dentist['id'] as String);
         },
       ),
     );
@@ -532,22 +590,65 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                if (_selectedDentist != null) ...[
+                if (_selectedDentist != null && _selectedDate != null) ...[
+                  Expanded(
+                    child: FutureBuilder<List<String>>(
+                      future: _getAvailableTimesForDate(_selectedDate!),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return DropdownButtonFormField<String>(
+                            hint: const Text('Loading times...'),
+                            items: const [],
+                            onChanged: null,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                          );
+                        }
+                        
+                        final availableTimes = snapshot.data ?? [];
+                        
+                        if (availableTimes.isEmpty) {
+                          return DropdownButtonFormField<String>(
+                            hint: const Text('No slots available'),
+                            items: [],
+                            onChanged: null,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                          );
+                        }
+                        
+                        return DropdownButtonFormField<String>(
+                          value: _selectedTime,
+                          hint: const Text('Select Time'),
+                          items: availableTimes
+                              .map((time) => DropdownMenuItem(
+                                    value: time,
+                                    child: Text(time),
+                                  ))
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedTime = value;
+                            });
+                          },
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ] else if (_selectedDentist != null) ...[
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _selectedTime,
-                      hint: const Text('Select Time'),
-                      items: (_selectedDentist!['availableSlots'] as List<String>)
-                          .map((time) => DropdownMenuItem(
-                                value: time,
-                                child: Text(time),
-                              ))
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedTime = value;
-                        });
-                      },
+                      hint: const Text('Select Date First'),
+                      items: [],
+                      onChanged: null,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         contentPadding: EdgeInsets.symmetric(horizontal: 12),

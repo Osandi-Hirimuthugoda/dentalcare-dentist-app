@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_application_1/core/themes/colors.dart';
 import 'package:flutter_application_1/core/themes/text_styles.dart';
+import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
+import 'package:flutter_application_1/injection_container.dart';
 
 class MyTreatmentsScreen extends StatefulWidget {
   const MyTreatmentsScreen({super.key});
@@ -13,62 +16,66 @@ class _MyTreatmentsScreenState extends State<MyTreatmentsScreen> {
   String _selectedFilter = 'All'; // 'All', 'Completed', 'Ongoing', 'Upcoming'
   String _selectedSummary = ''; // Track which summary item is selected
 
-  final List<Map<String, dynamic>> _allTreatments = [
-    {
-      'title': 'Dental Checkup',
-      'doctor': 'Dr. Kamal Fernando',
-      'date': 'Dec 15, 2023',
-      'status': 'Completed',
-      'cost': 'LKR 2,500',
-      'type': 'General',
-      'color': Colors.green,
-    },
-    {
-      'title': 'Teeth Cleaning',
-      'doctor': 'Dr. Sameera Perera',
-      'date': 'Nov 20, 2023',
-      'status': 'Completed',
-      'cost': 'LKR 3,000',
-      'type': 'Hygiene',
-      'color': Colors.green,
-    },
-    {
-      'title': 'Tooth Filling',
-      'doctor': 'Dr. Nimal Silva',
-      'date': 'Oct 15, 2023',
-      'status': 'Completed',
-      'cost': 'LKR 4,500',
-      'type': 'Restorative',
-      'color': Colors.green,
-    },
-    {
-      'title': 'Root Canal Treatment',
-      'doctor': 'Dr. Kamal Fernando',
-      'date': 'Sep 5, 2023',
-      'status': 'Completed',
-      'cost': 'LKR 12,000',
-      'type': 'Endodontic',
-      'color': Colors.green,
-    },
-    {
-      'title': 'Braces Adjustment',
-      'doctor': 'Dr. Anoma Rajapaksa',
-      'date': 'Jan 10, 2024',
-      'status': 'Ongoing',
-      'cost': 'LKR 5,000',
-      'type': 'Orthodontic',
-      'color': Colors.orange,
-    },
-    {
-      'title': 'Teeth Whitening',
-      'doctor': 'Dr. Sameera Perera',
-      'date': 'Feb 15, 2024',
-      'status': 'Upcoming',
-      'cost': 'LKR 8,000',
-      'type': 'Cosmetic',
-      'color': Colors.blue,
-    },
-  ];
+  List<Map<String, dynamic>> _allTreatments = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  late final DentalRemoteDataSource _dentalDataSource;
+
+  @override
+  void initState() {
+    super.initState();
+    _dentalDataSource = getIt<DentalRemoteDataSource>();
+    _loadTreatments();
+  }
+
+  Future<void> _loadTreatments() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final treatments = await _dentalDataSource.getTreatments();
+      debugPrint('📦 Treatments loaded: ${treatments.length} treatments');
+      
+      setState(() {
+        _allTreatments = treatments.map<Map<String, dynamic>>((treatment) {
+          // Map status to color
+          Color statusColor = Colors.grey;
+          if (treatment['status'] == 'Completed') {
+            statusColor = Colors.green;
+          } else if (treatment['status'] == 'Ongoing') {
+            statusColor = Colors.orange;
+          } else if (treatment['status'] == 'Upcoming') {
+            statusColor = Colors.blue;
+          } else if (treatment['status'] == 'Cancelled') {
+            statusColor = Colors.red;
+          }
+          
+          return {
+            'title': treatment['title']?.toString() ?? 'Treatment',
+            'doctor': treatment['doctor']?.toString() ?? 'Unknown Doctor',
+            'date': treatment['date']?.toString() ?? '',
+            'status': treatment['status']?.toString() ?? 'Upcoming',
+            'cost': treatment['cost']?.toString() ?? 'LKR 0',
+            'type': treatment['type']?.toString() ?? 'General',
+            'color': statusColor,
+            'id': treatment['id']?.toString() ?? treatment['_id']?.toString() ?? '',
+          };
+        }).toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('❌ Error loading treatments: $e');
+      setState(() {
+        _errorMessage = 'Failed to load treatments. Please try again.';
+        _isLoading = false;
+        // Keep empty list on error
+        _allTreatments = [];
+      });
+    }
+  }
 
   List<Map<String, dynamic>> get _filteredTreatments {
     if (_selectedFilter == 'All') return _allTreatments;
@@ -107,18 +114,70 @@ class _MyTreatmentsScreenState extends State<MyTreatmentsScreen> {
               onPressed: _clearFilters,
               tooltip: 'Clear Filters',
             ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadTreatments,
+            tooltip: 'Refresh',
+          ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildTreatmentSummary(),
-          const SizedBox(height: 20),
-          _buildFilterChips(),
-          const SizedBox(height: 20),
-          _buildTreatmentHistory(),
-        ],
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          _errorMessage!,
+                          style: TextStyles.bodyMedium,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadTreatments,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                )
+              : _allTreatments.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.medical_information, size: 64, color: Colors.grey),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No treatments found',
+                            style: TextStyles.heading4,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Your treatment history will appear here',
+                            style: TextStyles.bodySmall.copyWith(color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _loadTreatments,
+                      child: ListView(
+                        padding: const EdgeInsets.all(16),
+                        children: [
+                          _buildTreatmentSummary(),
+                          const SizedBox(height: 20),
+                          _buildFilterChips(),
+                          const SizedBox(height: 20),
+                          _buildTreatmentHistory(),
+                        ],
+                      ),
+                    ),
     );
   }
 

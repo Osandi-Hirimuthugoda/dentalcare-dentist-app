@@ -2,6 +2,8 @@ import Doctor from "../models/doctorModel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+const JWT_SECRET = process.env.JWT_SECRET || "dentalcare_secret_key_change_in_production";
+
 // 🔹 Register Doctor
 export const registerDoctor = async (req, res) => {
   try {
@@ -55,20 +57,31 @@ export const registerDoctor = async (req, res) => {
 export const loginDoctor = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const doctor = await Doctor.findOne({ email });
+
+    // Validate required fields
+    if (!email || !password) {
+      return res.status(400).json({ 
+        message: "Please provide email and password" 
+      });
+    }
+
+    const doctor = await Doctor.findOne({ email: email.toLowerCase() });
 
     if (!doctor) {
-      return res.status(404).json({ message: "Doctor not found" });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
     const isMatch = await bcrypt.compare(password, doctor.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    const token = jwt.sign({ id: doctor._id }, process.env.JWT_SECRET, {
-      expiresIn: "30d",
-    });
+    // Generate JWT token with role
+    const token = jwt.sign(
+      { id: doctor._id, role: "doctor" }, 
+      JWT_SECRET, 
+      { expiresIn: "30d" }
+    );
 
     // Return doctor without password
     const doctorData = {
@@ -81,12 +94,20 @@ export const loginDoctor = async (req, res) => {
       qualifications: doctor.qualifications,
       hospital: doctor.hospital,
       experience: doctor.experience,
+      services: doctor.services || [],
       createdAt: doctor.createdAt,
     };
 
-    res.json({ token, doctor: doctorData });
+    console.log(`✅ Doctor logged in: ${doctor.email}`);
+
+    res.status(200).json({ 
+      message: "Login successful",
+      token, 
+      doctor: doctorData 
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("❌ Doctor login error:", error);
+    res.status(500).json({ message: error.message || "Login failed. Please try again later." });
   }
 };
 

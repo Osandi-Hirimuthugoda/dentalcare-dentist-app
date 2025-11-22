@@ -12,6 +12,7 @@ abstract class DentalRemoteDataSource {
   Future<List<dynamic>> getDentists();
   Future<List<dynamic>> getTreatments();
   Future<List<dynamic>> getServices(); // Get available services
+  Future<Map<String, dynamic>> getDoctorAvailability(String doctorId); // Get doctor availability
   Future<dynamic> uploadTeethScan(String imagePath);
 }
 
@@ -114,6 +115,33 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
   }
 
   @override
+  Future<Map<String, dynamic>> getDoctorAvailability(String doctorId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.get(
+        Uri.parse('${AppConstants.baseUrl}/availability/doctor/$doctorId'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is Map) {
+          return Map<String, dynamic>.from(data);
+        } else {
+          return <String, dynamic>{'availableSlots': []};
+        }
+      } else {
+        throw ServerException('Failed to fetch doctor availability', response.statusCode);
+      }
+    } catch (e) {
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
   Future<List<dynamic>> getServices() async {
     try {
       final headers = await _getHeaders();
@@ -139,18 +167,22 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
   @override
   Future<List<dynamic>> getTreatments() async {
     try {
+      final headers = await _getHeaders();
       final response = await client.get(
-        Uri.parse('${AppConstants.baseUrl}/treatments'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('${AppConstants.baseUrl}/appointments/patient/treatments'),
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['treatments'];
+        return data is List ? data : (data['treatments'] ?? []);
       } else {
         throw ServerException('Failed to fetch treatments', response.statusCode);
       }
     } catch (e) {
+      if (e is ServerException) {
+        rethrow;
+      }
       throw NetworkException('Network error occurred');
     }
   }

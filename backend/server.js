@@ -8,6 +8,8 @@ import appointmentRoutes from "./src/routes/appointmentRoutes.js";
 import serviceRoutes from "./src/routes/serviceRoutes.js";
 import adminRoutes from "./src/routes/adminRoutes.js";
 import patientRoutes from "./src/routes/patientRoutes.js";
+import messageRoutes from "./src/routes/messageRoutes.js";
+import availabilityRoutes from "./src/routes/availabilityRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -48,6 +50,12 @@ app.use("/api/admins", adminRoutes);
 
 // Patient routes (for web app - doctors viewing patients)
 app.use("/api/patients", patientRoutes);
+
+// Message routes (for chat/messaging between doctors and patients)
+app.use("/api/messages", messageRoutes);
+
+// Availability routes (for doctors to set their available dates/times)
+app.use("/api/availability", availabilityRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

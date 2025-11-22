@@ -3,6 +3,7 @@ import {
   listAppointments,
   getAppointmentsByDoctor,
   getAppointmentsByPatient,
+  getPatientTreatments,
   createAppointment,
   updateAppointment,
   deleteAppointment,
@@ -16,6 +17,9 @@ router.get("/", listAppointments);
 
 // Get appointments by patient ID (for mobile app - requires auth token)
 router.get("/patient", getAppointmentsByPatient);
+
+// Get patient treatments (for My Treatments page - requires auth token)
+router.get("/patient/treatments", getPatientTreatments);
 
 // Get appointments by doctor ID (for web app - doctors viewing their appointments)
 router.get("/doctor/:doctorId", getAppointmentsByDoctor);
