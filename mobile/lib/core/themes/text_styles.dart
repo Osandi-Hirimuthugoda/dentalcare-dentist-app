@@ -86,5 +86,5 @@ class TextStyles {
     letterSpacing: 1.5,
   );
 
-  static var heading5;
+  static TextStyle? heading5;
 }

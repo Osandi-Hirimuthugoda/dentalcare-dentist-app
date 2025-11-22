@@ -46,9 +46,9 @@ class AppColors {
   static const Color dentalRed = Color(0xFFFFEBEE);
   static const Color dentalOrange = Color(0xFFFFF3E0);
 
-  static var lightGrey;
+  static Color? lightGrey;
 
-  static var surface;
+  static Color? surface;
 
-  static var background;
+  static Color? background;
 }

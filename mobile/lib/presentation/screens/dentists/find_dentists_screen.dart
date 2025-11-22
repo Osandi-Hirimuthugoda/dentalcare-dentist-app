@@ -229,7 +229,7 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
       children: [
         CircleAvatar(
           radius: 30,
-          backgroundColor: AppColors.primary.withOpacity(0.1),
+          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
           child: Text(
             dentist['name'].split(' ').map((e) => e[0]).join(),
             style: TextStyle(
@@ -504,7 +504,7 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -551,7 +551,7 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
           Icon(
             Icons.search_off,
             size: 80,
-            color: AppColors.textSecondary.withOpacity(0.5),
+            color: AppColors.textSecondary.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
@@ -593,7 +593,7 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
               children: [
                 CircleAvatar(
                   radius: 25,
-                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                   child: Text(
                     dentist['name'].split(' ').map((e) => e[0]).join(),
                     style: TextStyle(
@@ -656,7 +656,7 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(

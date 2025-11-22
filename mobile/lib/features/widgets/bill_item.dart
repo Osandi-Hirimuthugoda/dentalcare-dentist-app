@@ -25,7 +25,7 @@ class BillItem extends StatelessWidget {
         color: AppColors.grey50,
         borderRadius: BorderRadius.circular(10),
         border: showBorder ? Border.all(
-          color: bill['color'].withOpacity(0.3),
+          color: (bill['color'] as Color).withValues(alpha: 0.3),
           width: 1,
         ) : null,
       ),
@@ -34,7 +34,7 @@ class BillItem extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: bill['color'].withOpacity(0.1),
+              color: (bill['color'] as Color).withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -121,7 +121,7 @@ class BillItem extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: bill['color'].withOpacity(0.1),
+                    color: (bill['color'] as Color).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(

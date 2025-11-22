@@ -1,6 +1,3 @@
-// TODO Implement this library.import 'package:flutter/material.dart';
-// import 'package:dental_care/core/themes/colors.dart';
-// import 'package:dental_care/core/themes/text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/themes/colors.dart';
 import 'package:flutter_application_1/core/themes/text_styles.dart';
@@ -146,7 +143,7 @@ class HealthScreen extends StatelessWidget {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.1),
+          color: AppColors.primary.withValues(alpha: 0.1),
           shape: BoxShape.circle,
         ),
         child: Icon(Icons.medical_services, color: AppColors.primary, size: 20),
@@ -173,7 +170,7 @@ class HealthScreen extends StatelessWidget {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.error.withOpacity(0.1),
+                  color: AppColors.error.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.emergency, color: AppColors.error, size: 24),

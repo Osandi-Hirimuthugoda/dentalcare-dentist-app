@@ -1,176 +1,236 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import Admin from "../models/Admin.js";
-import Doctor from "../models/doctorModel.js";
 import Patient from "../models/Patient.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "secretkey";
+const JWT_SECRET = process.env.JWT_SECRET || "dentalcare_secret_key_change_in_production";
 
-// 🧑‍⚕️ Admin login
-export const loginAdmin = async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    const admin = await Admin.findOne({ email });
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
-
-    const isValid = await bcrypt.compare(password, admin.passwordHash);
-    if (!isValid) return res.status(401).json({ message: "Invalid credentials" });
-
-    const token = jwt.sign({ id: admin._id, role: "admin" }, JWT_SECRET, { expiresIn: "1d" });
-    res.json({ token, admin });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-// ➕ Register new doctor (admin only)
-export const registerDoctor = async (req, res) => {
-  const { fullName, email, password, phone, licenseNumber, specialization, qualifications, hospital, experience } = req.body;
-  try {
-    // doctorModel.js has a pre-save hook that hashes the password automatically
-    const doctor = new Doctor({ 
-      fullName: fullName || req.body.name || 'Doctor', // Support both name and fullName
-      email, 
-      password, // Will be hashed by pre-save hook
-      phone: phone || '0000000000',
-      licenseNumber: licenseNumber || 'N/A',
-      specialization,
-      qualifications,
-      hospital,
-      experience,
-    });
-    await doctor.save();
-    // Remove password from response
-    const doctorResponse = doctor.toObject();
-    delete doctorResponse.password;
-    res.status(201).json({ message: "Doctor registered successfully", doctor: doctorResponse });
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-};
-
-// 👤 Patient registration
+// 📝 Register new patient (for mobile app)
 export const registerPatient = async (req, res) => {
-  const { name, email, password, phone, age, gender } = req.body;
-  
-  console.log("📝 Registration request received:", { name, email, phone, age, gender });
-  
   try {
-    // Check if patient already exists
-    const existingPatient = await Patient.findOne({ email });
-    if (existingPatient) {
-      console.log("❌ Email already exists:", email);
-      return res.status(409).json({ message: "Patient with this email already exists" });
+    const { name, email, password, phone, age, gender } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !password || !phone) {
+      return res.status(400).json({ 
+        message: "Please provide name, email, password, and phone number" 
+      });
     }
 
+    // Validate password length
+    if (password.length < 6) {
+      return res.status(400).json({ 
+        message: "Password must be at least 6 characters long" 
+      });
+    }
+
+    // Check if patient already exists
+    const existingPatient = await Patient.findOne({ email: email.toLowerCase() });
+    if (existingPatient) {
+      return res.status(409).json({ 
+        message: "An account with this email already exists" 
+      });
+    }
+
+    // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
+
+    // Create new patient
     const patient = new Patient({
-      name,
-      email,
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
       passwordHash,
-      phone,
-      age,
-      gender,
+      phone: phone.trim(),
+      age: age ? parseInt(age) : undefined,
+      gender: gender ? gender.toLowerCase() : undefined,
     });
-    
-    console.log("💾 Saving patient to database...");
+
+    // Save patient to database
     await patient.save();
-    console.log("✅ Patient saved successfully with ID:", patient._id);
 
-    // Generate token
-    const token = jwt.sign({ id: patient._id, role: "patient" }, JWT_SECRET, { expiresIn: "7d" });
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: patient._id, role: "patient" }, 
+      JWT_SECRET, 
+      { expiresIn: "7d" }
+    );
 
-    // Remove password from response and format for mobile app
-    const patientResponse = patient.toObject();
-    delete patientResponse.passwordHash;
-    
-    // Convert _id to id for mobile app compatibility
-    patientResponse.id = patientResponse._id.toString();
-    delete patientResponse._id;
+    // Format response for mobile app
+    const patientResponse = {
+      id: patient._id.toString(),
+      name: patient.name,
+      email: patient.email,
+      phone: patient.phone,
+      age: patient.age,
+      gender: patient.gender,
+      status: patient.status,
+      isEmailVerified: patient.isEmailVerified,
+      createdAt: patient.createdAt,
+      updatedAt: patient.updatedAt,
+    };
 
-    console.log("✅ Registration successful, sending response");
+    console.log(`✅ New patient registered: ${patient.email}`);
+
     res.status(201).json({
-      message: "Patient registered successfully",
+      message: "Registration successful",
       user: patientResponse,
       token,
     });
-  } catch (err) {
-    console.error("❌ Registration error:", err.message);
-    console.error("Error stack:", err.stack);
-    res.status(400).json({ message: err.message });
+
+  } catch (error) {
+    console.error("❌ Registration error:", error.message);
+    
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      return res.status(409).json({ 
+        message: "An account with this email already exists" 
+      });
+    }
+
+    // Handle validation errors
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ message: messages.join(", ") });
+    }
+
+    res.status(500).json({ 
+      message: "Registration failed. Please try again later." 
+    });
   }
 };
 
-// 👤 Patient login
+// 🔐 Login patient (for mobile app)
 export const loginPatient = async (req, res) => {
-  const { email, password } = req.body;
   try {
-    const patient = await Patient.findOne({ email });
+    const { email, password } = req.body;
+
+    // Validate required fields
+    if (!email || !password) {
+      return res.status(400).json({ 
+        message: "Please provide email and password" 
+      });
+    }
+
+    // Find patient by email
+    const patient = await Patient.findOne({ email: email.toLowerCase() });
     if (!patient) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({ 
+        message: "Invalid email or password" 
+      });
     }
 
-    const isValid = await bcrypt.compare(password, patient.passwordHash);
-    if (!isValid) {
-      return res.status(401).json({ message: "Invalid credentials" });
+    // Check if account is active
+    if (patient.status === "inactive") {
+      return res.status(403).json({ 
+        message: "Your account has been deactivated. Please contact support." 
+      });
     }
 
-    const token = jwt.sign({ id: patient._id, role: "patient" }, JWT_SECRET, { expiresIn: "7d" });
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, patient.passwordHash);
+    if (!isPasswordValid) {
+      return res.status(401).json({ 
+        message: "Invalid email or password" 
+      });
+    }
 
-    // Remove password from response and format for mobile app
-    const patientResponse = patient.toObject();
-    delete patientResponse.passwordHash;
-    
-    // Convert _id to id for mobile app compatibility
-    patientResponse.id = patientResponse._id.toString();
-    delete patientResponse._id;
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: patient._id, role: "patient" }, 
+      JWT_SECRET, 
+      { expiresIn: "7d" }
+    );
+
+    // Format response for mobile app
+    const patientResponse = {
+      id: patient._id.toString(),
+      name: patient.name,
+      email: patient.email,
+      phone: patient.phone,
+      age: patient.age,
+      gender: patient.gender,
+      status: patient.status,
+      isEmailVerified: patient.isEmailVerified,
+      createdAt: patient.createdAt,
+      updatedAt: patient.updatedAt,
+    };
+
+    console.log(`✅ Patient logged in: ${patient.email}`);
 
     res.json({
       message: "Login successful",
       user: patientResponse,
       token,
     });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+
+  } catch (error) {
+    console.error("❌ Login error:", error.message);
+    res.status(500).json({ 
+      message: "Login failed. Please try again later." 
+    });
   }
 };
 
-// 🔐 Forgot password
+// 🔑 Forgot password
 export const forgotPassword = async (req, res) => {
-  const { email } = req.body;
   try {
-    const patient = await Patient.findOne({ email });
-    if (!patient) {
-      // Don't reveal if email exists for security
-      return res.status(200).json({ message: "If email exists, password reset link will be sent" });
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Please provide an email address" });
     }
 
+    const patient = await Patient.findOne({ email: email.toLowerCase() });
+    
+    // For security, don't reveal if email exists
+    // Always return success message
+    res.json({ 
+      message: "If an account exists with this email, password reset instructions will be sent" 
+    });
+
     // TODO: Implement email sending logic here
-    // For now, just return success
-    res.status(200).json({ message: "Password reset instructions sent to email" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    // if (patient) {
+    //   // Generate reset token
+    //   // Send email with reset link
+    // }
+
+  } catch (error) {
+    console.error("❌ Forgot password error:", error.message);
+    res.status(500).json({ 
+      message: "Unable to process request. Please try again later." 
+    });
   }
 };
 
 // ✅ Verify email
 export const verifyEmail = async (req, res) => {
-  const { email, otp } = req.body;
   try {
-    const patient = await Patient.findOne({ email });
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ 
+        message: "Please provide email and OTP" 
+      });
+    }
+
+    const patient = await Patient.findOne({ email: email.toLowerCase() });
     if (!patient) {
-      return res.status(404).json({ message: "Patient not found" });
+      return res.status(404).json({ message: "Account not found" });
     }
 
     if (patient.emailVerificationOTP === otp) {
       patient.isEmailVerified = true;
       patient.emailVerificationOTP = undefined;
       await patient.save();
-      res.status(200).json({ message: "Email verified successfully" });
+      
+      res.json({ message: "Email verified successfully" });
     } else {
       res.status(400).json({ message: "Invalid OTP" });
     }
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+
+  } catch (error) {
+    console.error("❌ Email verification error:", error.message);
+    res.status(500).json({ 
+      message: "Email verification failed. Please try again later." 
+    });
   }
 };

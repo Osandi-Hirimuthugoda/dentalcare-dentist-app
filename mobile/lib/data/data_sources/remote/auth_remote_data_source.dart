@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_application_1/core/constants/app_constants.dart';
 import 'package:flutter_application_1/core/errors/exceptions.dart';
 import 'package:flutter_application_1/data/models/user_model.dart';
@@ -23,18 +24,28 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
-      final response = await client.post(
-        Uri.parse('${AppConstants.baseUrl}${AppConstants.loginEndpoint}'),
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
-        headers: {'Content-Type': 'application/json'},
-      );
+      final response = await client
+          .post(
+            Uri.parse('${AppConstants.baseUrl}${AppConstants.loginEndpoint}'),
+            body: jsonEncode({
+              'email': email,
+              'password': password,
+            }),
+            headers: {'Content-Type': 'application/json'},
+          )
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw NetworkException('Login request timed out. Please try again.');
+            },
+          );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         // Backend returns user and token
+        if (data['user'] == null) {
+          throw ServerException('Invalid response: user data missing', response.statusCode);
+        }
         return {
           'user': data['user'],
           'token': data['token'] ?? '',
@@ -42,12 +53,25 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       } else if (response.statusCode == 401) {
         throw InvalidCredentialsException();
       } else {
-        throw ServerException('Login failed', response.statusCode);
+        // Try to parse error message from response
+        try {
+          final errorData = jsonDecode(response.body);
+          throw ServerException(
+            errorData['message'] ?? 'Login failed',
+            response.statusCode,
+          );
+        } catch (_) {
+          throw ServerException('Login failed', response.statusCode);
+        }
       }
     } on ServerException {
       rethrow;
+    } on InvalidCredentialsException {
+      rethrow;
     } catch (e) {
-      throw NetworkException('Network error occurred');
+      // Log the actual error for debugging
+      debugPrint('Login error: $e');
+      throw NetworkException('Network error occurred: ${e.toString()}');
     }
   }
 
@@ -56,18 +80,25 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       // Backend expects: name, email, password, phone, age, gender
       final userJson = user.toJson();
-      final response = await client.post(
-        Uri.parse('${AppConstants.baseUrl}${AppConstants.registerEndpoint}'),
-        body: jsonEncode({
-          'name': userJson['name'] ?? userJson['fullName'] ?? '',
-          'email': userJson['email'] ?? '',
-          'password': password,
-          'phone': userJson['phone'] ?? userJson['phoneNumber'] ?? '',
-          'age': userJson['age'],
-          'gender': userJson['gender'] ?? 'other',
-        }),
-        headers: {'Content-Type': 'application/json'},
-      );
+      final response = await client
+          .post(
+            Uri.parse('${AppConstants.baseUrl}${AppConstants.registerEndpoint}'),
+            body: jsonEncode({
+              'name': userJson['name'] ?? userJson['fullName'] ?? '',
+              'email': userJson['email'] ?? '',
+              'password': password,
+              'phone': userJson['phone'] ?? userJson['phoneNumber'] ?? '',
+              'age': userJson['age'],
+              'gender': userJson['gender'] ?? 'other',
+            }),
+            headers: {'Content-Type': 'application/json'},
+          )
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw NetworkException('Registration request timed out. Please try again.');
+            },
+          );
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -100,7 +131,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     } on ServerException {
       rethrow;
     } catch (e) {
-      throw NetworkException('Network error occurred');
+      // Provide more detailed error message
+      debugPrint('Registration network error details: $e');
+      
+      // Check if it's a connection error
+      if (e.toString().contains('SocketException') || 
+          e.toString().contains('Failed host lookup') ||
+          e.toString().contains('Connection refused')) {
+        throw NetworkException(
+          'Cannot connect to server. Please check:\n'
+          '1. Backend server is running on port 4000\n'
+          '2. Your computer and emulator are on the same network\n'
+          '3. API URL is correct: http://10.0.2.2:4000/api'
+        );
+      }
+      
+      throw NetworkException('Network error occurred: ${e.toString()}');
     }
   }
 

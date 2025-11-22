@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/core/constants/route_names.dart';
+import 'package:flutter_application_1/core/utils/helpers.dart';
+import 'package:flutter_application_1/injection_container.dart' as di;
+import 'package:flutter_application_1/domain/repositories/auth_repository.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class QuickActionsGrid extends StatelessWidget {
-  final BuildContext context;
-  
-  const QuickActionsGrid({super.key, required this.context});
+  const QuickActionsGrid({super.key});
 
-  void _showSnackBar(String message) {
+  void _showSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -14,51 +17,111 @@ class QuickActionsGrid extends StatelessWidget {
     );
   }
 
-  void _handleAITeethScan() {
-    Navigator.pushNamed(context, '/teeth-scan');
+  Future<void> _makeEmergencyCall(BuildContext context) async {
+    const emergencyNumber = 'tel:1990'; // Sri Lanka emergency number
+    final uri = Uri.parse(emergencyNumber);
+    
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+        if (context.mounted) {
+          _showSnackBar(context, "Calling emergency services...");
+        }
+      } else {
+        if (context.mounted) {
+          _showSnackBar(context, "Unable to make emergency call. Please dial 1990 manually.");
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        _showSnackBar(context, "Error: Unable to make emergency call. Please dial 1990 manually.");
+      }
+    }
   }
 
-  void _handleBookAppointment() {
-    Navigator.pushNamed(context, '/book-appointment');
+  Future<void> _handleAITeethScan(BuildContext context) async {
+    // Check authentication before navigating
+    await Helpers.navigateIfAuthenticated(context, RouteNames.teethScan);
   }
 
-  void _handleEmergencyHelp() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Emergency Help"),
-        content: const Text("Do you want to call emergency dental services?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showSnackBar("Calling emergency services...");
-              // TODO: Implement actual emergency call
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            child: const Text("Call Now"),
-          ),
-        ],
-      ),
-    );
+  Future<void> _handleBookAppointment(BuildContext context) async {
+    // Check authentication before navigating
+    await Helpers.navigateIfAuthenticated(context, RouteNames.bookAppointment);
   }
 
-  void _handleMyTreatments() {
-    Navigator.pushNamed(context, '/my-treatments');
+  Future<void> _handleEmergencyHelp(BuildContext context) async {
+    // Check authentication before showing emergency help dialog
+    if (!context.mounted) return;
+    
+    try {
+      final authRepo = di.getIt<AuthRepository>();
+      final result = await authRepo.isUserLoggedIn();
+      
+      result.fold(
+        (failure) {
+          // On error, user is not authenticated
+          if (context.mounted) {
+            Helpers.showLoginRequiredMessage(context);
+          }
+        },
+        (isLoggedIn) {
+          if (isLoggedIn == true) {
+            // User is authenticated, show emergency help dialog
+            if (context.mounted) {
+              showDialog(
+                context: context,
+                builder: (dialogContext) => AlertDialog(
+                  title: const Text("Emergency Help"),
+                  content: const Text("Do you want to call emergency dental services?"),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text("Cancel"),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        Navigator.pop(dialogContext);
+                        await _makeEmergencyCall(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
+                      child: const Text("Call Now"),
+                    ),
+                  ],
+                ),
+              );
+            }
+          } else {
+            // User is not authenticated, show message and redirect to login
+            if (context.mounted) {
+              Helpers.showLoginRequiredMessage(context);
+            }
+          }
+        },
+      );
+    } catch (e) {
+      // On any error, show message and redirect to login
+      debugPrint('Error in _handleEmergencyHelp: $e');
+      if (context.mounted) {
+        Helpers.showLoginRequiredMessage(context);
+      }
+    }
   }
 
-  void _handleMyBills() {
-    Navigator.pushNamed(context, '/my-bills');
+  Future<void> _handleMyTreatments(BuildContext context) async {
+    // Check authentication before navigating
+    await Helpers.navigateIfAuthenticated(context, RouteNames.myTreatments);
   }
 
-  void _handleFindDentists() {
-    Navigator.pushNamed(context, '/find-dentists');
+  Future<void> _handleMyBills(BuildContext context) async {
+    // Check authentication before navigating
+    await Helpers.navigateIfAuthenticated(context, RouteNames.myBills);
+  }
+
+  Future<void> _handleFindDentists(BuildContext context) async {
+    // Check authentication before navigating
+    await Helpers.navigateIfAuthenticated(context, RouteNames.findDentists);
   }
 
   @override
@@ -69,42 +132,36 @@ class QuickActionsGrid extends StatelessWidget {
         'title': 'AI Teeth Scan',
         'color': Colors.blue,
         'subtitle': 'Scan your teeth',
-        'onTap': _handleAITeethScan,
       },
       {
         'icon': Icons.calendar_month,
         'title': 'Book Appointment',
         'color': Colors.green,
         'subtitle': 'Schedule visit',
-        'onTap': _handleBookAppointment,
       },
       {
         'icon': Icons.emergency,
         'title': 'Emergency Help',
         'color': Colors.red,
         'subtitle': 'Urgent care',
-        'onTap': _handleEmergencyHelp,
       },
       {
         'icon': Icons.medical_services,
         'title': 'My Treatments',
         'color': Colors.orange,
         'subtitle': 'Treatment history',
-        'onTap': _handleMyTreatments,
       },
       {
         'icon': Icons.receipt_long,
         'title': 'My Bills',
         'color': Colors.purple,
         'subtitle': 'Payment history',
-        'onTap': _handleMyBills,
       },
       {
         'icon': Icons.local_hospital,
         'title': 'Find Dentists',
         'color': Colors.teal,
         'subtitle': 'Nearby clinics',
-        'onTap': _handleFindDentists,
       },
     ];
 
@@ -134,15 +191,46 @@ class QuickActionsGrid extends StatelessWidget {
             itemCount: quickActions.length,
             itemBuilder: (context, index) {
               final action = quickActions[index];
+              // Determine which handler to call based on index
+              Future<void> Function(BuildContext) handler;
+              switch (index) {
+                case 0:
+                  handler = _handleAITeethScan;
+                  break;
+                case 1:
+                  handler = _handleBookAppointment;
+                  break;
+                case 2:
+                  handler = _handleEmergencyHelp;
+                  break;
+                case 3:
+                  handler = _handleMyTreatments;
+                  break;
+                case 4:
+                  handler = _handleMyBills;
+                  break;
+                case 5:
+                  handler = _handleFindDentists;
+                  break;
+                default:
+                  handler = _handleAITeethScan;
+              }
+              
               return GestureDetector(
-                onTap: action['onTap'] as void Function(),
+                onTap: () async {
+                  try {
+                    await handler(context);
+                  } catch (error) {
+                    debugPrint('Error in button handler: $error');
+                  }
+                },
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(15),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
+                        color: Colors.grey.withValues(alpha: 0.1),
                         blurRadius: 10,
                         offset: const Offset(0, 2),
                       ),
@@ -154,7 +242,7 @@ class QuickActionsGrid extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: action['color'].withOpacity(0.1),
+                          color: (action['color'] as Color).withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(

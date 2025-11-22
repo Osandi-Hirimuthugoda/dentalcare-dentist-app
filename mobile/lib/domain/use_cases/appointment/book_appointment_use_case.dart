@@ -11,7 +11,17 @@ class BookAppointmentUseCase {
 
   BookAppointmentUseCase({required this.repository});
 
-  Future<Either<Failure, AppointmentEntity>> execute(AppointmentEntity appointment) {
-    return repository.bookAppointment(appointment);
+  Future<Either<Failure, AppointmentEntity>> execute({
+    required String doctorId,
+    required DateTime dateTime,
+    required String service,
+    String? notes,
+  }) {
+    return repository.bookAppointment(
+      doctorId: doctorId,
+      dateTime: dateTime,
+      service: service,
+      notes: notes,
+    );
   }
 }

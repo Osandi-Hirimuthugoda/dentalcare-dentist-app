@@ -1,7 +1,5 @@
 import express from "express";
 import {
-  loginAdmin,
-  registerDoctor,
   registerPatient,
   loginPatient,
   forgotPassword,
@@ -10,11 +8,7 @@ import {
 
 const router = express.Router();
 
-// Admin routes
-router.post("/admin/login", loginAdmin);
-router.post("/admin/register-doctor", registerDoctor);
-
-// Patient routes (for mobile app)
+// Patient routes for mobile app
 router.post("/register", registerPatient);
 router.post("/login", loginPatient);
 router.post("/forgot-password", forgotPassword);

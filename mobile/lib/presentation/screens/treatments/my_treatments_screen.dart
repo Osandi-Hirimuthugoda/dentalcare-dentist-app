@@ -159,7 +159,7 @@ class _MyTreatmentsScreenState extends State<MyTreatmentsScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isSelected ? color : color.withOpacity(0.1),
+              color: isSelected ? color : color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
               border: isSelected ? Border.all(color: color, width: 2) : null,
             ),
@@ -312,7 +312,7 @@ class _MyTreatmentsScreenState extends State<MyTreatmentsScreen> {
         color: AppColors.grey50,
         borderRadius: BorderRadius.circular(10),
         border: _selectedFilter == 'All' ? null : Border.all(
-          color: treatment['color'].withOpacity(0.3),
+          color: (treatment['color'] as Color).withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -321,7 +321,7 @@ class _MyTreatmentsScreenState extends State<MyTreatmentsScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: treatment['color'].withOpacity(0.1),
+              color: (treatment['color'] as Color).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -372,7 +372,7 @@ class _MyTreatmentsScreenState extends State<MyTreatmentsScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: treatment['color'].withOpacity(0.1),
+              color: (treatment['color'] as Color).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(

@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/core/constants/route_names.dart';
+import 'package:flutter_application_1/core/utils/helpers.dart';
+import 'package:flutter_application_1/injection_container.dart' as di;
+import 'package:flutter_application_1/domain/repositories/auth_repository.dart';
 
-class HealthTipsCarousel extends StatelessWidget {
+class HealthTipsCarousel extends StatefulWidget {
   final BuildContext context;
   
   const HealthTipsCarousel({super.key, required this.context});
 
+  @override
+  State<HealthTipsCarousel> createState() => _HealthTipsCarouselState();
+}
+
+class _HealthTipsCarouselState extends State<HealthTipsCarousel> {
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(widget.context).showSnackBar(
       SnackBar(
         content: Text(message),
         duration: const Duration(seconds: 2),
@@ -15,14 +24,71 @@ class HealthTipsCarousel extends StatelessWidget {
   }
 
   void _viewAllHealthTips() {
-    Navigator.pushNamed(context, '/health');
+    // Check authentication before navigating
+    Helpers.navigateIfAuthenticated(widget.context, RouteNames.health);
   }
 
   void _viewTipDetails(String tipTitle) {
+    // Check authentication before showing tip details
+    _checkAuthAndShowModal(tipTitle);
+  }
+
+  Future<void> _checkAuthAndShowModal(String tipTitle) async {
+    // Capture context reference before async operation
+    final context = widget.context;
+    
+    try {
+      final authRepo = di.getIt<AuthRepository>();
+      final result = await authRepo.isUserLoggedIn();
+      
+      // Check if widget is still mounted before using context
+      if (!mounted) {
+        debugPrint('Widget no longer mounted, skipping tip details');
+        return;
+      }
+      
+      // Check if context is still valid
+      if (!context.mounted) {
+        debugPrint('Context no longer mounted, skipping tip details');
+        return;
+      }
+      
+      result.fold(
+        (failure) {
+          // On error, user is not authenticated
+          if (mounted && context.mounted) {
+            Helpers.showLoginRequiredMessage(context);
+          }
+        },
+        (isLoggedIn) {
+          if (isLoggedIn == true) {
+            // User is authenticated, show tip details
+            if (mounted && context.mounted) {
+              _showTipDetailsModal(tipTitle);
+            }
+          } else {
+            // User is not authenticated, show message and redirect to login
+            if (mounted && context.mounted) {
+              Helpers.showLoginRequiredMessage(context);
+            }
+          }
+        },
+      );
+    } catch (e) {
+      // On any error, show message and redirect to login
+      debugPrint('Error in _checkAuthAndShowModal: $e');
+      if (mounted && context.mounted) {
+        Helpers.showLoginRequiredMessage(context);
+      }
+    }
+  }
+
+  void _showTipDetailsModal(String tipTitle) {
     showModalBottomSheet(
-      context: context,
+      context: widget.context,
       isScrollControlled: true,
       builder: (context) => Container(
+
         padding: const EdgeInsets.all(20),
         height: MediaQuery.of(context).size.height * 0.7,
         child: Column(
@@ -250,7 +316,7 @@ class HealthTipsCarousel extends StatelessWidget {
                       borderRadius: BorderRadius.circular(15),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
+                          color: Colors.grey.withValues(alpha: 0.1),
                           blurRadius: 5,
                           offset: const Offset(0, 2),
                         ),

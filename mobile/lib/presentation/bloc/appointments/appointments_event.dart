@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-import 'package:flutter_application_1/domain/entities/appoinment_entity.dart';
 
 abstract class AppointmentsEvent extends Equatable {
   const AppointmentsEvent();
@@ -11,10 +10,18 @@ abstract class AppointmentsEvent extends Equatable {
 class GetAppointmentsRequested extends AppointmentsEvent {}
 
 class BookAppointmentRequested extends AppointmentsEvent {
-  final AppointmentEntity appointment;
+  final String doctorId;
+  final DateTime dateTime;
+  final String service;
+  final String? notes;
 
-  const BookAppointmentRequested(this.appointment);
+  const BookAppointmentRequested({
+    required this.doctorId,
+    required this.dateTime,
+    required this.service,
+    this.notes,
+  });
 
   @override
-  List<Object> get props => [appointment];
+  List<Object> get props => [doctorId, dateTime, service, notes ?? ''];
 }

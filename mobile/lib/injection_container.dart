@@ -32,7 +32,10 @@ Future<void> init() async {
     () => AuthRemoteDataSourceImpl(client: getIt()),
   );
   getIt.registerLazySingleton<DentalRemoteDataSource>(
-    () => DentalRemoteDataSourceImpl(client: getIt()),
+    () => DentalRemoteDataSourceImpl(
+      client: getIt(),
+      localDataSource: getIt(),
+    ),
   );
   getIt.registerLazySingleton<LocalDataSource>(
     () => SharedPrefsDataSource(sharedPreferences: getIt()),

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/themes/colors.dart';
 import 'package:flutter_application_1/core/themes/text_styles.dart';
+import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
+import 'package:flutter_application_1/domain/use_cases/appointment/book_appointment_use_case.dart';
+import 'package:flutter_application_1/injection_container.dart';
+import 'package:intl/intl.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
   const BookAppointmentScreen({super.key});
@@ -10,54 +14,19 @@ class BookAppointmentScreen extends StatefulWidget {
 }
 
 class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
-  final List<Map<String, dynamic>> _dentists = [
-    {
-      'id': '1',
-      'name': 'Dr. Kamal Fernando',
-      'specialty': 'General Dentistry',
-      'hospital': 'Dental Care Center - Colombo',
-      'rating': 4.8,
-      'experience': '15 years',
-      'image': 'assets/images/doctor1.png',
-      'availableSlots': ['09:00 AM', '10:30 AM', '02:00 PM', '03:30 PM']
-    },
-    {
-      'id': '2',
-      'name': 'Dr. Sameera Perera',
-      'specialty': 'Orthodontist',
-      'hospital': 'City Dental Hospital',
-      'rating': 4.9,
-      'experience': '12 years',
-      'image': 'assets/images/doctor2.png',
-      'availableSlots': ['10:00 AM', '11:30 AM', '04:00 PM']
-    },
-    {
-      'id': '3',
-      'name': 'Dr. Nimal Silva',
-      'specialty': 'Oral Surgery',
-      'hospital': 'National Dental Institute',
-      'rating': 4.7,
-      'experience': '20 years',
-      'image': 'assets/images/doctor3.png',
-      'availableSlots': ['08:30 AM', '01:00 PM', '02:30 PM', '04:00 PM']
-    },
-    {
-      'id': '4',
-      'name': 'Dr. Anoma Rajapaksa',
-      'specialty': 'Pediatric Dentistry',
-      'hospital': 'Kids Dental Care',
-      'rating': 4.9,
-      'experience': '10 years',
-      'image': 'assets/images/doctor4.png',
-      'availableSlots': ['09:30 AM', '11:00 AM', '03:00 PM']
-    },
-  ];
-
+  List<Map<String, dynamic>> _dentists = [];
+  bool _isLoadingDentists = true;
+  String? _errorMessage;
+  
   Map<String, dynamic>? _selectedDentist;
-  String? _selectedDate;
+  DateTime? _selectedDate;
   String? _selectedTime;
   String _selectedService = 'Dental Checkup';
   final TextEditingController _symptomsController = TextEditingController();
+  bool _isBooking = false;
+
+  late final DentalRemoteDataSource _dentalDataSource;
+  late final BookAppointmentUseCase _bookAppointmentUseCase;
 
   final List<String> _services = [
     'Dental Checkup',
@@ -70,6 +39,58 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     'Teeth Whitening',
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _dentalDataSource = getIt<DentalRemoteDataSource>();
+    _bookAppointmentUseCase = getIt<BookAppointmentUseCase>();
+    _loadDentists();
+  }
+
+  Future<void> _loadDentists() async {
+    setState(() {
+      _isLoadingDentists = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final dentists = await _dentalDataSource.getDentists();
+      setState(() {
+        _dentists = dentists.map((dentist) {
+          // Backend returns _id, convert to id
+          final id = dentist['_id']?.toString() ?? dentist['id']?.toString() ?? '';
+          return {
+            'id': id,
+            'name': dentist['fullName'] ?? dentist['name'] ?? 'Unknown Doctor',
+            'specialty': dentist['specialization'] ?? dentist['specialty'] ?? 'General Dentistry',
+            'hospital': dentist['hospital'] ?? 'Dental Clinic',
+            'rating': 4.5, // Default rating if not available
+            'experience': dentist['experience'] ?? 'N/A',
+            'availableSlots': _generateTimeSlots(), // Generate default time slots
+          };
+        }).toList();
+        _isLoadingDentists = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to load dentists. Please try again.';
+        _isLoadingDentists = false;
+      });
+    }
+  }
+
+  List<String> _generateTimeSlots() {
+    // Generate time slots from 9 AM to 5 PM
+    final slots = <String>[];
+    for (int hour = 9; hour < 17; hour++) {
+      for (int minute = 0; minute < 60; minute += 30) {
+        final time = DateTime(2000, 1, 1, hour, minute);
+        slots.add(DateFormat('hh:mm a').format(time));
+      }
+    }
+    return slots;
+  }
+
   void _selectDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -80,18 +101,47 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
 
     if (picked != null) {
       setState(() {
-        _selectedDate = "${picked.day}/${picked.month}/${picked.year}";
+        _selectedDate = picked;
+        _selectedTime = null; // Reset time when date changes
       });
     }
   }
 
-  void _bookAppointment() {
+  DateTime? _parseDateTime() {
+    if (_selectedDate == null || _selectedTime == null) return null;
+    
+    try {
+      // Parse time string (e.g., "09:00 AM")
+      final timeFormat = DateFormat('hh:mm a');
+      final time = timeFormat.parse(_selectedTime!);
+      
+      // Combine date and time
+      return DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        time.hour,
+        time.minute,
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> _bookAppointment() async {
     if (_selectedDentist == null || _selectedDate == null || _selectedTime == null) {
       _showSnackBar('Please fill all required fields');
       return;
     }
 
-    showDialog(
+    final dateTime = _parseDateTime();
+    if (dateTime == null) {
+      _showSnackBar('Invalid date or time selected');
+      return;
+    }
+
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Appointment'),
@@ -100,7 +150,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Doctor: ${_selectedDentist!['name']}'),
-            Text('Date: $_selectedDate'),
+            Text('Date: ${DateFormat('dd/MM/yyyy').format(_selectedDate!)}'),
             Text('Time: $_selectedTime'),
             Text('Service: $_selectedService'),
             if (_symptomsController.text.isNotEmpty)
@@ -109,19 +159,48 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showSuccessDialog();
-            },
+            onPressed: () => Navigator.pop(context, true),
             child: const Text('Confirm'),
           ),
         ],
       ),
     );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isBooking = true;
+    });
+
+    try {
+      final result = await _bookAppointmentUseCase.execute(
+        doctorId: _selectedDentist!['id'],
+        dateTime: dateTime,
+        service: _selectedService,
+        notes: _symptomsController.text.isNotEmpty 
+            ? '$_selectedService: ${_symptomsController.text}'
+            : _selectedService,
+      );
+
+      result.fold(
+        (failure) {
+          _showSnackBar('Failed to book appointment: ${failure.message}');
+        },
+        (appointment) {
+          _showSuccessDialog();
+        },
+      );
+    } catch (e) {
+      _showSnackBar('An error occurred: $e');
+    } finally {
+      setState(() {
+        _isBooking = false;
+      });
+    }
   }
 
   void _showSuccessDialog() {
@@ -136,7 +215,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             const SizedBox(height: 15),
             Text('Your appointment with ${_selectedDentist!['name']} has been confirmed.'),
             const SizedBox(height: 10),
-            Text('Date: $_selectedDate'),
+            Text('Date: ${DateFormat('dd/MM/yyyy').format(_selectedDate!)}'),
             Text('Time: $_selectedTime'),
             const SizedBox(height: 10),
             const Text('You will receive a confirmation SMS and email.'),
@@ -204,7 +283,29 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
               style: TextStyles.heading4,
             ),
             const SizedBox(height: 15),
-            ..._dentists.map((dentist) => _buildDentistCard(dentist)),
+            if (_isLoadingDentists)
+              const Center(child: CircularProgressIndicator())
+            else if (_errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: _loadDentists,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              )
+            else if (_dentists.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text('No dentists available'),
+              )
+            else
+              ..._dentists.map((dentist) => _buildDentistCard(dentist)),
           ],
         ),
       ),
@@ -216,7 +317,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
-      color: isSelected ? AppColors.primary.withOpacity(0.1) : null,
+      color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : null,
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: AppColors.primary,
@@ -268,7 +369,11 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                   child: OutlinedButton.icon(
                     onPressed: _selectDate,
                     icon: const Icon(Icons.calendar_today),
-                    label: Text(_selectedDate ?? 'Select Date'),
+                    label: Text(
+                      _selectedDate != null
+                          ? DateFormat('dd/MM/yyyy').format(_selectedDate!)
+                          : 'Select Date',
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -369,16 +474,25 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _bookAppointment,
+        onPressed: _isBooking ? null : _bookAppointment,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.white,
           padding: const EdgeInsets.symmetric(vertical: 15),
         ),
-        child: const Text(
-          'Book Appointment',
-          style: TextStyle(fontSize: 16),
-        ),
+        child: _isBooking
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : const Text(
+                'Book Appointment',
+                style: TextStyle(fontSize: 16),
+              ),
       ),
     );
   }

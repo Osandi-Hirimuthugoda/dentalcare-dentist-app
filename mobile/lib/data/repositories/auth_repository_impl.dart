@@ -34,15 +34,21 @@ class AuthRepositoryImpl implements AuthRepository {
       
       final userModel = UserModel.fromJson(userData);
       
-      // Save user data and token to local storage
+      // Save user data to local storage first
       // Use jsonEncode to properly convert Map to JSON string
       await localDataSource.setString(AppConstants.userKey, jsonEncode(userModel.toJson()));
-      await localDataSource.setBool(AppConstants.isLoggedInKey, true);
       
-      // Save token if available
+      // Save token if available (save empty string if null to ensure consistency)
       if (token != null && token.isNotEmpty) {
         await localDataSource.setString(AppConstants.tokenKey, token);
+      } else {
+        // Save empty string to indicate no token, but user is still logged in
+        await localDataSource.setString(AppConstants.tokenKey, '');
       }
+      
+      // Set login flag to true AFTER saving user data and token
+      // This ensures all data is saved before marking as logged in
+      await localDataSource.setBool(AppConstants.isLoggedInKey, true);
       
       final userEntity = UserEntity(
         id: userModel.id,
@@ -52,6 +58,8 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       
       return Right(userEntity);
+    } on InvalidCredentialsException {
+      return const Left(InvalidCredentialsFailure());
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message, e.statusCode));
     } on NetworkException catch (e) {
@@ -164,12 +172,20 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, bool>> isUserLoggedIn() async {
     try {
-      // Check both login status and token to ensure user is truly logged in
+      // Check login status flag first
       final isLoggedIn = await localDataSource.getBool(AppConstants.isLoggedInKey);
-      final token = await localDataSource.getString(AppConstants.tokenKey);
       
-      // User is logged in only if both flag is true AND token exists
-      final isAuthenticated = (isLoggedIn == true) && (token != null && token.isNotEmpty);
+      // If login flag is not set or false, user is not logged in
+      if (isLoggedIn != true) {
+        return const Right(false);
+      }
+      
+      // If login flag is true, check for user data to confirm authentication
+      // User data is always saved on successful login
+      final userData = await localDataSource.getString(AppConstants.userKey);
+      
+      // User is logged in if login flag is true AND user data exists
+      final isAuthenticated = userData != null && userData.isNotEmpty;
       
       return Right(isAuthenticated);
     } on CacheException catch (e) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/constants/route_names.dart';
 import 'package:flutter_application_1/core/services/notification_service.dart';
+import 'package:flutter_application_1/core/utils/helpers.dart';
 import 'package:flutter_application_1/presentation/widgets/home/appointments_section.dart';
 import 'package:flutter_application_1/presentation/widgets/home/emergency_contact.dart';
 import 'package:flutter_application_1/presentation/widgets/home/health_tips_carousel.dart.dart';
@@ -29,13 +30,16 @@ class _HomeScreenState extends State<HomeScreen> {
         // Already on home screen, do nothing
         break;
       case 1: // Appointments
-        Navigator.pushNamed(context, RouteNames.appointments);
+        // Check authentication before navigating
+        Helpers.navigateIfAuthenticated(context, RouteNames.appointments);
         break;
       case 2: // Health
-        Navigator.pushNamed(context, RouteNames.health);
+        // Check authentication before navigating
+        Helpers.navigateIfAuthenticated(context, RouteNames.health);
         break;
       case 3: // Profile
-        Navigator.pushNamed(context, RouteNames.profile);
+        // Check authentication before navigating
+        Helpers.navigateIfAuthenticated(context, RouteNames.profile);
         break;
     }
   }
@@ -45,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -103,7 +107,8 @@ class _HomeScreenState extends State<HomeScreen> {
               IconButton(
                 icon: const Icon(Icons.notifications_none, color: Colors.white),
                 onPressed: () {
-                  Navigator.pushNamed(context, RouteNames.notification);
+                  // Check authentication before navigating
+                  Helpers.navigateIfAuthenticated(context, RouteNames.notification);
                 },
               ),
               if (_notificationService.unreadCount > 0)
@@ -151,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
             WelcomeSection(),
             
             // Quick Actions Grid
-            QuickActionsGrid(context: context),
+            const QuickActionsGrid(),
             
             // Upcoming Appointments
             AppointmentsSection(context: context),

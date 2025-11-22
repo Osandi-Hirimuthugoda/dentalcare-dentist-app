@@ -102,7 +102,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         CircleAvatar(
           radius: 30,
-          backgroundColor: AppColors.primary.withOpacity(0.1),
+          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
           child: IconButton(
             icon: Icon(icon, color: AppColors.primary),
             onPressed: () {

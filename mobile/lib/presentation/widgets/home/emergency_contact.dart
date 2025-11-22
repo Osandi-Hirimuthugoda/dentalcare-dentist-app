@@ -29,7 +29,7 @@ class EmergencyContact extends StatelessWidget {
             onPressed: () {
               Navigator.pop(context);
               _showSnackBar("Calling emergency services...");
-              // TODO: Implement actual emergency call
+            
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,

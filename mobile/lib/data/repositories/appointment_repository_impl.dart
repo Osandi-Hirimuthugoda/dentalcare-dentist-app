@@ -15,14 +15,30 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
     try {
       final appointmentsData = await remoteDataSource.getAppointments();
       
-      // Convert data to entities
+      // Convert data to entities - backend returns populated data
       final appointments = appointmentsData.map((data) {
+        // Backend returns _id, convert to id
+        final id = data['_id']?.toString() ?? data['id']?.toString() ?? '';
+        
+        // Extract doctor name from populated doctor object
+        final doctor = data['doctor'];
+        final dentistName = doctor != null 
+            ? (doctor['fullName'] ?? doctor['name'] ?? 'Unknown Doctor')
+            : 'No Doctor Assigned';
+        
+        // Extract startTime and convert to DateTime
+        final startTime = data['startTime'] != null
+            ? DateTime.parse(data['startTime'])
+            : DateTime.now();
+        
         return AppointmentEntity(
-          id: data['id'] ?? '',
-          title: data['title'] ?? '',
-          dentistName: data['dentist_name'] ?? '',
-          dateTime: DateTime.parse(data['date_time'] ?? DateTime.now().toString()),
-          status: data['status'] ?? 'scheduled',
+          id: id,
+          title: data['notes']?.isNotEmpty == true 
+              ? data['notes'] 
+              : 'Dental Appointment',
+          dentistName: dentistName,
+          dateTime: startTime,
+          status: data['status'] ?? 'pending',
         );
       }).toList();
       
@@ -37,23 +53,45 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
   }
 
   @override
-  Future<Either<Failure, AppointmentEntity>> bookAppointment(AppointmentEntity appointment) async {
+  Future<Either<Failure, AppointmentEntity>> bookAppointment({
+    required String doctorId,
+    required DateTime dateTime,
+    required String service,
+    String? notes,
+  }) async {
     try {
+      // Calculate endTime (typically 30 minutes after start)
+      final endTime = dateTime.add(const Duration(minutes: 30));
+      
+      // Backend expects: doctor (ID), startTime, endTime, status, notes
+      // Patient ID will be extracted from token in the backend
       final appointmentData = {
-        'title': appointment.title,
-        'dentist_name': appointment.dentistName,
-        'date_time': appointment.dateTime.toIso8601String(),
-        'status': 'scheduled',
+        'doctor': doctorId,
+        'startTime': dateTime.toIso8601String(),
+        'endTime': endTime.toIso8601String(),
+        'status': 'pending',
+        'notes': notes ?? service,
+        'teleconsult': false,
       };
       
       final result = await remoteDataSource.bookAppointment(appointmentData);
       
+      // Convert response to entity
+      final id = result['_id']?.toString() ?? result['id']?.toString() ?? '';
+      final doctor = result['doctor'];
+      final dentistName = doctor != null 
+          ? (doctor['fullName'] ?? doctor['name'] ?? 'Unknown Doctor')
+          : 'No Doctor Assigned';
+      final startTimeResult = result['startTime'] != null
+          ? DateTime.parse(result['startTime'])
+          : dateTime;
+      
       final bookedAppointment = AppointmentEntity(
-        id: result['id'] ?? '',
-        title: result['title'] ?? appointment.title,
-        dentistName: result['dentist_name'] ?? appointment.dentistName,
-        dateTime: DateTime.parse(result['date_time'] ?? appointment.dateTime.toIso8601String()),
-        status: result['status'] ?? 'scheduled',
+        id: id,
+        title: result['notes'] ?? service,
+        dentistName: dentistName,
+        dateTime: startTimeResult,
+        status: result['status'] ?? 'pending',
       );
       
       return Right(bookedAppointment);

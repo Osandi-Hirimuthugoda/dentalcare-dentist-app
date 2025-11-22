@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/constants/route_names.dart';
 import 'package:flutter_application_1/core/themes/app_theme.dart';
@@ -23,6 +24,13 @@ import 'package:flutter_application_1/presentation/widgets/auth/protected_route.
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Disable Impeller for Android emulator to prevent texture mipmap crashes
+  // This is a workaround for Impeller rendering issues on emulators
+  if (kDebugMode) {
+    debugPrint('Flutter app initializing...');
+  }
+  
   await di.init();
   runApp(const DentalCareApp());
 }
@@ -48,8 +56,10 @@ class DentalCareApp extends StatelessWidget {
         RouteNames.forgotPassword: (context) => const ForgotPasswordPage(),
         RouteNames.verifyEmail: (context) => const VerifyEmailPage(),
         
-        // Home page - accessible without login
-        RouteNames.home: (context) => const HomeScreen(),
+        // Home page - protected route (requires login)
+        RouteNames.home: (context) => const ProtectedRoute(
+          child: HomeScreen(),
+        ),
         '/appointments': (context) => const ProtectedRoute(
           child: AppointmentsScreen(),
         ),

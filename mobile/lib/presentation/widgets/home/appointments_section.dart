@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/core/constants/route_names.dart';
 import 'package:flutter_application_1/core/themes/colors.dart';
 import 'package:flutter_application_1/core/themes/text_styles.dart';
+import 'package:flutter_application_1/core/utils/helpers.dart';
 
 class AppointmentsSection extends StatelessWidget {
   final BuildContext context;
@@ -47,7 +49,7 @@ class AppointmentsSection extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -70,7 +72,8 @@ class AppointmentsSection extends StatelessWidget {
               ),
               TextButton(
                 onPressed: () {
-                  // Navigate to appointments screen
+                  // Check authentication before navigating to appointments screen
+                  Helpers.navigateIfAuthenticated(context, RouteNames.appointments);
                 },
                 child: Text(
                   'View All',
@@ -113,7 +116,7 @@ class AppointmentsSection extends StatelessWidget {
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: appointment['color'].withOpacity(0.1),
+              color: (appointment['color'] as Color).withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -142,7 +145,7 @@ class AppointmentsSection extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: appointment['color'].withOpacity(0.1),
+                        color: (appointment['color'] as Color).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -170,7 +173,7 @@ class AppointmentsSection extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
+              color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(

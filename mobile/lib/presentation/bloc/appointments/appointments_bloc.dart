@@ -28,7 +28,12 @@ class AppointmentsBloc extends Bloc<AppointmentsEvent, AppointmentsState> {
 
   Future<void> _onBookAppointmentRequested(BookAppointmentRequested event, Emitter<AppointmentsState> emit) async {
     emit(AppointmentsLoading());
-    final result = await bookAppointmentUseCase.execute(event.appointment);
+    final result = await bookAppointmentUseCase.execute(
+      doctorId: event.doctorId,
+      dateTime: event.dateTime,
+      service: event.service,
+      notes: event.notes,
+    );
     
     result.fold(
       (failure) => emit(AppointmentsError(failure.message)),

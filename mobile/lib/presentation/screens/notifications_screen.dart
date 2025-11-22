@@ -50,7 +50,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.1),
+            color: Colors.blue.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(Icons.calendar_today, size: 20, color: Colors.blue),
@@ -59,7 +59,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.orange.withOpacity(0.1),
+            color: Colors.orange.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(Icons.notifications, size: 20, color: Colors.orange),
@@ -68,7 +68,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.1),
+            color: Colors.red.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(Icons.warning, size: 20, color: Colors.red),
@@ -77,7 +77,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.1),
+            color: Colors.green.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(Icons.local_offer, size: 20, color: Colors.green),
@@ -86,7 +86,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(Icons.info, size: 20, color: Colors.grey),
@@ -136,7 +136,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       onDismissed: (direction) => _deleteNotification(notification.id),
       child: Card(
         margin: const EdgeInsets.only(bottom: 12),
-        color: notification.isRead ? Colors.white : Colors.blue.withOpacity(0.05),
+        color: notification.isRead ? Colors.white : Colors.blue.withValues(alpha: 0.05),
         child: ListTile(
           leading: _buildNotificationIcon(notification.type),
           title: Text(
@@ -188,7 +188,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           Icon(
             Icons.notifications_off,
             size: 80,
-            color: Colors.grey.withOpacity(0.5),
+            color: Colors.grey.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(

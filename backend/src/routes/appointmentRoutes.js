@@ -2,6 +2,7 @@ import express from "express";
 import {
   listAppointments,
   getAppointmentsByDoctor,
+  getAppointmentsByPatient,
   createAppointment,
   updateAppointment,
   deleteAppointment,
@@ -13,10 +14,13 @@ const router = express.Router();
 // Get all appointments (admin - requires auth)
 router.get("/", listAppointments);
 
+// Get appointments by patient ID (for mobile app - requires auth token)
+router.get("/patient", getAppointmentsByPatient);
+
 // Get appointments by doctor ID (for web app - doctors viewing their appointments)
 router.get("/doctor/:doctorId", getAppointmentsByDoctor);
 
-// Create appointment
+// Create appointment (patient ID can come from token or body)
 router.post("/", createAppointment);
 
 // Update appointment

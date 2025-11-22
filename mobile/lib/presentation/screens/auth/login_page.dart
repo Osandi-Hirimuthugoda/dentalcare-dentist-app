@@ -6,6 +6,7 @@ import 'package:flutter_application_1/presentation/bloc/auth/auth_block.dart';
 import 'package:flutter_application_1/presentation/bloc/auth/auth_event.dart';
 import 'package:flutter_application_1/presentation/bloc/auth/auth_state.dart';
 import 'package:flutter_application_1/injection_container.dart' as di;
+import 'package:flutter_application_1/presentation/widgets/auth/blurred_home_background.dart';
 
 class LoginPage extends StatefulWidget {
   final String? preFilledEmail;
@@ -49,44 +50,52 @@ class _LoginPageState extends State<LoginPage> {
         logoutUseCase: di.getIt(),
       ),
       child: Scaffold(
-        body: BlocConsumer<AuthBloc, AuthState>(
-          listener: (context, state) {
-            if (state is AuthAuthenticated) {
-              // Show success message
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Login successful!'),
-                  backgroundColor: Colors.green,
-                  duration: Duration(seconds: 1),
-                ),
-              );
-              // Navigate to home on successful login after a brief delay
-              // All data is saved at this point (awaited in repository)
-              Future.delayed(const Duration(milliseconds: 500), () {
-                if (context.mounted) {
-                  Navigator.pushReplacementNamed(context, RouteNames.home);
+        body: Stack(
+          children: [
+            // Blurred home page background
+            const BlurredHomeBackground(),
+            // Login form on top
+            BlocConsumer<AuthBloc, AuthState>(
+              listener: (context, state) {
+                if (state is AuthAuthenticated) {
+                  // Use postFrameCallback for safe navigation
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!context.mounted) return;
+                    
+                    try {
+                      // Navigate to home after successful login
+                      Navigator.pushReplacementNamed(context, RouteNames.home);
+                    } catch (e) {
+                      debugPrint('Navigation error: $e');
+                    }
+                  });
+                } else if (state is AuthError) {
+                  // Show error message
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(state.message),
+                        backgroundColor: Colors.red,
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                  }
                 }
-              });
-            } else if (state is AuthError) {
-              // Show error message
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-          },
-          builder: (context, state) {
-            final isLoading = state is AuthLoading;
-            
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
+              },
+              builder: (context, state) {
+                final isLoading = state is AuthLoading;
+                
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.95),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
                     const Text("Welcome\nDentalCare+",
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
@@ -187,26 +196,74 @@ class _LoginPageState extends State<LoginPage> {
                   ),
 
                   const SizedBox(height: 15),
-                  const Text("Don't have an account?"),
-
-                  // Register
-                  TextButton(
-                    onPressed: isLoading ? null : () {
-                      Navigator.pushNamed(context, RouteNames.register);
-                    },
-                    child: const Text("Register",
-                        style: TextStyle(color: Colors.teal, fontSize: 16)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text("Don't have an account? "),
+                      TextButton(
+                        onPressed: isLoading ? null : () {
+                          // Navigate to register page using named route
+                          if (!context.mounted) return;
+                          
+                          Navigator.pushNamed(
+                            context,
+                            RouteNames.register,
+                          ).catchError((error) {
+                            debugPrint('Navigation error: $error');
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Unable to open registration page. Please try again.'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                            return null;
+                          });
+                        },
+                        child: const Text(
+                          "Register",
+                          style: TextStyle(
+                            color: Colors.teal,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
 
                   const Spacer(),
 
-                    // Logo at bottom
-                    Image.asset("assets/images/logo.png", height: 100),
-                  ],
-                ),
-              ),
-            );
-          },
+                  // Logo - using Icon instead to prevent texture rendering crashes
+                  // Image.asset causes Impeller texture mipmap issues on emulators
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(
+                        Icons.health_and_safety,
+                        size: 50,
+                        color: Colors.teal,
+                      ),
+                      SizedBox(width: 10),
+                      Text(
+                        "DentalCare+",
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.teal,
+                        ),
+                      ),
+                    ],
+                  ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
       ),
     );

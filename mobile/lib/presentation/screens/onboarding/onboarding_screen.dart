@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-//import 'package:dental_care/core/constants/route_names.dart';
 import 'package:flutter_application_1/core/constants/route_names.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -63,7 +62,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _goToHome() {
-    Navigator.pushReplacementNamed(context, RouteNames.home);
+    // Always navigate to login page after onboarding
+    // User must login to access the app
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, RouteNames.login);
+    }
   }
 
   Widget _buildDots() {
