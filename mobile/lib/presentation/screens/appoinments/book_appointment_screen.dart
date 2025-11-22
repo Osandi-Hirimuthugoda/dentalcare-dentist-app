@@ -39,6 +39,18 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     'Teeth Whitening',
   ];
 
+  // Mapping service to doctor specializations (matching frontend specialization names)
+  Map<String, List<String>> _serviceToSpecialization = {
+    'Dental Checkup': ['General Dentist', 'Pediatric Dentist'],
+    'Teeth Cleaning': ['General Dentist', 'Periodontist', 'Pediatric Dentist'],
+    'Tooth Filling': ['General Dentist', 'Pediatric Dentist'],
+    'Root Canal Treatment': ['Endodontist', 'General Dentist'],
+    'Dental Crown': ['Prosthodontist', 'General Dentist'],
+    'Tooth Extraction': ['Oral Surgeon', 'General Dentist'],
+    'Braces Consultation': ['Orthodontist'],
+    'Teeth Whitening': ['Cosmetic Dentist', 'General Dentist'],
+  };
+
   @override
   void initState() {
     super.initState();
@@ -256,11 +268,11 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _buildServiceSelection(),
+            const SizedBox(height: 20),
             _buildDoctorSelection(),
             const SizedBox(height: 20),
             _buildDateTimeSelection(),
-            const SizedBox(height: 20),
-            _buildServiceSelection(),
             const SizedBox(height: 20),
             _buildSymptomsInput(),
             const SizedBox(height: 30),
@@ -271,17 +283,67 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     );
   }
 
+  // Get filtered dentists based on selected service
+  List<Map<String, dynamic>> get _filteredDentists {
+    if (_selectedService.isEmpty) {
+      return _dentists;
+    }
+    
+    // Get specializations for the selected service
+    final specializations = _serviceToSpecialization[_selectedService] ?? [];
+    
+    if (specializations.isEmpty) {
+      // If no mapping, show all dentists
+      return _dentists;
+    }
+    
+    // Filter dentists whose specialization matches the service
+    return _dentists.where((dentist) {
+      final dentistSpecialty = (dentist['specialty'] ?? '').toString().toLowerCase();
+      return specializations.any((spec) => 
+        dentistSpecialty.contains(spec.toLowerCase()) ||
+        spec.toLowerCase().contains(dentistSpecialty)
+      );
+    }).toList();
+  }
+
   Widget _buildDoctorSelection() {
+    final filteredDentists = _filteredDentists;
+    
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Select Dentist',
-              style: TextStyles.heading4,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Select Dentist',
+                  style: TextStyles.heading4,
+                ),
+                if (_selectedService.isNotEmpty)
+                  Text(
+                    '${filteredDentists.length} available',
+                    style: TextStyles.caption.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+              ],
             ),
+            if (_selectedService.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  'Please select a service first to see relevant doctors',
+                  style: TextStyles.caption.copyWith(
+                    color: Colors.orange,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
             const SizedBox(height: 15),
             if (_isLoadingDentists)
               const Center(child: CircularProgressIndicator())
@@ -299,13 +361,38 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                   ],
                 ),
               )
-            else if (_dentists.isEmpty)
+            else if (filteredDentists.isEmpty && _dentists.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    const Icon(Icons.search_off, size: 48, color: Colors.grey),
+                    const SizedBox(height: 10),
+                    Text(
+                      'No doctors available for "$_selectedService"',
+                      style: TextStyles.bodyMedium.copyWith(
+                        color: Colors.grey,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'Try selecting a different service',
+                      style: TextStyles.caption.copyWith(
+                        color: Colors.grey,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              )
+            else if (filteredDentists.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(16.0),
                 child: Text('No dentists available'),
               )
             else
-              ..._dentists.map((dentist) => _buildDentistCard(dentist)),
+              ...filteredDentists.map((dentist) => _buildDentistCard(dentist)),
           ],
         ),
       ),
@@ -431,6 +518,9 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
               onChanged: (value) {
                 setState(() {
                   _selectedService = value!;
+                  // Reset selected dentist when service changes
+                  _selectedDentist = null;
+                  _selectedTime = null;
                 });
               },
               decoration: const InputDecoration(
