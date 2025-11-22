@@ -6,6 +6,7 @@ import {
   getAllDoctors,
   changePassword,
   updateDoctorProfile,
+  resetPassword,
 } from "../controllers/doctorController.js";
 
 const router = express.Router();
@@ -22,5 +23,8 @@ router.put("/:doctorId/profile", updateDoctorProfile);
 
 // Change password
 router.put("/:doctorId/change-password", changePassword);
+
+// Reset password (for fixing password issues)
+router.post("/reset-password", resetPassword);
 
 export default router;

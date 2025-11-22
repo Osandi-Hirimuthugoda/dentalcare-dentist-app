@@ -19,7 +19,15 @@ const doctorSchema = mongoose.Schema(
 
 // Hash password before saving
 doctorSchema.pre("save", async function (next) {
+  // Skip if password is not modified
   if (!this.isModified("password")) return next();
+  
+  // Skip if password is already hashed (bcrypt hashes start with $2a$, $2b$, or $2y$)
+  if (this.password && this.password.startsWith("$2")) {
+    return next();
+  }
+  
+  // Hash the plain password
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
   next();

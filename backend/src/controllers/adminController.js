@@ -124,29 +124,50 @@ export const registerDoctor = async (req, res) => {
       qualifications,
       hospital,
       experience,
+      services,
     } = req.body;
 
-    // Check existing doctor
-    const doctorExists = await Doctor.findOne({ email });
-    if (doctorExists) {
-      return res.status(400).json({ message: "Doctor already exists" });
+    // Validate required fields
+    if (!fullName || !email || !phone || !password || !licenseNumber) {
+      return res.status(400).json({ 
+        message: "Please provide all required fields: fullName, email, phone, password, licenseNumber" 
+      });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Validate password length
+    if (password.length < 6) {
+      return res.status(400).json({ 
+        message: "Password must be at least 6 characters long" 
+      });
+    }
 
-    // Create doctor
+    // Check existing doctor (normalize email to lowercase)
+    const normalizedEmail = email.toLowerCase().trim();
+    const doctorExists = await Doctor.findOne({ email: normalizedEmail });
+    if (doctorExists) {
+      return res.status(400).json({ message: "Doctor already exists with this email" });
+    }
+
+    // Create doctor (password will be hashed automatically by the model's pre-save hook)
+    console.log(`🔧 Creating doctor with email: ${normalizedEmail}`);
+    console.log(`   Password provided: ${password ? 'Yes (length: ' + password.length + ')' : 'No'}`);
+    
     const doctor = await Doctor.create({
-      fullName,
-      email,
-      phone,
-      password: hashedPassword,
-      licenseNumber,
-      specialization,
-      qualifications,
-      hospital,
-      experience,
+      fullName: fullName.trim(),
+      email: normalizedEmail,
+      phone: phone.trim(),
+      password: password, // Will be hashed by pre-save hook
+      licenseNumber: licenseNumber.trim(),
+      specialization: specialization?.trim(),
+      qualifications: qualifications?.trim(),
+      hospital: hospital?.trim(),
+      experience: experience ? parseInt(experience) : undefined,
+      services: services || [],
     });
+
+    // Verify password was hashed (should start with $2)
+    const isPasswordHashed = doctor.password && doctor.password.startsWith('$2');
+    console.log(`   Password hashed: ${isPasswordHashed ? 'Yes ✅' : 'No ❌'}`);
 
     // Return doctor without password
     const doctorData = {
@@ -159,8 +180,12 @@ export const registerDoctor = async (req, res) => {
       qualifications: doctor.qualifications,
       hospital: doctor.hospital,
       experience: doctor.experience,
+      services: doctor.services || [],
       createdAt: doctor.createdAt,
     };
+
+    console.log(`✅ Doctor registered successfully by admin: ${doctor.email}`);
+    console.log(`   🔐 Doctor can now login with email: ${normalizedEmail} and the password entered during registration`);
 
     res.status(201).json({
       message: "Doctor registered successfully",
@@ -168,7 +193,24 @@ export const registerDoctor = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error registering doctor:", error);
-    res.status(500).json({ message: "Error registering doctor", error: error.message });
+    
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      return res.status(409).json({ 
+        message: "An account with this email already exists" 
+      });
+    }
+    
+    // Handle validation errors
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ message: messages.join(", ") });
+    }
+    
+    res.status(500).json({ 
+      message: "Error registering doctor", 
+      error: process.env.NODE_ENV === "development" ? error.message : undefined 
+    });
   }
 };
 
