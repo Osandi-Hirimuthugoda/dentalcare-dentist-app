@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -19,12 +19,15 @@ const DoctorRegister = () => {
     experience: "",
     hospital: "",
     qualifications: "",
+    services: [], // Services/categories doctor offers
   });
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
+  const [availableServices, setAvailableServices] = useState([]);
+  const [loadingServices, setLoadingServices] = useState(true);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -62,6 +65,9 @@ const DoctorRegister = () => {
 
     if (!formData.specialization)
       newErrors.specialization = "Specialization is required";
+
+    if (!formData.services || formData.services.length === 0)
+      newErrors.services = "Please select at least one service you offer";
 
     if (!formData.experience)
       newErrors.experience = "Years of experience is required";
@@ -106,6 +112,7 @@ const DoctorRegister = () => {
           experience: "",
           hospital: "",
           qualifications: "",
+          services: [],
         });
 
         // Redirect to login after 2 seconds
@@ -139,6 +146,45 @@ const DoctorRegister = () => {
     "Implantologist",
     "Other",
   ];
+
+  // Fetch available services from backend
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        setLoadingServices(true);
+        const response = await axios.get("http://localhost:4000/api/services");
+        setAvailableServices(response.data || []);
+      } catch (error) {
+        console.error("Error fetching services:", error);
+        // Fallback to default services if API fails
+        setAvailableServices([
+          { name: "Dental Checkup" },
+          { name: "Teeth Cleaning" },
+          { name: "Tooth Filling" },
+          { name: "Root Canal Treatment" },
+          { name: "Dental Crown" },
+          { name: "Tooth Extraction" },
+          { name: "Braces Consultation" },
+          { name: "Teeth Whitening" },
+        ]);
+      } finally {
+        setLoadingServices(false);
+      }
+    };
+    fetchServices();
+  }, []);
+
+  // Handle service selection
+  const handleServiceToggle = (serviceName) => {
+    setFormData((prev) => {
+      const services = prev.services || [];
+      if (services.includes(serviceName)) {
+        return { ...prev, services: services.filter((s) => s !== serviceName) };
+      } else {
+        return { ...prev, services: [...services, serviceName] };
+      }
+    });
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-teal-50 p-4">
@@ -410,6 +456,45 @@ const DoctorRegister = () => {
                   className="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 outline-none resize-none transition-all duration-300"
                 ></textarea>
                 <p className="text-gray-500 text-xs mt-1">List your professional qualifications</p>
+              </div>
+
+              {/* Services Selection */}
+              <div className="mt-6">
+                <label className="block text-gray-700 text-sm font-medium mb-3 flex items-center gap-2">
+                  <Stethoscope size={16} className="text-gray-500" />
+                  Services Offered <span className="text-red-500">*</span>
+                </label>
+                <p className="text-gray-500 text-xs mb-3">Select the services you offer to patients</p>
+                {loadingServices ? (
+                  <p className="text-gray-500 text-sm">Loading services...</p>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {availableServices.map((service) => (
+                      <label
+                        key={service._id || service.name}
+                        className={`flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                          formData.services?.includes(service.name)
+                            ? "border-cyan-500 bg-cyan-50"
+                            : "border-gray-200 hover:border-cyan-300"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={formData.services?.includes(service.name) || false}
+                          onChange={() => handleServiceToggle(service.name)}
+                          className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
+                        />
+                        <span className="text-sm text-gray-700">{service.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {errors.services && (
+                  <p className="text-red-500 text-sm mt-1">{errors.services}</p>
+                )}
+                <p className="text-gray-500 text-xs mt-2">
+                  Selected: {formData.services?.length || 0} service(s)
+                </p>
               </div>
             </div>
 

@@ -12,6 +12,7 @@ const doctorSchema = mongoose.Schema(
     qualifications: { type: String },
     hospital: { type: String },
     experience: { type: Number },
+    services: [{ type: String }], // Services/categories doctor offers
   },
   { timestamps: true }
 );

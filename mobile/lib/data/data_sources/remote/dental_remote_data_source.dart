@@ -11,6 +11,7 @@ abstract class DentalRemoteDataSource {
   Future<dynamic> bookAppointment(Map<String, dynamic> appointmentData);
   Future<List<dynamic>> getDentists();
   Future<List<dynamic>> getTreatments();
+  Future<List<dynamic>> getServices(); // Get available services
   Future<dynamic> uploadTeethScan(String imagePath);
 }
 
@@ -103,6 +104,29 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
         return data is List ? data : (data['doctors'] ?? []);
       } else {
         throw ServerException('Failed to fetch dentists', response.statusCode);
+      }
+    } catch (e) {
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getServices() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.get(
+        Uri.parse('${AppConstants.baseUrl}/services'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data is List ? data : (data['services'] ?? []);
+      } else {
+        throw ServerException('Failed to fetch services', response.statusCode);
       }
     } catch (e) {
       if (e is ServerException) {

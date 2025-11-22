@@ -18,45 +18,91 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   bool _isLoadingDentists = true;
   String? _errorMessage;
   
+  List<Map<String, dynamic>> _services = [];
+  bool _isLoadingServices = true;
+  
   Map<String, dynamic>? _selectedDentist;
   DateTime? _selectedDate;
   String? _selectedTime;
-  String _selectedService = 'Dental Checkup';
+  String? _selectedService;
   final TextEditingController _symptomsController = TextEditingController();
   bool _isBooking = false;
 
   late final DentalRemoteDataSource _dentalDataSource;
   late final BookAppointmentUseCase _bookAppointmentUseCase;
 
-  final List<String> _services = [
-    'Dental Checkup',
-    'Teeth Cleaning',
-    'Tooth Filling',
-    'Root Canal Treatment',
-    'Dental Crown',
-    'Tooth Extraction',
-    'Braces Consultation',
-    'Teeth Whitening',
-  ];
-
-  // Mapping service to doctor specializations (matching frontend specialization names)
-  Map<String, List<String>> _serviceToSpecialization = {
-    'Dental Checkup': ['General Dentist', 'Pediatric Dentist'],
-    'Teeth Cleaning': ['General Dentist', 'Periodontist', 'Pediatric Dentist'],
-    'Tooth Filling': ['General Dentist', 'Pediatric Dentist'],
-    'Root Canal Treatment': ['Endodontist', 'General Dentist'],
-    'Dental Crown': ['Prosthodontist', 'General Dentist'],
-    'Tooth Extraction': ['Oral Surgeon', 'General Dentist'],
-    'Braces Consultation': ['Orthodontist'],
-    'Teeth Whitening': ['Cosmetic Dentist', 'General Dentist'],
-  };
-
   @override
   void initState() {
     super.initState();
     _dentalDataSource = getIt<DentalRemoteDataSource>();
     _bookAppointmentUseCase = getIt<BookAppointmentUseCase>();
+    _loadServices();
     _loadDentists();
+  }
+
+  Future<void> _loadServices() async {
+    setState(() {
+      _isLoadingServices = true;
+    });
+
+    try {
+      final services = await _dentalDataSource.getServices();
+      debugPrint('📦 Services loaded: ${services.length} services');
+      
+      if (services.isNotEmpty) {
+        setState(() {
+          _services = services.map<Map<String, dynamic>>((service) {
+            final serviceName = service['name']?.toString() ?? service.toString();
+            debugPrint('  - Service: $serviceName');
+            return {
+              'name': serviceName,
+              'description': service['description']?.toString() ?? '',
+              'category': service['category']?.toString() ?? '',
+            };
+          }).toList();
+          
+          debugPrint('✅ Total services in dropdown: ${_services.length}');
+          
+          // Set first service as default if available
+          if (_services.isNotEmpty && _selectedService == null) {
+            final firstServiceName = _services.first['name'] as String?;
+            if (firstServiceName != null && firstServiceName.isNotEmpty) {
+              _selectedService = firstServiceName;
+              debugPrint('✅ Default service selected: $_selectedService');
+            }
+          }
+          _isLoadingServices = false;
+        });
+      } else {
+        // If services list is empty, use fallback
+        debugPrint('⚠️ No services received from server, using fallback');
+        throw Exception('No services received from server');
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading services: $e');
+      // Fallback to default services if API fails
+      setState(() {
+        _services = <Map<String, dynamic>>[
+          {'name': 'Dental Checkups & Consultations', 'description': 'Comprehensive dental examination and oral health assessment', 'category': 'General'},
+          {'name': 'Teeth Cleaning (Scaling & Polishing)', 'description': 'Professional teeth cleaning, scaling, and plaque removal', 'category': 'General'},
+          {'name': 'Cavity Filling', 'description': 'Dental filling for cavities and tooth restoration', 'category': 'General'},
+          {'name': 'Tooth Extraction', 'description': 'Tooth removal surgery', 'category': 'Surgical'},
+          {'name': 'Root Canal Treatment (RCT)', 'description': 'Endodontic treatment for infected tooth roots', 'category': 'Endodontic'},
+          {'name': 'Braces & Teeth Alignment (Orthodontics)', 'description': 'Orthodontic treatment for teeth alignment and braces', 'category': 'Orthodontic'},
+          {'name': 'Teeth Whitening', 'description': 'Professional teeth whitening treatment', 'category': 'Cosmetic'},
+          {'name': 'Dental Crowns & Bridges', 'description': 'Dental crown and bridge installation and restoration', 'category': 'Restorative'},
+          {'name': 'Dental Implants & Dentures', 'description': 'Dental implant surgery and denture fitting', 'category': 'Restorative'},
+          {'name': 'Emergency Dental Care', 'description': 'Emergency dental treatment for urgent dental issues', 'category': 'Emergency'},
+        ];
+        if (_services.isNotEmpty && _selectedService == null) {
+          final firstServiceName = _services.first['name'] as String?;
+          if (firstServiceName != null && firstServiceName.isNotEmpty) {
+            _selectedService = firstServiceName;
+          }
+        }
+        _isLoadingServices = false;
+      });
+    }
   }
 
   Future<void> _loadDentists() async {
@@ -78,6 +124,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             'hospital': dentist['hospital'] ?? 'Dental Clinic',
             'rating': 4.5, // Default rating if not available
             'experience': dentist['experience'] ?? 'N/A',
+            'services': dentist['services'] ?? [], // Services doctor offers
             'availableSlots': _generateTimeSlots(), // Generate default time slots
           };
         }).toList();
@@ -141,6 +188,11 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   }
 
   Future<void> _bookAppointment() async {
+    if (_selectedService == null || _selectedService!.isEmpty) {
+      _showSnackBar('Please select a service');
+      return;
+    }
+    
     if (_selectedDentist == null || _selectedDate == null || _selectedTime == null) {
       _showSnackBar('Please fill all required fields');
       return;
@@ -164,7 +216,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             Text('Doctor: ${_selectedDentist!['name']}'),
             Text('Date: ${DateFormat('dd/MM/yyyy').format(_selectedDate!)}'),
             Text('Time: $_selectedTime'),
-            Text('Service: $_selectedService'),
+            Text('Service: ${_selectedService ?? "Not selected"}'),
             if (_symptomsController.text.isNotEmpty)
               Text('Symptoms: ${_symptomsController.text}'),
           ],
@@ -192,10 +244,10 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       final result = await _bookAppointmentUseCase.execute(
         doctorId: _selectedDentist!['id'],
         dateTime: dateTime,
-        service: _selectedService,
+        service: _selectedService!,
         notes: _symptomsController.text.isNotEmpty 
-            ? '$_selectedService: ${_symptomsController.text}'
-            : _selectedService,
+            ? '${_selectedService!}: ${_symptomsController.text}'
+            : _selectedService!,
       );
 
       result.fold(
@@ -285,25 +337,41 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
 
   // Get filtered dentists based on selected service
   List<Map<String, dynamic>> get _filteredDentists {
-    if (_selectedService.isEmpty) {
+    if (_selectedService == null || _selectedService!.isEmpty) {
       return _dentists;
     }
     
-    // Get specializations for the selected service
-    final specializations = _serviceToSpecialization[_selectedService] ?? [];
-    
-    if (specializations.isEmpty) {
-      // If no mapping, show all dentists
-      return _dentists;
-    }
-    
-    // Filter dentists whose specialization matches the service
+    // Filter dentists who offer the selected service
     return _dentists.where((dentist) {
+      // Check if doctor's services array includes the selected service
+      final doctorServices = dentist['services'] as List<dynamic>?;
+      if (doctorServices != null && doctorServices.isNotEmpty) {
+        return doctorServices.any((service) => 
+          service.toString().toLowerCase() == _selectedService!.toLowerCase()
+        );
+      }
+      
+      // Fallback: Check specialization match if services not available
       final dentistSpecialty = (dentist['specialty'] ?? '').toString().toLowerCase();
-      return specializations.any((spec) => 
-        dentistSpecialty.contains(spec.toLowerCase()) ||
-        spec.toLowerCase().contains(dentistSpecialty)
-      );
+      final serviceName = _selectedService!.toLowerCase();
+      
+      // Basic matching logic based on service name and specialization
+      if (serviceName.contains('orthodont') || serviceName.contains('braces')) {
+        return dentistSpecialty.contains('orthodont');
+      } else if (serviceName.contains('extraction') || serviceName.contains('surgery')) {
+        return dentistSpecialty.contains('surgeon') || dentistSpecialty.contains('surgery');
+      } else if (serviceName.contains('root canal') || serviceName.contains('endodontic')) {
+        return dentistSpecialty.contains('endodont');
+      } else if (serviceName.contains('crown') || serviceName.contains('prosthodont')) {
+        return dentistSpecialty.contains('prosthodont');
+      } else if (serviceName.contains('whitening') || serviceName.contains('cosmetic')) {
+        return dentistSpecialty.contains('cosmetic');
+      } else if (serviceName.contains('cleaning') || serviceName.contains('periodont')) {
+        return dentistSpecialty.contains('periodont') || dentistSpecialty.contains('general');
+      } else {
+        // For general services, show all dentists with general specialties
+        return dentistSpecialty.contains('general') || dentistSpecialty.isEmpty;
+      }
     }).toList();
   }
 
@@ -323,7 +391,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                   'Select Dentist',
                   style: TextStyles.heading4,
                 ),
-                if (_selectedService.isNotEmpty)
+                if (_selectedService != null && _selectedService!.isNotEmpty)
                   Text(
                     '${filteredDentists.length} available',
                     style: TextStyles.caption.copyWith(
@@ -333,7 +401,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                   ),
               ],
             ),
-            if (_selectedService.isEmpty)
+            if (_selectedService == null || _selectedService!.isEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),
                 child: Text(
@@ -507,27 +575,49 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
               style: TextStyles.heading4,
             ),
             const SizedBox(height: 15),
-            DropdownButtonFormField<String>(
-              value: _selectedService,
-              items: _services
-                  .map((service) => DropdownMenuItem(
-                        value: service,
-                        child: Text(service),
-                      ))
-                  .toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedService = value!;
-                  // Reset selected dentist when service changes
-                  _selectedDentist = null;
-                  _selectedTime = null;
-                });
-              },
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Select Service',
+            if (_isLoadingServices)
+              const Center(child: CircularProgressIndicator())
+            else if (_services.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text(
+                  'No services available. Please check your connection.',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              )
+            else
+              DropdownButtonFormField<String>(
+                value: _selectedService,
+                hint: const Text('Select Service'),
+                isExpanded: true,
+                items: _services
+                    .map((service) {
+                      final serviceName = service['name'] as String? ?? '';
+                      return DropdownMenuItem<String>(
+                        value: serviceName,
+                        child: Text(
+                          serviceName,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    })
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _selectedService = value;
+                      // Reset selected dentist when service changes
+                      _selectedDentist = null;
+                      _selectedTime = null;
+                    });
+                  }
+                },
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'Select Service',
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                ),
               ),
-            ),
           ],
         ),
       ),

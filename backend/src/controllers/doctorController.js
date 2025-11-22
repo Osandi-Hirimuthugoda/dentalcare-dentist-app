@@ -15,6 +15,7 @@ export const registerDoctor = async (req, res) => {
       qualifications,
       hospital,
       experience,
+      services, // Services/categories doctor offers
     } = req.body;
 
     // Check existing doctor
@@ -37,6 +38,7 @@ export const registerDoctor = async (req, res) => {
       qualifications,
       hospital,
       experience,
+      services: services || [], // Services/categories doctor offers
     });
 
     res.status(201).json({

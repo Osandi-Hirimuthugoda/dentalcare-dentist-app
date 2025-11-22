@@ -5,6 +5,9 @@ import connectDB from "./src/config/db.js";
 import authRoutes from "./src/routes/authRoutes.js";
 import doctorRoutes from "./src/routes/doctorRoutes.js";
 import appointmentRoutes from "./src/routes/appointmentRoutes.js";
+import serviceRoutes from "./src/routes/serviceRoutes.js";
+import adminRoutes from "./src/routes/adminRoutes.js";
+import patientRoutes from "./src/routes/patientRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -36,6 +39,15 @@ app.use("/api/doctors", doctorRoutes);
 
 // Appointment routes (for booking appointments)
 app.use("/api/appointments", appointmentRoutes);
+
+// Service routes (for getting available services)
+app.use("/api/services", serviceRoutes);
+
+// Admin routes (for web app admin panel)
+app.use("/api/admins", adminRoutes);
+
+// Patient routes (for web app - doctors viewing patients)
+app.use("/api/patients", patientRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

@@ -17,13 +17,26 @@ export const getPatientsByDoctor = async (req, res) => {
   try {
     const { doctorId } = req.params;
     
-    // Find all patients who selected this doctor
-    const patients = await Patient.find({ selectedDoctor: doctorId })
-      .populate("selectedDoctor", "fullName specialization")
+    // Find all appointments for this doctor to get unique patients
+    const appointments = await Appointment.find({ doctor: doctorId })
+      .populate("patient", "name email phone age gender createdAt")
       .sort({ createdAt: -1 });
+    
+    // Get unique patients from appointments
+    const uniquePatientsMap = new Map();
+    appointments.forEach(apt => {
+      if (apt.patient && apt.patient._id) {
+        if (!uniquePatientsMap.has(apt.patient._id.toString())) {
+          uniquePatientsMap.set(apt.patient._id.toString(), apt.patient);
+        }
+      }
+    });
+    
+    const patients = Array.from(uniquePatientsMap.values());
     
     res.status(200).json(patients);
   } catch (error) {
+    console.error("❌ Error fetching patients by doctor:", error);
     res.status(500).json({ message: error.message });
   }
 };
