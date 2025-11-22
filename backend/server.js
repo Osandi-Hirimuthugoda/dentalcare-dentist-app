@@ -10,6 +10,7 @@ import adminRoutes from "./src/routes/adminRoutes.js";
 import patientRoutes from "./src/routes/patientRoutes.js";
 import messageRoutes from "./src/routes/messageRoutes.js";
 import availabilityRoutes from "./src/routes/availabilityRoutes.js";
+import billRoutes from "./src/routes/billRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -56,6 +57,9 @@ app.use("/api/messages", messageRoutes);
 
 // Availability routes (for doctors to set their available dates/times)
 app.use("/api/availability", availabilityRoutes);
+
+// Bill routes (for billing and payment management)
+app.use("/api/bills", billRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

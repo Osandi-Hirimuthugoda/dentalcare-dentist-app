@@ -12,8 +12,8 @@ const router = express.Router();
 // Get messages for a doctor
 router.get("/doctor/:doctorId", getDoctorMessages);
 
-// Get messages for a patient
-router.get("/patient/:patientId", getPatientMessages);
+// Get messages for a patient (uses JWT token)
+router.get("/patient/messages", getPatientMessages);
 
 // Get conversation between doctor and patient
 router.get("/conversation/:doctorId/:patientId", getConversation);

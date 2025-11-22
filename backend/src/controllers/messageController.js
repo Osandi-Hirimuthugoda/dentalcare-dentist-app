@@ -1,6 +1,25 @@
 import Message from "../models/Message.js";
 import Patient from "../models/Patient.js";
 import Doctor from "../models/doctorModel.js";
+import jwt from "jsonwebtoken";
+
+const JWT_SECRET = process.env.JWT_SECRET || "dentalcare_secret_key_change_in_production";
+
+// Helper function to extract user from token
+const getUserFromToken = (req) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return null;
+    
+    const token = authHeader.split(" ")[1];
+    if (!token) return null;
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    return decoded;
+  } catch (err) {
+    return null;
+  }
+};
 
 // 📨 Get messages for a doctor (conversations with patients)
 export const getDoctorMessages = async (req, res) => {
@@ -101,7 +120,12 @@ export const getDoctorMessages = async (req, res) => {
 // 📨 Get messages for a patient (conversations with doctors)
 export const getPatientMessages = async (req, res) => {
   try {
-    const { patientId } = req.params;
+    const user = getUserFromToken(req);
+    if (!user || user.role !== "patient") {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    const patientId = user.id;
 
     const messages = await Message.find({
       $or: [
