@@ -20,6 +20,7 @@ import 'package:flutter_application_1/presentation/screens/onboarding/onboarding
 import 'package:flutter_application_1/presentation/screens/onboarding/splashscreen.dart';
 import 'package:flutter_application_1/presentation/screens/treatments/my_treatments_screen.dart';
 import 'package:flutter_application_1/features/payment/card_payment_screen.dart';
+import 'package:flutter_application_1/presentation/screens/messages/messages_screen.dart';
 import 'package:flutter_application_1/presentation/widgets/auth/protected_route.dart';
 
 void main() async {
@@ -87,6 +88,9 @@ class DentalCareApp extends StatelessWidget {
         ),
         '/find-dentists': (context) => const ProtectedRoute(
           child: FindDentistsScreen(),
+        ),
+        '/messages': (context) => const ProtectedRoute(
+          child: MessagesScreen(),
         ),
         '/card-payment': (context) {
           final bill = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;

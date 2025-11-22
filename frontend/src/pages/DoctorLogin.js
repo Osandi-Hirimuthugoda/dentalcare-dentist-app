@@ -18,7 +18,11 @@ export default function DoctorLogin() {
         email,
         password,
       });
+      // Save doctor data and token for authentication
       localStorage.setItem("doctor", JSON.stringify(res.data.doctor));
+      if (res.data.token) {
+        localStorage.setItem("token", res.data.token);
+      }
       navigate("/doctor-dashboard");
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");

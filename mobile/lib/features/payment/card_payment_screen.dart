@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/themes/colors.dart';
 import 'package:flutter_application_1/core/themes/text_styles.dart';
+import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
+import 'package:flutter_application_1/injection_container.dart';
 
 class CardPaymentScreen extends StatefulWidget {
   final Map<String, dynamic> bill;
@@ -27,6 +29,14 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
   bool _isProcessing = false;
   bool _saveCard = false;
   String _cardType = 'Unknown';
+  
+  late final DentalRemoteDataSource _dentalDataSource;
+
+  @override
+  void initState() {
+    super.initState();
+    _dentalDataSource = getIt<DentalRemoteDataSource>();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -570,62 +580,75 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
     return sum % 10 == 0;
   }
 
-  void _processPayment() {
+  void _processPayment() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isProcessing = true;
       });
       
-      // Simulate API call for payment processing
-      _simulatePaymentProcess();
+      try {
+        // Extract bill ID from widget.bill
+        final billId = widget.bill['_id']?.toString() ?? '';
+        if (billId.isEmpty) {
+          throw Exception('Bill ID is missing');
+        }
+        
+        // Extract last 4 digits of card
+        final cardNumber = _cardNumberController.text.replaceAll(' ', '');
+        final last4Digits = cardNumber.length >= 4 
+            ? cardNumber.substring(cardNumber.length - 4) 
+            : cardNumber;
+        
+        // Prepare card details
+        final cardDetails = {
+          'cardType': _cardType,
+          'last4Digits': last4Digits,
+          'cardHolder': _cardHolderController.text.trim(),
+        };
+        
+        // Show processing message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Processing payment...'),
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
+        
+        // Process payment via backend
+        final result = await _dentalDataSource.processPayment(
+          billId,
+          'card',
+          cardDetails,
+        );
+        
+        if (mounted) {
+          setState(() {
+            _isProcessing = false;
+          });
+          
+          if (result['success'] == true) {
+            _showPaymentSuccess(result);
+          } else {
+            _showPaymentFailure(result['message'] ?? 'Payment failed');
+          }
+        }
+      } catch (e) {
+        debugPrint('❌ Payment error: $e');
+        if (mounted) {
+          setState(() {
+            _isProcessing = false;
+          });
+          _showPaymentFailure(e.toString().replaceAll('Exception: ', ''));
+        }
+      }
     }
   }
 
-  void _simulatePaymentProcess() {
-    // Step 1: Validating card
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Validating card details...'),
-            duration: Duration(seconds: 1),
-          ),
-        );
-      }
-    });
-
-    // Step 2: Processing payment
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Processing payment...'),
-            duration: Duration(seconds: 1),
-          ),
-        );
-      }
-    });
-
-    // Step 3: Finalizing transaction
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-        
-        // Simulate random success/failure for demo
-        final randomSuccess = DateTime.now().millisecond % 10 > 2; // 70% success rate
-        
-        if (randomSuccess) {
-          _showPaymentSuccess();
-        } else {
-          _showPaymentFailure();
-        }
-      }
-    });
-  }
-
-  void _showPaymentSuccess() {
+  void _showPaymentSuccess([dynamic paymentResult]) {
+    final transactionId = paymentResult?['payment']?['transactionId']?.toString() ?? _generateTransactionId();
+    
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -661,10 +684,10 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
               ),
               child: Column(
                 children: [
-                  _buildReceiptItem('Transaction ID', _generateTransactionId()),
+                  _buildReceiptItem('Transaction ID', transactionId),
                   _buildReceiptItem('Date', _getCurrentDateTime()),
                   _buildReceiptItem('Card Type', _cardType),
-                  _buildReceiptItem('Card Number', '•••• ${_cardNumberController.text.substring(_cardNumberController.text.length - 4)}'),
+                  _buildReceiptItem('Card Number', '•••• ${_cardNumberController.text.replaceAll(' ', '').substring(_cardNumberController.text.replaceAll(' ', '').length - 4)}'),
                   if (_saveCard) 
                     _buildReceiptItem('Card Saved', 'Yes', isHighlighted: true),
                 ],
@@ -686,7 +709,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
     );
   }
 
-  void _showPaymentFailure() {
+  void _showPaymentFailure([String? errorMessage]) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -714,7 +737,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
             ),
             const SizedBox(height: 5),
             Text(
-              'Please check your card details and try again.',
+              errorMessage ?? 'Please check your card details and try again.',
               style: TextStyles.caption,
               textAlign: TextAlign.center,
             ),
@@ -729,7 +752,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                 children: [
                   _buildReceiptItem('Transaction ID', _generateTransactionId()),
                   _buildReceiptItem('Status', 'Failed'),
-                  _buildReceiptItem('Reason', 'Insufficient funds'),
+                  _buildReceiptItem('Reason', errorMessage ?? 'Payment processing failed'),
                 ],
               ),
             ),

@@ -9,6 +9,10 @@ const DoctorMessages = () => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [conversation, setConversation] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   useEffect(() => {
     fetchMessages();
@@ -61,10 +65,53 @@ const DoctorMessages = () => {
       msg.message.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleSelectPatient = async (patientMsg) => {
+    setSelectedPatient(patientMsg);
+    try {
+      const doctorData = JSON.parse(localStorage.getItem("doctor") || "{}");
+      const response = await axios.get(
+        `http://localhost:4000/api/messages/conversation/${doctorData._id}/${patientMsg.patientId}`
+      );
+      setConversation(response.data || []);
+    } catch (err) {
+      console.error("Error fetching conversation:", err);
+      setConversation([]);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !selectedPatient) return;
+
+    try {
+      setSendingMessage(true);
+      const doctorData = JSON.parse(localStorage.getItem("doctor") || "{}");
+      
+      await axios.post("http://localhost:4000/api/messages/", {
+        senderId: doctorData._id,
+        senderType: "doctor",
+        receiverId: selectedPatient.patientId,
+        receiverType: "patient",
+        message: newMessage.trim(),
+        patientId: selectedPatient.patientId,
+      });
+
+      setNewMessage("");
+      // Refresh conversation
+      await handleSelectPatient(selectedPatient);
+      // Refresh messages list
+      await fetchMessages();
+    } catch (err) {
+      console.error("Error sending message:", err);
+      alert("Failed to send message. Please try again.");
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
   return (
-    <div className="messages-page">
+    <div className="messages-page" style={{ display: "flex" }}>
       <DoctorSidebar />
-      <div className="messages-main-content">
+      <div className="messages-main-content" style={{ flex: selectedPatient ? "1" : "1", width: selectedPatient ? "60%" : "100%" }}>
         <motion.h2
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -124,9 +171,11 @@ const DoctorMessages = () => {
                 transition={{ delay: idx * 0.05 }}
                 className="message-list-item"
                 style={{
-                  backgroundColor: msg.unread ? "#eff6ff" : "white",
-                  borderLeft: msg.unread ? "4px solid #2563eb" : "4px solid transparent",
+                  backgroundColor: msg.unread || (selectedPatient && selectedPatient.id === msg.id) ? "#eff6ff" : "white",
+                  borderLeft: msg.unread || (selectedPatient && selectedPatient.id === msg.id) ? "4px solid #2563eb" : "4px solid transparent",
+                  cursor: "pointer",
                 }}
+                onClick={() => handleSelectPatient(msg)}
               >
                 <div style={{ display: "flex", gap: "1rem", flex: "1" }}>
                   <div
@@ -189,6 +238,159 @@ const DoctorMessages = () => {
           </div>
         )}
       </div>
+
+      {/* Conversation View */}
+      {selectedPatient && (
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="conversation-panel"
+          style={{
+            width: "40%",
+            backgroundColor: "white",
+            borderLeft: "1px solid #e5e7eb",
+            display: "flex",
+            flexDirection: "column",
+            height: "100vh",
+          }}
+        >
+          <div style={{
+            padding: "1.5rem",
+            borderBottom: "1px solid #e5e7eb",
+            display: "flex",
+            alignItems: "center",
+            gap: "1rem",
+          }}>
+            <button
+              onClick={() => setSelectedPatient(null)}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: "1.5rem",
+                cursor: "pointer",
+                color: "#6b7280",
+              }}
+            >
+              ←
+            </button>
+            <div
+              style={{
+                width: "3rem",
+                height: "3rem",
+                borderRadius: "50%",
+                backgroundColor: "#e0f2fe",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "1.25rem",
+                fontWeight: "600",
+                color: "#2563eb",
+              }}
+            >
+              {selectedPatient.sender.charAt(0)}
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: "1.125rem", fontWeight: "600" }}>
+                {selectedPatient.sender}
+              </h3>
+              <p style={{ margin: 0, fontSize: "0.875rem", color: "#6b7280" }}>
+                {selectedPatient.senderEmail}
+              </p>
+            </div>
+          </div>
+
+          <div style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "1.5rem",
+            display: "flex",
+            flexDirection: "column",
+            gap: "1rem",
+          }}>
+            {conversation.map((msg) => {
+              const isDoctor = msg.senderModel === "Doctor";
+              return (
+                <div
+                  key={msg._id}
+                  style={{
+                    alignSelf: isDoctor ? "flex-end" : "flex-start",
+                    maxWidth: "70%",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "0.75rem 1rem",
+                      borderRadius: "1rem",
+                      backgroundColor: isDoctor ? "#2563eb" : "#f3f4f6",
+                      color: isDoctor ? "white" : "#1f2937",
+                    }}
+                  >
+                    <p style={{ margin: 0, fontSize: "0.875rem" }}>{msg.message}</p>
+                    <span style={{
+                      fontSize: "0.75rem",
+                      opacity: 0.7,
+                      display: "block",
+                      marginTop: "0.25rem",
+                    }}>
+                      {new Date(msg.createdAt).toLocaleTimeString("en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{
+            padding: "1.5rem",
+            borderTop: "1px solid #e5e7eb",
+            display: "flex",
+            gap: "0.75rem",
+          }}>
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              placeholder="Type a message..."
+              style={{
+                flex: 1,
+                padding: "0.75rem",
+                border: "1px solid #d1d5db",
+                borderRadius: "0.5rem",
+                fontSize: "0.875rem",
+                outline: "none",
+              }}
+            />
+            <button
+              onClick={handleSendMessage}
+              disabled={!newMessage.trim() || sendingMessage}
+              style={{
+                padding: "0.75rem 1.5rem",
+                backgroundColor: "#2563eb",
+                color: "white",
+                border: "none",
+                borderRadius: "0.5rem",
+                cursor: newMessage.trim() && !sendingMessage ? "pointer" : "not-allowed",
+                opacity: newMessage.trim() && !sendingMessage ? 1 : 0.5,
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+            >
+              <Send size={18} />
+              {sendingMessage ? "Sending..." : "Send"}
+            </button>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 };

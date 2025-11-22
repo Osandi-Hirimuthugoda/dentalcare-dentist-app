@@ -4,7 +4,8 @@ import DoctorSidebar from "../components/DoctorSidebar";
 import { motion } from "framer-motion";
 import { 
   CalendarDays, Users, Stethoscope, Mail, Phone, Briefcase, ArrowRight, 
-  MessageSquare, Clock, CheckCircle, TrendingUp, FileText, BarChart3, Zap
+  MessageSquare, Clock, CheckCircle, TrendingUp, FileText, BarChart3, Zap,
+  DollarSign, CreditCard, Receipt
 } from "lucide-react";
 import axios from "axios";
 
@@ -56,6 +57,15 @@ export default function DoctorDashboard() {
     newPatients: 0,
     pendingAppointments: 0,
   });
+  const [paymentStats, setPaymentStats] = useState({
+    totalBills: 0,
+    paidBills: 0,
+    pendingBills: 0,
+    totalAmount: 0,
+    paidAmount: 0,
+    monthlyAmount: 0,
+  });
+  const [recentPayments, setRecentPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -123,7 +133,11 @@ export default function DoctorDashboard() {
           // Get unread messages count
           let unreadMessagesCount = 0;
           try {
-            const messagesRes = await axios.get(`http://localhost:4000/api/messages/doctor/${doctorId}`);
+            const messagesRes = await axios.get(`http://localhost:4000/api/messages/doctor/${doctorId}`, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+              }
+            });
             unreadMessagesCount = messagesRes.data.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
             
             // Get recent messages (last 3)
@@ -140,6 +154,43 @@ export default function DoctorDashboard() {
             setRecentMessages(recentMessagesList);
           } catch (msgErr) {
             console.error("Error fetching messages:", msgErr);
+          }
+
+          // Get payment statistics
+          try {
+            const paymentStatsRes = await axios.get(`http://localhost:4000/api/bills/doctor/stats`, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+              }
+            });
+            
+            if (paymentStatsRes.data) {
+              setPaymentStats({
+                totalBills: paymentStatsRes.data.totalBills || 0,
+                paidBills: paymentStatsRes.data.paidBills || 0,
+                pendingBills: paymentStatsRes.data.pendingBills || 0,
+                totalAmount: paymentStatsRes.data.totalAmount || 0,
+                paidAmount: paymentStatsRes.data.paidAmount || 0,
+                monthlyAmount: paymentStatsRes.data.monthlyAmount || 0,
+              });
+              
+              // Set recent payments
+              if (paymentStatsRes.data.recentPayments) {
+                setRecentPayments(paymentStatsRes.data.recentPayments.map(payment => ({
+                  id: payment._id,
+                  transactionId: payment.transactionId,
+                  patientName: payment.patient?.name || 'Unknown Patient',
+                  amount: payment.amount,
+                  method: payment.paymentMethod,
+                  status: payment.status,
+                  date: new Date(payment.createdAt).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }),
+                  time: new Date(payment.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+                  billNumber: payment.bill?.billNumber,
+                })));
+              }
+            }
+          } catch (paymentErr) {
+            console.error("Error fetching payment stats:", paymentErr);
           }
 
           setStatsData([
@@ -184,6 +235,20 @@ export default function DoctorDashboard() {
               icon: TrendingUp, 
               iconClass: statCardStyles.iconPurple,
               linkTo: "/doctor/patients"
+            },
+            { 
+              title: "Paid Bills", 
+              count: paymentStats.paidBills || 0, 
+              icon: Receipt, 
+              iconClass: statCardStyles.iconGreen,
+              linkTo: null
+            },
+            { 
+              title: "Pending Bills", 
+              count: paymentStats.pendingBills || 0, 
+              icon: Clock, 
+              iconClass: statCardStyles.iconPurple,
+              linkTo: null
             },
           ]);
 
@@ -381,6 +446,90 @@ export default function DoctorDashboard() {
             </div>
           </motion.section>
         </div>
+
+        {/* Payment Statistics Section */}
+        {(paymentStats.totalBills > 0 || recentPayments.length > 0) && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className={styles.recentMessagesSection}
+            style={{ marginBottom: "2rem" }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+              <h2 className={styles.sectionTitle}>
+                <DollarSign size={24} style={{ marginRight: "0.5rem", color: "#10b981" }} />
+                Payment Statistics
+              </h2>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+              <div style={{ padding: "1rem", backgroundColor: "#f9fafb", borderRadius: "0.5rem", border: "1px solid #e5e7eb" }}>
+                <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>Total Amount</div>
+                <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#1f2937" }}>
+                  LKR {paymentStats.totalAmount?.toLocaleString() || 0}
+                </div>
+              </div>
+              <div style={{ padding: "1rem", backgroundColor: "#f0fdf4", borderRadius: "0.5rem", border: "1px solid #86efac" }}>
+                <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>Paid Amount</div>
+                <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#10b981" }}>
+                  LKR {paymentStats.paidAmount?.toLocaleString() || 0}
+                </div>
+              </div>
+              <div style={{ padding: "1rem", backgroundColor: "#fffbeb", borderRadius: "0.5rem", border: "1px solid #fde68a" }}>
+                <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>Pending Amount</div>
+                <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#f59e0b" }}>
+                  LKR {paymentStats.pendingAmount?.toLocaleString() || 0}
+                </div>
+              </div>
+              <div style={{ padding: "1rem", backgroundColor: "#eff6ff", borderRadius: "0.5rem", border: "1px solid #93c5fd" }}>
+                <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.5rem" }}>This Month</div>
+                <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#2563eb" }}>
+                  LKR {paymentStats.monthlyAmount?.toLocaleString() || 0}
+                </div>
+              </div>
+            </div>
+            {recentPayments.length > 0 && (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                  <h3 style={{ fontSize: "1rem", fontWeight: "600", color: "#1f2937" }}>Recent Payments</h3>
+                </div>
+                <div className={styles.messagesList}>
+                  {recentPayments.slice(0, 5).map((payment) => (
+                    <motion.div
+                      key={payment.id}
+                      className={styles.messageItem}
+                      whileHover={{ backgroundColor: "#f9fafb", paddingLeft: "1rem" }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <div className={styles.messageHeader}>
+                        <div className={styles.patientAvatar} style={{ width: "2rem", height: "2rem", fontSize: "0.9rem", backgroundColor: "#10b981" }}>
+                          <DollarSign size={16} style={{ color: "white" }} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span className={styles.patientName} style={{ fontSize: "0.95rem" }}>{payment.patientName}</span>
+                            <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#10b981" }}>
+                              LKR {payment.amount?.toLocaleString() || 0}
+                            </span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.25rem" }}>
+                            <p style={{ fontSize: "0.75rem", color: "#6b7280" }}>
+                              {payment.billNumber || payment.transactionId} • {payment.method || 'card'}
+                            </p>
+                            <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{payment.date} {payment.time}</span>
+                          </div>
+                        </div>
+                        {payment.status === 'completed' && (
+                          <CheckCircle size={20} style={{ color: "#10b981", marginLeft: "0.5rem" }} />
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </>
+            )}
+          </motion.section>
+        )}
 
         {/* Recent Messages Section */}
         {recentMessages.length > 0 && (

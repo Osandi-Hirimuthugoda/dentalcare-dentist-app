@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import AdminSidebar from "../components/AdminSidebar";
 import axios from "axios";
-import { User, Lock, Briefcase, CheckCircle, AlertCircle } from "lucide-react";
+import { User, Lock, Briefcase, CheckCircle, AlertCircle, Copy, Mail, Key, X } from "lucide-react";
 import PasswordInput from "../components/PasswordInput";
 import styles from "../styles/DoctorDashboard.module.css";
 import formStyles from "../styles/AdminRegisterDoctor.module.css";
@@ -25,6 +25,7 @@ export default function AdminRegisterDoctor() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [registeredCredentials, setRegisteredCredentials] = useState(null); // Store credentials for display
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -83,6 +84,11 @@ export default function AdminRegisterDoctor() {
       
       if (response.data.message === "Doctor registered successfully") {
         setSuccess(true);
+        
+        // Store credentials temporarily for display
+        const registeredEmail = formData.email;
+        const registeredPassword = formData.password;
+        
         setFormData({
           fullName: "",
           email: "",
@@ -95,10 +101,12 @@ export default function AdminRegisterDoctor() {
           experience: "",
         });
         
-        setTimeout(() => {
-          setSuccess(false);
-          navigate("/admin/doctors");
-        }, 2000);
+        // Store credentials for display in modal (modal will show automatically)
+        setRegisteredCredentials({
+          email: registeredEmail,
+          password: registeredPassword,
+          fullName: response.data.doctor?.fullName || formData.fullName
+        });
       }
     } catch (error) {
       setErrors({ submit: error.response?.data?.message || "Failed to register doctor. Please try again." });
@@ -137,7 +145,106 @@ export default function AdminRegisterDoctor() {
           transition={{ duration: 0.5 }}
           className={formStyles.formContainer}
         >
-          {success && (
+          {success && registeredCredentials && (
+            <div className={formStyles.credentialsModal}>
+              <div className={formStyles.credentialsCard}>
+                <div className={formStyles.credentialsHeader}>
+                  <CheckCircle size={24} style={{ color: "#10b981" }} />
+                  <h3>Doctor Registered Successfully!</h3>
+                  <button 
+                    onClick={() => {
+                      setSuccess(false);
+                      setRegisteredCredentials(null);
+                      navigate("/admin/doctors");
+                    }}
+                    className={formStyles.closeButton}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                
+                <div className={formStyles.credentialsBody}>
+                  <p style={{ marginBottom: "1rem", color: "#6b7280" }}>
+                    Please share these login credentials with the doctor:
+                  </p>
+                  
+                  <div className={formStyles.credentialItem}>
+                    <div className={formStyles.credentialLabel}>
+                      <Mail size={18} />
+                      <span>Email Address</span>
+                    </div>
+                    <div className={formStyles.credentialValue}>
+                      <code>{registeredCredentials.email}</code>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(registeredCredentials.email);
+                          alert("Email copied to clipboard!");
+                        }}
+                        className={formStyles.copyButton}
+                        title="Copy email"
+                      >
+                        <Copy size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className={formStyles.credentialItem}>
+                    <div className={formStyles.credentialLabel}>
+                      <Key size={18} />
+                      <span>Password</span>
+                    </div>
+                    <div className={formStyles.credentialValue}>
+                      <code>{registeredCredentials.password}</code>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(registeredCredentials.password);
+                          alert("Password copied to clipboard!");
+                        }}
+                        className={formStyles.copyButton}
+                        title="Copy password"
+                      >
+                        <Copy size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className={formStyles.credentialsWarning}>
+                    <AlertCircle size={18} />
+                    <p>
+                      <strong>Important:</strong> These credentials are only shown once. 
+                      Please save them or share them with the doctor immediately.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className={formStyles.credentialsFooter}>
+                  <button
+                    onClick={() => {
+                      const text = `Login Credentials for ${registeredCredentials.email}:\nEmail: ${registeredCredentials.email}\nPassword: ${registeredCredentials.password}`;
+                      navigator.clipboard.writeText(text);
+                      alert("All credentials copied to clipboard!");
+                    }}
+                    className={formStyles.copyAllButton}
+                  >
+                    <Copy size={18} />
+                    Copy All Credentials
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSuccess(false);
+                      setRegisteredCredentials(null);
+                      navigate("/admin/doctors");
+                    }}
+                    className={formStyles.continueButton}
+                  >
+                    Continue
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {success && !registeredCredentials && (
             <div className={formStyles.successMessage}>
               <CheckCircle size={20} />
               Doctor registered successfully! Redirecting...

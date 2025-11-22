@@ -1,0 +1,40 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "dentalcare",
+    "appoinments",
+    "splashscreen",
+    "teleconsult",
+    "orthodont",
+    "endodont",
+    "prosthodont",
+    "periodont",
+    "appt",
+    "prefs",
+    "unav",
+    "sched",
+    "ampm",
+    "findstr",
+    "taskkill",
+    "EADDRINUSE",
+    "SLMC",
+    "MBBS",
+    "FRCS",
+    "Implantologist",
+    "newpassword",
+    "Csvg",
+    "Cpath",
+    "Skia",
+    "usermanual"
+  ],
+  "ignorePaths": [
+    "node_modules",
+    "build",
+    "dist",
+    ".git",
+    "*.min.js",
+    "*.min.css"
+  ]
+}
+

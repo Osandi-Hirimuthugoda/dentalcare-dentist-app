@@ -19,6 +19,7 @@ class RouteNames {
   static const String myTreatments = '/my-treatments';
   static const String myBills = '/my-bills';
   static const String findDentists = '/find-dentists';
+  static const String messages = '/messages';
   
   // Payment
   static const String cardPayment = '/card-payment';

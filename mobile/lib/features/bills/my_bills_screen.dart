@@ -6,6 +6,8 @@ import 'package:flutter_application_1/core/themes/text_styles.dart';
 import 'package:flutter_application_1/features/widgets/bill_item.dart';
 import 'package:flutter_application_1/features/widgets/payment_summary.dart';
 import 'package:flutter_application_1/features/widgets/quick_payment_methods.dart';
+import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
+import 'package:flutter_application_1/injection_container.dart';
 
 class MyBillsScreen extends StatefulWidget {
   const MyBillsScreen({super.key});
@@ -16,69 +18,107 @@ class MyBillsScreen extends StatefulWidget {
 
 class _MyBillsScreenState extends State<MyBillsScreen> {
   String _selectedFilter = 'All';
-  final List<Map<String, dynamic>> _allBills = [
-    {
-      'id': 'INV-00123',
-      'treatment': 'Dental Checkup',
-      'date': 'Dec 15, 2023',
-      'amount': 'LKR 2,500',
-      'status': 'Paid',
-      'color': Colors.green,
-      'icon': Icons.receipt,
-      'dueDate': 'Dec 15, 2023',
-    },
-    {
-      'id': 'INV-00122',
-      'treatment': 'Teeth Cleaning',
-      'date': 'Nov 20, 2023',
-      'amount': 'LKR 3,000',
-      'status': 'Paid',
-      'color': Colors.green,
-      'icon': Icons.receipt,
-      'dueDate': 'Nov 20, 2023',
-    },
-    {
-      'id': 'INV-00124',
-      'treatment': 'Braces Adjustment',
-      'date': 'Jan 10, 2024',
-      'amount': 'LKR 5,000',
-      'status': 'Pending',
-      'color': Colors.orange,
-      'icon': Icons.pending_actions,
-      'dueDate': 'Jan 25, 2024',
-    },
-    {
-      'id': 'INV-00125',
-      'treatment': 'Teeth Whitening',
-      'date': 'Feb 15, 2024',
-      'amount': 'LKR 8,000',
-      'status': 'Upcoming',
-      'color': Colors.blue,
-      'icon': Icons.schedule,
-      'dueDate': 'Feb 15, 2024',
-    },
-  ];
+  List<Map<String, dynamic>> _allBills = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  late final DentalRemoteDataSource _dentalDataSource;
+
+  @override
+  void initState() {
+    super.initState();
+    _dentalDataSource = getIt<DentalRemoteDataSource>();
+    _loadBills();
+  }
+
+  Future<void> _loadBills() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final bills = await _dentalDataSource.getBills();
+      debugPrint('📋 Bills loaded: ${bills.length} bills');
+      
+      setState(() {
+        _allBills = bills.map<Map<String, dynamic>>((bill) {
+          // Map status to color and icon
+          Color statusColor = Colors.grey;
+          IconData icon = Icons.receipt;
+          
+          final status = bill['status']?.toString().toLowerCase() ?? 'pending';
+          if (status == 'paid') {
+            statusColor = Colors.green;
+            icon = Icons.receipt;
+          } else if (status == 'pending') {
+            statusColor = Colors.orange;
+            icon = Icons.pending_actions;
+          } else if (status == 'overdue') {
+            statusColor = Colors.red;
+            icon = Icons.error;
+          } else {
+            statusColor = Colors.blue;
+            icon = Icons.schedule;
+          }
+          
+          return {
+            'id': bill['id']?.toString() ?? bill['_id']?.toString() ?? '',
+            'treatment': bill['treatment']?.toString() ?? 'Treatment',
+            'date': bill['date']?.toString() ?? '',
+            'amount': bill['amount']?.toString() ?? 'LKR 0',
+            'status': bill['status']?.toString() ?? 'Pending',
+            'color': statusColor,
+            'icon': icon,
+            'dueDate': bill['dueDate']?.toString() ?? '',
+            '_id': bill['_id']?.toString() ?? '',
+          };
+        }).toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('❌ Error loading bills: $e');
+      setState(() {
+        _errorMessage = 'Failed to load bills. Please try again.';
+        _isLoading = false;
+        _allBills = [];
+      });
+    }
+  }
 
   List<Map<String, dynamic>> get _filteredBills {
     if (_selectedFilter == 'All') return _allBills;
-    return _allBills.where((bill) => bill['status'] == _selectedFilter).toList();
+    
+    // Case-insensitive status comparison
+    final filterStatus = _selectedFilter.toLowerCase();
+    return _allBills.where((bill) {
+      final billStatus = bill['status']?.toString().toLowerCase() ?? '';
+      return billStatus == filterStatus;
+    }).toList();
   }
 
   double get _totalPaid {
     return _allBills
-        .where((bill) => bill['status'] == 'Paid')
+        .where((bill) => bill['status']?.toString().toLowerCase() == 'paid')
         .fold(0, (sum, bill) => sum + _parseAmount(bill['amount']));
   }
 
   double get _totalPending {
     return _allBills
-        .where((bill) => bill['status'] == 'Pending')
+        .where((bill) {
+          final status = bill['status']?.toString().toLowerCase() ?? '';
+          return status == 'pending' || status == 'overdue';
+        })
         .fold(0, (sum, bill) => sum + _parseAmount(bill['amount']));
   }
 
   double get _totalDue {
+    // Total due includes pending and overdue bills
     return _allBills
-        .where((bill) => bill['status'] == 'Upcoming')
+        .where((bill) {
+          final status = bill['status']?.toString().toLowerCase() ?? '';
+          return status == 'pending' || status == 'overdue';
+        })
         .fold(0, (sum, bill) => sum + _parseAmount(bill['amount']));
   }
 
@@ -312,14 +352,8 @@ class _MyBillsScreenState extends State<MyBillsScreen> {
   }
 
   void _updateBillStatus(Map<String, dynamic> bill) {
-    setState(() {
-      int index = _allBills.indexWhere((b) => b['id'] == bill['id']);
-      if (index != -1) {
-        _allBills[index]['status'] = 'Paid';
-        _allBills[index]['color'] = Colors.green;
-        _allBills[index]['icon'] = Icons.receipt;
-      }
-    });
+    // Reload bills from backend after payment
+    _loadBills();
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -355,31 +389,62 @@ class _MyBillsScreenState extends State<MyBillsScreen> {
               const PopupMenuItem(value: 'All', child: Text('All Bills')),
               const PopupMenuItem(value: 'Paid', child: Text('Paid')),
               const PopupMenuItem(value: 'Pending', child: Text('Pending')),
-              const PopupMenuItem(value: 'Upcoming', child: Text('Upcoming')),
+              const PopupMenuItem(value: 'Overdue', child: Text('Overdue')),
             ],
             icon: const Icon(Icons.filter_list),
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          PaymentSummary(
-            totalPaid: _totalPaid,
-            totalPending: _totalPending,
-            totalDue: _totalDue,
-          ),
-          const SizedBox(height: 20),
-          if (_selectedFilter != 'All') _buildFilterChips(),
-          if (_selectedFilter != 'All') const SizedBox(height: 10),
-          _buildRecentBills(),
-          const SizedBox(height: 20),
-          QuickPaymentMethods(
-            onViewAllMethods: _navigateToPaymentMethods,
-            onAddNewMethod: _navigateToPaymentMethods,
-          ),
-        ],
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 64, color: AppColors.grey300),
+                      const SizedBox(height: 16),
+                      Text(
+                        _errorMessage!,
+                        style: TextStyles.bodyMedium.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadBills,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.white,
+                        ),
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadBills,
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      PaymentSummary(
+                        totalPaid: _totalPaid,
+                        totalPending: _totalPending,
+                        totalDue: _totalDue,
+                      ),
+                      const SizedBox(height: 20),
+                      if (_selectedFilter != 'All') _buildFilterChips(),
+                      if (_selectedFilter != 'All') const SizedBox(height: 10),
+                      _buildRecentBills(),
+                      const SizedBox(height: 20),
+                      QuickPaymentMethods(
+                        onViewAllMethods: _navigateToPaymentMethods,
+                        onAddNewMethod: _navigateToPaymentMethods,
+                      ),
+                    ],
+                  ),
+                ),
     );
   }
 
