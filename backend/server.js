@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./src/config/db.js";
 import authRoutes from "./src/routes/authRoutes.js";
+import doctorRoutes from "./src/routes/doctorRoutes.js";
+import appointmentRoutes from "./src/routes/appointmentRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -28,6 +30,12 @@ app.get("/", (req, res) => {
 
 // Authentication routes
 app.use("/api/auth", authRoutes);
+
+// Doctor routes (for mobile app to get list of doctors)
+app.use("/api/doctors", doctorRoutes);
+
+// Appointment routes (for booking appointments)
+app.use("/api/appointments", appointmentRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

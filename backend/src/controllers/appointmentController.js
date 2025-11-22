@@ -1,5 +1,6 @@
 import Appointment from "../models/Appointment.js";
 import Patient from "../models/Patient.js";
+import Doctor from "../models/doctorModel.js";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "secretkey";
@@ -88,16 +89,26 @@ export const createAppointment = async (req, res) => {
       return res.status(400).json({ message: "Start time is required" });
     }
     
+    if (!req.body.doctor) {
+      return res.status(400).json({ message: "Doctor ID is required" });
+    }
+    
     // Verify patient exists
     const patient = await Patient.findById(patientId);
     if (!patient) {
       return res.status(404).json({ message: "Patient not found" });
     }
     
+    // Verify doctor exists
+    const doctor = await Doctor.findById(req.body.doctor);
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
+    
     // Create appointment
     const appointmentData = {
       patient: patientId,
-      doctor: req.body.doctor || null,
+      doctor: req.body.doctor, // Doctor ID is now required
       startTime: new Date(req.body.startTime),
       endTime: req.body.endTime ? new Date(req.body.endTime) : null,
       status: req.body.status || "pending",
