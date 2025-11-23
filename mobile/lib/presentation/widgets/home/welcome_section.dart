@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/domain/repositories/auth_repository.dart';
 import 'package:flutter_application_1/injection_container.dart' as di;
+import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
+import 'package:flutter_application_1/injection_container.dart';
+import 'package:intl/intl.dart';
 
 class WelcomeSection extends StatefulWidget {
   const WelcomeSection({super.key});
@@ -12,11 +15,18 @@ class WelcomeSection extends StatefulWidget {
 class _WelcomeSectionState extends State<WelcomeSection> {
   String _userName = "User";
   bool _isLoading = true;
+  String? _nextAppointmentDate;
+  String? _nextAppointmentTime;
+  bool _hasNextAppointment = false;
+
+  late final DentalRemoteDataSource _dentalDataSource;
 
   @override
   void initState() {
     super.initState();
+    _dentalDataSource = getIt<DentalRemoteDataSource>();
     _loadUserData();
+    _loadNextAppointment();
   }
 
   Future<void> _loadUserData() async {
@@ -48,6 +58,52 @@ class _WelcomeSectionState extends State<WelcomeSection> {
         setState(() {
           _userName = "User";
           _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadNextAppointment() async {
+    try {
+      final appointments = await _dentalDataSource.getAppointments();
+      
+      // Find the next upcoming appointment
+      final now = DateTime.now();
+      DateTime? nextAppointmentTime;
+      
+      for (var apt in appointments) {
+        final status = apt['status'] as String? ?? '';
+        if (status != 'pending' && status != 'confirmed') continue;
+        
+        final startTime = apt['startTime'] != null 
+            ? DateTime.parse(apt['startTime'].toString()).toLocal()
+            : null;
+        
+        if (startTime != null && startTime.isAfter(now)) {
+          if (nextAppointmentTime == null || startTime.isBefore(nextAppointmentTime)) {
+            nextAppointmentTime = startTime;
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          if (nextAppointmentTime != null) {
+            final dateFormat = DateFormat('MMM d, yyyy');
+            final timeFormat = DateFormat('h:mm a');
+            _nextAppointmentDate = dateFormat.format(nextAppointmentTime);
+            _nextAppointmentTime = timeFormat.format(nextAppointmentTime);
+            _hasNextAppointment = true;
+          } else {
+            _hasNextAppointment = false;
+          }
+        });
+      }
+    } catch (e) {
+      // Silently fail - don't show error for next appointment
+      if (mounted) {
+        setState(() {
+          _hasNextAppointment = false;
         });
       }
     }
@@ -116,11 +172,11 @@ class _WelcomeSectionState extends State<WelcomeSection> {
               children: [
                 const Icon(Icons.health_and_safety, color: Colors.white, size: 20),
                 const SizedBox(width: 10),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         "Your Dental Health",
                         style: TextStyle(
                           color: Colors.white70,
@@ -128,8 +184,10 @@ class _WelcomeSectionState extends State<WelcomeSection> {
                         ),
                       ),
                       Text(
-                        "Next Checkup: Dec 15, 2:00 PM",
-                        style: TextStyle(
+                        _hasNextAppointment && _nextAppointmentDate != null && _nextAppointmentTime != null
+                            ? "Next Checkup: $_nextAppointmentDate, $_nextAppointmentTime"
+                            : "No upcoming appointments",
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
