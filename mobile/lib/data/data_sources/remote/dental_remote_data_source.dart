@@ -23,6 +23,8 @@ abstract class DentalRemoteDataSource {
   Future<dynamic> createReview(String doctorId, String? appointmentId, int rating, String? comment); // Create a review
   Future<List<dynamic>> getDoctorReviews(String doctorId); // Get reviews for a doctor
   Future<List<dynamic>> getPatientReviews(); // Get patient's reviews
+  Future<List<dynamic>> getAnnouncements(); // Get announcements from doctors
+  Future<void> markMessageAsRead(String messageId); // Mark a message as read
 }
 
 class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
@@ -285,22 +287,31 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
   Future<List<dynamic>> getMessages() async {
     try {
       final headers = await _getHeaders();
+      debugPrint('📥 Fetching messages from: ${AppConstants.baseUrl}/messages/patient/messages');
+      
       final response = await client.get(
         Uri.parse('${AppConstants.baseUrl}/messages/patient/messages'),
         headers: headers,
       );
 
+      debugPrint('📥 Messages response status: ${response.statusCode}');
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data is List ? data : (data['conversations'] ?? []);
+        final messages = data is List ? data : (data['conversations'] ?? []);
+        debugPrint('✅ Received ${messages.length} message conversations');
+        return messages;
       } else {
+        final errorBody = jsonDecode(response.body);
+        debugPrint('❌ Messages API error: ${errorBody['message']}');
         throw ServerException('Failed to fetch messages', response.statusCode);
       }
     } catch (e) {
+      debugPrint('❌ getMessages exception: $e');
       if (e is ServerException) {
         rethrow;
       }
-      throw NetworkException('Network error occurred');
+      throw NetworkException('Network error occurred: $e');
     }
   }
 
@@ -541,6 +552,49 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
         rethrow;
       }
       throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getAnnouncements() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.get(
+        Uri.parse('${AppConstants.baseUrl}/messages/patient/announcements'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        debugPrint('📢 Announcements loaded: ${data is List ? data.length : 0}');
+        return data is List ? data : [];
+      } else {
+        throw ServerException('Failed to fetch announcements', response.statusCode);
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching announcements: $e');
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<void> markMessageAsRead(String messageId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.put(
+        Uri.parse('${AppConstants.baseUrl}/messages/$messageId/read'),
+        headers: headers,
+      );
+
+      if (response.statusCode != 200) {
+        throw ServerException('Failed to mark message as read', response.statusCode);
+      }
+    } catch (e) {
+      debugPrint('❌ Error marking message as read: $e');
+      // Don't throw - this is not critical
     }
   }
 }

@@ -10,13 +10,22 @@ const DoctorMessages = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPatient, setSelectedPatient] = useState(null);
+  const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [conversation, setConversation] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [activeTab, setActiveTab] = useState("patients"); // 'patients' or 'doctors'
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
+  const [announcementText, setAnnouncementText] = useState("");
+  const [announcementType, setAnnouncementType] = useState("general");
+  const [allDoctors, setAllDoctors] = useState([]);
 
   useEffect(() => {
     fetchMessages();
-  }, []);
+    if (activeTab === "doctors") {
+      fetchAllDoctors();
+    }
+  }, [activeTab]);
 
   const fetchMessages = async () => {
     try {
@@ -28,25 +37,29 @@ const DoctorMessages = () => {
         return;
       }
 
-      const response = await axios.get(`http://localhost:4000/api/messages/doctor/${doctorData._id}`);
+      const type = activeTab === "patients" ? "patients" : activeTab === "doctors" ? "doctors" : "all";
+      const response = await axios.get(`http://localhost:4000/api/messages/doctor/${doctorData._id}?type=${type}`);
       
       // Transform the response to match the expected format
       const transformedMessages = response.data.map(conv => ({
-        id: conv.patientId,
-        sender: conv.patientName,
-        senderEmail: conv.patientEmail,
+        id: conv.id || conv.patientId,
+        sender: conv.name || conv.patientName,
+        senderEmail: conv.email || conv.patientEmail,
         message: conv.lastMessage,
         time: new Date(conv.lastMessageTime).toLocaleTimeString("en-US", {
           hour: "2-digit",
           minute: "2-digit",
+          timeZone: "Asia/Colombo"
         }),
         date: new Date(conv.lastMessageTime).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
+          timeZone: "Asia/Colombo"
         }),
         unread: conv.unreadCount > 0,
         unreadCount: conv.unreadCount,
-        patientId: conv.patientId,
+        patientId: conv.id || conv.patientId,
+        type: conv.type || "patient", // 'patient' or 'doctor'
       }));
 
       setMessages(transformedMessages);
@@ -59,6 +72,16 @@ const DoctorMessages = () => {
     }
   };
 
+  const fetchAllDoctors = async () => {
+    try {
+      const response = await axios.get(`http://localhost:4000/api/messages/doctors`);
+      setAllDoctors(response.data || []);
+    } catch (err) {
+      console.error("Error fetching doctors:", err);
+      setAllDoctors([]);
+    }
+  };
+
   const filteredMessages = messages.filter(
     (msg) =>
       msg.sender.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -66,12 +89,27 @@ const DoctorMessages = () => {
   );
 
   const handleSelectPatient = async (patientMsg) => {
-    setSelectedPatient(patientMsg);
+    if (patientMsg.type === "doctor") {
+      setSelectedDoctor(patientMsg);
+      setSelectedPatient(null);
+    } else {
+      setSelectedPatient(patientMsg);
+      setSelectedDoctor(null);
+    }
+    
     try {
       const doctorData = JSON.parse(localStorage.getItem("doctor") || "{}");
-      const response = await axios.get(
-        `http://localhost:4000/api/messages/conversation/${doctorData._id}/${patientMsg.patientId}`
-      );
+      let response;
+      
+      if (patientMsg.type === "doctor") {
+        response = await axios.get(
+          `http://localhost:4000/api/messages/conversation/doctors/${doctorData._id}/${patientMsg.patientId}`
+        );
+      } else {
+        response = await axios.get(
+          `http://localhost:4000/api/messages/conversation/${doctorData._id}/${patientMsg.patientId}`
+        );
+      }
       setConversation(response.data || []);
     } catch (err) {
       console.error("Error fetching conversation:", err);
@@ -80,24 +118,27 @@ const DoctorMessages = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedPatient) return;
+    const currentSelection = selectedPatient || selectedDoctor;
+    if (!newMessage.trim() || !currentSelection) return;
 
     try {
       setSendingMessage(true);
       const doctorData = JSON.parse(localStorage.getItem("doctor") || "{}");
       
+      const receiverType = currentSelection.type === "doctor" ? "doctor" : "patient";
+      
       await axios.post("http://localhost:4000/api/messages/", {
         senderId: doctorData._id,
         senderType: "doctor",
-        receiverId: selectedPatient.patientId,
-        receiverType: "patient",
+        receiverId: currentSelection.patientId,
+        receiverType: receiverType,
         message: newMessage.trim(),
-        patientId: selectedPatient.patientId,
+        patientId: currentSelection.type === "patient" ? currentSelection.patientId : null,
       });
 
       setNewMessage("");
       // Refresh conversation
-      await handleSelectPatient(selectedPatient);
+      await handleSelectPatient(currentSelection);
       // Refresh messages list
       await fetchMessages();
     } catch (err) {
@@ -108,18 +149,113 @@ const DoctorMessages = () => {
     }
   };
 
+  const handleSendAnnouncement = async () => {
+    if (!announcementText.trim()) {
+      alert("Please enter an announcement message.");
+      return;
+    }
+
+    try {
+      setSendingMessage(true);
+      const doctorData = JSON.parse(localStorage.getItem("doctor") || "{}");
+      
+      await axios.post("http://localhost:4000/api/messages/", {
+        senderId: doctorData._id,
+        senderType: "doctor",
+        message: announcementText.trim(),
+        isAnnouncement: true,
+        announcementType: announcementType,
+      });
+
+      alert("Announcement sent to all your patients!");
+      setAnnouncementText("");
+      setShowAnnouncementModal(false);
+      await fetchMessages();
+    } catch (err) {
+      console.error("Error sending announcement:", err);
+      alert("Failed to send announcement. Please try again.");
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
   return (
     <div className="messages-page" style={{ display: "flex" }}>
       <DoctorSidebar />
       <div className="messages-main-content" style={{ flex: selectedPatient ? "1" : "1", width: selectedPatient ? "60%" : "100%" }}>
-        <motion.h2
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="messages-page-title"
-        >
-          <MessageSquare size={28} style={{ marginRight: "0.5rem", color: "#2563eb" }} />
-          Messages
-        </motion.h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+          <motion.h2
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="messages-page-title"
+            style={{ margin: 0 }}
+          >
+            <MessageSquare size={28} style={{ marginRight: "0.5rem", color: "#2563eb" }} />
+            Messages
+          </motion.h2>
+          {activeTab === "patients" && (
+            <button
+              onClick={() => setShowAnnouncementModal(true)}
+              style={{
+                padding: "0.5rem 1rem",
+                backgroundColor: "#10b981",
+                color: "white",
+                border: "none",
+                borderRadius: "0.5rem",
+                cursor: "pointer",
+                fontSize: "0.875rem",
+                fontWeight: "600",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+            >
+              📢 Send Announcement
+            </button>
+          )}
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem", borderBottom: "2px solid #e5e7eb" }}>
+          <button
+            onClick={() => {
+              setActiveTab("patients");
+              setSelectedPatient(null);
+              setSelectedDoctor(null);
+            }}
+            style={{
+              padding: "0.75rem 1.5rem",
+              border: "none",
+              background: "none",
+              borderBottom: activeTab === "patients" ? "2px solid #2563eb" : "2px solid transparent",
+              color: activeTab === "patients" ? "#2563eb" : "#6b7280",
+              fontWeight: activeTab === "patients" ? "600" : "400",
+              cursor: "pointer",
+              marginBottom: "-2px",
+            }}
+          >
+            Patients
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("doctors");
+              setSelectedPatient(null);
+              setSelectedDoctor(null);
+            }}
+            style={{
+              padding: "0.75rem 1.5rem",
+              border: "none",
+              background: "none",
+              borderBottom: activeTab === "doctors" ? "2px solid #2563eb" : "2px solid transparent",
+              color: activeTab === "doctors" ? "#2563eb" : "#6b7280",
+              fontWeight: activeTab === "doctors" ? "600" : "400",
+              cursor: "pointer",
+              marginBottom: "-2px",
+            }}
+          >
+            Doctors
+          </button>
+        </div>
 
         {/* Search Bar */}
         <motion.div
@@ -239,8 +375,97 @@ const DoctorMessages = () => {
         )}
       </div>
 
+      {/* Announcement Modal */}
+      {showAnnouncementModal && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
+        }}>
+          <div style={{
+            backgroundColor: "white",
+            padding: "2rem",
+            borderRadius: "0.75rem",
+            width: "90%",
+            maxWidth: "500px",
+          }}>
+            <h3 style={{ marginTop: 0 }}>Send Announcement to All Patients</h3>
+            <select
+              value={announcementType}
+              onChange={(e) => setAnnouncementType(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                marginBottom: "1rem",
+                border: "1px solid #d1d5db",
+                borderRadius: "0.5rem",
+              }}
+            >
+              <option value="general">General</option>
+              <option value="appointment">Appointment</option>
+              <option value="important">Important</option>
+              <option value="reminder">Reminder</option>
+            </select>
+            <textarea
+              value={announcementText}
+              onChange={(e) => setAnnouncementText(e.target.value)}
+              placeholder="Enter your announcement message..."
+              rows={5}
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                marginBottom: "1rem",
+                border: "1px solid #d1d5db",
+                borderRadius: "0.5rem",
+                resize: "vertical",
+              }}
+            />
+            <div style={{ display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
+              <button
+                onClick={() => {
+                  setShowAnnouncementModal(false);
+                  setAnnouncementText("");
+                }}
+                style={{
+                  padding: "0.75rem 1.5rem",
+                  backgroundColor: "#e5e7eb",
+                  color: "#1f2937",
+                  border: "none",
+                  borderRadius: "0.5rem",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendAnnouncement}
+                disabled={sendingMessage || !announcementText.trim()}
+                style={{
+                  padding: "0.75rem 1.5rem",
+                  backgroundColor: "#10b981",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "0.5rem",
+                  cursor: sendingMessage || !announcementText.trim() ? "not-allowed" : "pointer",
+                  opacity: sendingMessage || !announcementText.trim() ? 0.5 : 1,
+                }}
+              >
+                {sendingMessage ? "Sending..." : "Send Announcement"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Conversation View */}
-      {selectedPatient && (
+      {(selectedPatient || selectedDoctor) && (
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -262,7 +487,10 @@ const DoctorMessages = () => {
             gap: "1rem",
           }}>
             <button
-              onClick={() => setSelectedPatient(null)}
+              onClick={() => {
+                setSelectedPatient(null);
+                setSelectedDoctor(null);
+              }}
               style={{
                 background: "none",
                 border: "none",
@@ -287,14 +515,14 @@ const DoctorMessages = () => {
                 color: "#2563eb",
               }}
             >
-              {selectedPatient.sender.charAt(0)}
+              {(selectedPatient || selectedDoctor)?.sender?.charAt(0) || "?"}
             </div>
             <div>
               <h3 style={{ margin: 0, fontSize: "1.125rem", fontWeight: "600" }}>
-                {selectedPatient.sender}
+                {(selectedPatient || selectedDoctor)?.sender || "Unknown"}
               </h3>
               <p style={{ margin: 0, fontSize: "0.875rem", color: "#6b7280" }}>
-                {selectedPatient.senderEmail}
+                {(selectedPatient || selectedDoctor)?.senderEmail || ""}
               </p>
             </div>
           </div>
@@ -335,6 +563,7 @@ const DoctorMessages = () => {
                       {new Date(msg.createdAt).toLocaleTimeString("en-US", {
                         hour: "2-digit",
                         minute: "2-digit",
+                        timeZone: "Asia/Colombo"
                       })}
                     </span>
                   </div>
@@ -359,7 +588,7 @@ const DoctorMessages = () => {
                   handleSendMessage();
                 }
               }}
-              placeholder="Type a message..."
+              placeholder={`Type a message to ${(selectedPatient || selectedDoctor)?.sender || "..."}...`}
               style={{
                 flex: 1,
                 padding: "0.75rem",
@@ -371,15 +600,15 @@ const DoctorMessages = () => {
             />
             <button
               onClick={handleSendMessage}
-              disabled={!newMessage.trim() || sendingMessage}
+              disabled={!newMessage.trim() || sendingMessage || (!selectedPatient && !selectedDoctor)}
               style={{
                 padding: "0.75rem 1.5rem",
                 backgroundColor: "#2563eb",
                 color: "white",
                 border: "none",
                 borderRadius: "0.5rem",
-                cursor: newMessage.trim() && !sendingMessage ? "pointer" : "not-allowed",
-                opacity: newMessage.trim() && !sendingMessage ? 1 : 0.5,
+                cursor: newMessage.trim() && !sendingMessage && (selectedPatient || selectedDoctor) ? "pointer" : "not-allowed",
+                opacity: newMessage.trim() && !sendingMessage && (selectedPatient || selectedDoctor) ? 1 : 0.5,
                 display: "flex",
                 alignItems: "center",
                 gap: "0.5rem",

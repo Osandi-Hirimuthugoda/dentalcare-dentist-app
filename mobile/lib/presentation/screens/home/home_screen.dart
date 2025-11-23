@@ -7,6 +7,7 @@ import 'package:flutter_application_1/presentation/widgets/home/emergency_contac
 import 'package:flutter_application_1/presentation/widgets/home/health_tips_carousel.dart.dart';
 import 'package:flutter_application_1/presentation/widgets/home/quick_actions_grid.dart';
 import 'package:flutter_application_1/presentation/widgets/home/welcome_section.dart';
+import 'package:flutter_application_1/presentation/widgets/home/announcements_section.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -157,6 +158,11 @@ class _HomeScreenState extends State<HomeScreen> {
             
             // Quick Actions Grid
             const QuickActionsGrid(),
+            
+            // Doctor Updates (Announcements & Messages)
+            const AnnouncementsSection(),
+            
+            const SizedBox(height: 16),
             
             // Upcoming Appointments
             AppointmentsSection(context: context),

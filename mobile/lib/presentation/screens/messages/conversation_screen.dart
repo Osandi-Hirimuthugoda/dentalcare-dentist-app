@@ -55,6 +55,23 @@ class _ConversationScreenState extends State<ConversationScreen> {
       final messages = await _dentalDataSource.getConversation(widget.doctorId);
       debugPrint('💬 Messages loaded: ${messages.length} messages');
       
+      // Mark unread messages as read
+      for (var msg in messages) {
+        final isRead = msg['read'] ?? false;
+        final messageId = msg['_id']?.toString() ?? msg['id']?.toString();
+        final senderModel = msg['senderModel']?.toString();
+        
+        // Mark as read if message is from doctor and not already read
+        if (!isRead && messageId != null && senderModel == 'Doctor') {
+          try {
+            await _dentalDataSource.markMessageAsRead(messageId);
+            debugPrint('✅ Marked message $messageId as read');
+          } catch (e) {
+            debugPrint('⚠️ Failed to mark message as read: $e');
+          }
+        }
+      }
+      
       setState(() {
         _messages = messages.map<Map<String, dynamic>>((msg) {
           return {
@@ -65,7 +82,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
                          msg['sender']?['name']?.toString() ?? 
                          'Unknown',
             'time': msg['createdAt']?.toString() ?? msg['time']?.toString() ?? '',
-            'read': msg['read'] ?? false,
+            'read': true, // Mark as read since we just viewed it
           };
         }).toList();
         _isLoading = false;
@@ -319,8 +336,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
   String _formatTime(String dateTime) {
     if (dateTime.isEmpty) return '';
     try {
-      final dt = DateTime.parse(dateTime);
-      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      // Parse UTC time and convert to Sri Lankan time (UTC+5:30)
+      final dt = DateTime.parse(dateTime).toUtc();
+      final sriLankanTime = dt.add(const Duration(hours: 5, minutes: 30));
+      return '${sriLankanTime.hour.toString().padLeft(2, '0')}:${sriLankanTime.minute.toString().padLeft(2, '0')}';
     } catch (e) {
       return dateTime;
     }

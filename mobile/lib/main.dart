@@ -89,9 +89,18 @@ class DentalCareApp extends StatelessWidget {
         '/find-dentists': (context) => const ProtectedRoute(
           child: FindDentistsScreen(),
         ),
-        '/messages': (context) => const ProtectedRoute(
-          child: MessagesScreen(),
-        ),
+        '/messages': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          return ProtectedRoute(
+            child: MessagesScreen(filterType: args?['filter']),
+          );
+        },
+        '/announcements': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          return ProtectedRoute(
+            child: MessagesScreen(filterType: args?['filter']),
+          );
+        },
         '/card-payment': (context) {
           final bill = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
           return ProtectedRoute(

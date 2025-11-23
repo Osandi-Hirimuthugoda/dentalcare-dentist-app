@@ -37,6 +37,16 @@ const messageSchema = new mongoose.Schema({
   patient: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Patient"
+  },
+  // For announcements/broadcasts from doctors to patients
+  isAnnouncement: {
+    type: Boolean,
+    default: false
+  },
+  announcementType: {
+    type: String,
+    enum: ["general", "appointment", "important", "reminder"],
+    default: "general"
   }
 }, { timestamps: true });
 

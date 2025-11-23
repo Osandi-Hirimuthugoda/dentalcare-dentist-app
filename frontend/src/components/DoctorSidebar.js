@@ -10,6 +10,7 @@ import {
   Stethoscope,
   FileText,
   User,
+  Star,
 } from "lucide-react";
 import sidebarStyles from "../styles/DoctorSidebar.module.css";
 
@@ -123,6 +124,17 @@ export default function DoctorSidebar() {
               }`}
             >
               <Stethoscope size={20} className={sidebarStyles.navIcon} /> Services
+            </Link>
+          </li>
+
+          <li className={sidebarStyles.navItem}>
+            <Link
+              to="/doctor/reviews"
+              className={`${sidebarStyles.navLink} ${
+                isActive("/doctor/reviews") ? sidebarStyles.active : ""
+              }`}
+            >
+              <Star size={20} className={sidebarStyles.navIcon} /> Reviews
             </Link>
           </li>
 
