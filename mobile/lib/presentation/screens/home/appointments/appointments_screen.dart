@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/themes/colors.dart';
 import 'package:flutter_application_1/core/themes/text_styles.dart';
+import 'package:flutter_application_1/core/constants/route_names.dart';
 import 'package:flutter_application_1/presentation/widgets/common/appointment_card.dart';
 
 class AppointmentsScreen extends StatelessWidget {
@@ -11,6 +12,12 @@ class AppointmentsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.white),
+          onPressed: () {
+            Navigator.pushReplacementNamed(context, RouteNames.home);
+          },
+        ),
         title: const Text('My Appointments'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.white,

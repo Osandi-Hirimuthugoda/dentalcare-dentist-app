@@ -8,6 +8,8 @@ import 'package:flutter_application_1/presentation/widgets/home/health_tips_caro
 import 'package:flutter_application_1/presentation/widgets/home/quick_actions_grid.dart';
 import 'package:flutter_application_1/presentation/widgets/home/welcome_section.dart';
 import 'package:flutter_application_1/presentation/widgets/home/announcements_section.dart';
+import 'package:flutter_application_1/domain/repositories/auth_repository.dart';
+import 'package:flutter_application_1/injection_container.dart' as di;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,6 +24,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   void _onItemTapped(int index, BuildContext context) {
+    // Don't update index if already on that screen
+    if (_currentIndex == index) {
+      return;
+    }
+
     setState(() {
       _currentIndex = index;
     });
@@ -31,17 +38,146 @@ class _HomeScreenState extends State<HomeScreen> {
         // Already on home screen, do nothing
         break;
       case 1: // Appointments
-        // Check authentication before navigating
-        Helpers.navigateIfAuthenticated(context, RouteNames.appointments);
+        // Navigate to appointments screen
+        _navigateToAppointments(context);
         break;
       case 2: // Health
-        // Check authentication before navigating
-        Helpers.navigateIfAuthenticated(context, RouteNames.health);
+        // Navigate to health screen
+        _navigateToHealth(context);
         break;
       case 3: // Profile
-        // Check authentication before navigating
-        Helpers.navigateIfAuthenticated(context, RouteNames.profile);
+        // Navigate to profile screen
+        _navigateToProfile(context);
         break;
+    }
+  }
+
+  Future<void> _navigateToAppointments(BuildContext context) async {
+    try {
+      final authRepo = di.getIt<AuthRepository>();
+      final result = await authRepo.isUserLoggedIn();
+
+      result.fold(
+        (failure) {
+          if (mounted && context.mounted) {
+            Helpers.showLoginRequiredMessage(context);
+            // Reset index if navigation fails
+            setState(() {
+              _currentIndex = 0;
+            });
+          }
+        },
+        (isLoggedIn) {
+          if (isLoggedIn == true) {
+            if (mounted && context.mounted) {
+              Navigator.pushReplacementNamed(
+                context,
+                RouteNames.appointments,
+              );
+            }
+          } else {
+            if (mounted && context.mounted) {
+              Helpers.showLoginRequiredMessage(context);
+              // Reset index if navigation fails
+              setState(() {
+                _currentIndex = 0;
+              });
+            }
+          }
+        },
+      );
+    } catch (e) {
+      if (mounted && context.mounted) {
+        Helpers.showLoginRequiredMessage(context);
+        // Reset index if navigation fails
+        setState(() {
+          _currentIndex = 0;
+        });
+      }
+    }
+  }
+
+  Future<void> _navigateToHealth(BuildContext context) async {
+    try {
+      final authRepo = di.getIt<AuthRepository>();
+      final result = await authRepo.isUserLoggedIn();
+
+      result.fold(
+        (failure) {
+          if (mounted && context.mounted) {
+            Helpers.showLoginRequiredMessage(context);
+            setState(() {
+              _currentIndex = 0;
+            });
+          }
+        },
+        (isLoggedIn) {
+          if (isLoggedIn == true) {
+            if (mounted && context.mounted) {
+              Navigator.pushReplacementNamed(
+                context,
+                RouteNames.health,
+              );
+            }
+          } else {
+            if (mounted && context.mounted) {
+              Helpers.showLoginRequiredMessage(context);
+              setState(() {
+                _currentIndex = 0;
+              });
+            }
+          }
+        },
+      );
+    } catch (e) {
+      if (mounted && context.mounted) {
+        Helpers.showLoginRequiredMessage(context);
+        setState(() {
+          _currentIndex = 0;
+        });
+      }
+    }
+  }
+
+  Future<void> _navigateToProfile(BuildContext context) async {
+    try {
+      final authRepo = di.getIt<AuthRepository>();
+      final result = await authRepo.isUserLoggedIn();
+
+      result.fold(
+        (failure) {
+          if (mounted && context.mounted) {
+            Helpers.showLoginRequiredMessage(context);
+            setState(() {
+              _currentIndex = 0;
+            });
+          }
+        },
+        (isLoggedIn) {
+          if (isLoggedIn == true) {
+            if (mounted && context.mounted) {
+              Navigator.pushReplacementNamed(
+                context,
+                RouteNames.profile,
+              );
+            }
+          } else {
+            if (mounted && context.mounted) {
+              Helpers.showLoginRequiredMessage(context);
+              setState(() {
+                _currentIndex = 0;
+              });
+            }
+          }
+        },
+      );
+    } catch (e) {
+      if (mounted && context.mounted) {
+        Helpers.showLoginRequiredMessage(context);
+        setState(() {
+          _currentIndex = 0;
+        });
+      }
     }
   }
 

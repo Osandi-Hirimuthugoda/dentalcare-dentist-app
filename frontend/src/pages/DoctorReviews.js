@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Star, User, Calendar, MessageSquare, TrendingUp, Filter } from "lucide-react";
+import { Star, User, Calendar, MessageSquare, TrendingUp, Filter, ArrowLeft } from "lucide-react";
 import DoctorSidebar from "../components/DoctorSidebar";
 import "../styles/DoctorReviews.css";
 
 const DoctorReviews = () => {
+  const navigate = useNavigate();
   const [reviews, setReviews] = useState([]);
   const [filteredReviews, setFilteredReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -167,9 +169,30 @@ const DoctorReviews = () => {
           transition={{ duration: 0.5 }}
           className="reviews-header"
         >
-          <div>
-            <h1>Patient Reviews</h1>
-            <p>View and manage patient feedback</p>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <button
+              onClick={() => navigate("/doctor/dashboard")}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0.5rem",
+                borderRadius: "50%",
+                transition: "background-color 0.2s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f3f4f6")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+              title="Back to Dashboard"
+            >
+              <ArrowLeft size={24} color="#1e3a8a" />
+            </button>
+            <div>
+              <h1>Patient Reviews</h1>
+              <p>View and manage patient feedback</p>
+            </div>
           </div>
         </motion.div>
 

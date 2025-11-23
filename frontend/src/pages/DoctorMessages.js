@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { MessageSquare, Search, Send, User, Clock, Mail } from "lucide-react";
+import { MessageSquare, Search, Send, User, Clock, Mail, ArrowLeft } from "lucide-react";
 import DoctorSidebar from "../components/DoctorSidebar";
 import "../styles/DoctorMessages.css";
 
 const DoctorMessages = () => {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -184,15 +186,35 @@ const DoctorMessages = () => {
       <DoctorSidebar />
       <div className="messages-main-content" style={{ flex: selectedPatient ? "1" : "1", width: selectedPatient ? "60%" : "100%" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-          <motion.h2
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="messages-page-title"
-            style={{ margin: 0 }}
+            style={{ display: "flex", alignItems: "center", gap: "1rem" }}
           >
-            <MessageSquare size={28} style={{ marginRight: "0.5rem", color: "#2563eb" }} />
-            Messages
-          </motion.h2>
+            <button
+              onClick={() => navigate("/doctor/dashboard")}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0.5rem",
+                borderRadius: "50%",
+                transition: "background-color 0.2s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f3f4f6")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+              title="Back to Dashboard"
+            >
+              <ArrowLeft size={24} color="#1e3a8a" />
+            </button>
+            <h2 className="messages-page-title" style={{ margin: 0 }}>
+              <MessageSquare size={28} style={{ marginRight: "0.5rem", color: "#2563eb" }} />
+              Messages
+            </h2>
+          </motion.div>
           {activeTab === "patients" && (
             <button
               onClick={() => setShowAnnouncementModal(true)}

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import DoctorSidebar from "../components/DoctorSidebar";
-import { Calendar, Clock, Save, Plus, X, AlertCircle } from "lucide-react";
+import { Calendar, Clock, Save, Plus, X, AlertCircle, ArrowLeft } from "lucide-react";
 import "../styles/DoctorAvailability.css";
 
 const DoctorAvailability = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -186,13 +188,34 @@ const DoctorAvailability = () => {
       <DoctorSidebar />
       
       <div className="availability-main-content">
-        <motion.h2
+        <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="availability-page-title"
+          style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem" }}
         >
-          <Calendar size={28} /> Set Your Availability
-        </motion.h2>
+          <button
+            onClick={() => navigate("/doctor/dashboard")}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "0.5rem",
+              borderRadius: "50%",
+              transition: "background-color 0.2s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f3f4f6")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+            title="Back to Dashboard"
+          >
+            <ArrowLeft size={24} color="#1e3a8a" />
+          </button>
+          <h2 className="availability-page-title" style={{ margin: 0 }}>
+            <Calendar size={28} /> Set Your Availability
+          </h2>
+        </motion.div>
 
         {message.text && (
           <div
