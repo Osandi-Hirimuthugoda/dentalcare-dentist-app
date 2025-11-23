@@ -24,14 +24,22 @@ doctorSchema.pre("save", async function (next) {
   // Skip if password is not modified
   if (!this.isModified("password")) return next();
   
-  // Skip if password is already hashed (bcrypt hashes start with $2a$, $2b$, or $2y$)
-  if (this.password && this.password.startsWith("$2")) {
+  // If password is already hashed (bcrypt hashes start with $2a$, $2b$, or $2y$), skip
+  // BUT if we're explicitly setting a new password, hash it anyway
+  if (this.password && this.password.startsWith("$2") && this.password.length > 50) {
+    // This is already a bcrypt hash, skip
     return next();
   }
   
   // Hash the plain password
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    console.log(`🔐 Password hashed for: ${this.email || 'doctor'}`);
+  } catch (error) {
+    console.error(`❌ Error hashing password:`, error);
+    return next(error);
+  }
   next();
 });
 

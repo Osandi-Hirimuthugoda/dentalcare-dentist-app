@@ -85,9 +85,9 @@ export default function AdminRegisterDoctor() {
       if (response.data.message === "Doctor registered successfully") {
         setSuccess(true);
         
-        // Store credentials temporarily for display
-        const registeredEmail = formData.email;
-        const registeredPassword = formData.password;
+        // Use credentials from response if available, otherwise use form data
+        const registeredEmail = response.data.credentials?.email || formData.email.trim();
+        const registeredPassword = response.data.credentials?.password || formData.password;
         
         setFormData({
           fullName: "",
@@ -104,7 +104,7 @@ export default function AdminRegisterDoctor() {
         // Store credentials for display in modal (modal will show automatically)
         setRegisteredCredentials({
           email: registeredEmail,
-          password: registeredPassword,
+          password: registeredPassword, // This is the exact password that works for login
           fullName: response.data.doctor?.fullName || formData.fullName
         });
       }

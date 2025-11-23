@@ -338,7 +338,7 @@ export default function DoctorDashboard() {
         <section className={styles.statsGrid}>
           {statsData.map((item, index) => (
             <StatCard
-              key={index}
+              key={`stat-${item.title}-${index}`}
               title={item.title}
               count={item.count.toLocaleString()}
               icon={item.icon}
@@ -585,11 +585,11 @@ export default function DoctorDashboard() {
                 >
                   <div className={styles.messageHeader}>
                     <div className={styles.patientAvatar} style={{ width: "2rem", height: "2rem", fontSize: "0.9rem" }}>
-                      {msg.patientName.charAt(0)}
+                      {(msg.patientName || 'U').charAt(0).toUpperCase()}
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span className={styles.patientName} style={{ fontSize: "0.95rem" }}>{msg.patientName}</span>
+                        <span className={styles.patientName} style={{ fontSize: "0.95rem" }}>{msg.patientName || 'Unknown Patient'}</span>
                         <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{msg.time}</span>
                       </div>
                       <p style={{ fontSize: "0.875rem", color: "#6b7280", marginTop: "0.25rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -663,9 +663,9 @@ export default function DoctorDashboard() {
                 >
                   <div className={styles.patientInfo}>
                     <div className={styles.patientAvatar}>
-                      {appointment.patientName.charAt(0)}
+                      {(appointment.patientName || 'U').charAt(0).toUpperCase()}
                     </div>
-                    <span className={styles.patientName}>{appointment.patientName}</span>
+                    <span className={styles.patientName}>{appointment.patientName || 'Unknown Patient'}</span>
                   </div>
                   <div className={styles.appointmentDetails}>
                     <span>{appointment.time}</span>

@@ -151,12 +151,16 @@ export const registerDoctor = async (req, res) => {
     // Create doctor (password will be hashed automatically by the model's pre-save hook)
     console.log(`🔧 Creating doctor with email: ${normalizedEmail}`);
     console.log(`   Password provided: ${password ? 'Yes (length: ' + password.length + ')' : 'No'}`);
+    console.log(`   Password value: "${password}"`);
+    
+    // Trim password to avoid whitespace issues
+    const trimmedPassword = password.trim();
     
     const doctor = await Doctor.create({
       fullName: fullName.trim(),
       email: normalizedEmail,
       phone: phone.trim(),
-      password: password, // Will be hashed by pre-save hook
+      password: trimmedPassword, // Will be hashed by pre-save hook
       licenseNumber: licenseNumber.trim(),
       specialization: specialization?.trim(),
       qualifications: qualifications?.trim(),
@@ -168,6 +172,15 @@ export const registerDoctor = async (req, res) => {
     // Verify password was hashed (should start with $2)
     const isPasswordHashed = doctor.password && doctor.password.startsWith('$2');
     console.log(`   Password hashed: ${isPasswordHashed ? 'Yes ✅' : 'No ❌'}`);
+    
+    // Test password match to ensure it works
+    if (isPasswordHashed) {
+      const testMatch = await bcrypt.compare(trimmedPassword, doctor.password);
+      console.log(`   Password verification test: ${testMatch ? 'PASSED ✅' : 'FAILED ❌'}`);
+      if (!testMatch) {
+        console.error(`   ⚠️  WARNING: Password was hashed but verification failed!`);
+      }
+    }
 
     // Return doctor without password
     const doctorData = {
@@ -185,11 +198,18 @@ export const registerDoctor = async (req, res) => {
     };
 
     console.log(`✅ Doctor registered successfully by admin: ${doctor.email}`);
-    console.log(`   🔐 Doctor can now login with email: ${normalizedEmail} and the password entered during registration`);
+    console.log(`   🔐 Doctor can now login with:`);
+    console.log(`      Email: ${normalizedEmail}`);
+    console.log(`      Password: ${trimmedPassword} (the exact password entered during registration)`);
 
     res.status(201).json({
       message: "Doctor registered successfully",
       doctor: doctorData,
+      // Include the original password in response so admin can see it (only for new registrations)
+      credentials: {
+        email: normalizedEmail,
+        password: trimmedPassword, // Return the original password for display
+      },
     });
   } catch (error) {
     console.error("❌ Error registering doctor:", error);

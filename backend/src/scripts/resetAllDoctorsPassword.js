@@ -1,6 +1,7 @@
 import Doctor from "../models/doctorModel.js";
 import connectDB from "../config/db.js";
 import dotenv from "dotenv";
+import bcrypt from "bcryptjs";
 
 dotenv.config();
 
@@ -35,12 +36,23 @@ const resetDoctorsPasswords = async () => {
     
     for (const doctor of doctors) {
       try {
-        // Set new password (will be hashed by pre-save hook)
-        doctor.password = defaultPassword;
+        // Hash the password directly using bcrypt
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(defaultPassword, salt);
+        
+        // Update password directly (bypassing pre-save hook to avoid issues)
+        doctor.password = hashedPassword;
         await doctor.save();
         
-        console.log(`✅ Password reset for: ${doctor.email}`);
-        successCount++;
+        // Verify password was saved correctly
+        const testMatch = await bcrypt.compare(defaultPassword, doctor.password);
+        if (testMatch) {
+          console.log(`✅ Password reset for: ${doctor.email} (verified)`);
+          successCount++;
+        } else {
+          console.log(`⚠️  Password reset for: ${doctor.email} but verification failed`);
+          errorCount++;
+        }
       } catch (error) {
         console.error(`❌ Error resetting password for ${doctor.email}:`, error.message);
         errorCount++;
@@ -85,9 +97,19 @@ const resetSpecificDoctors = async (emails, newPassword) => {
           continue;
         }
         
-        // Set new password (will be hashed by pre-save hook)
-        doctor.password = newPassword;
+        // Hash the password directly using bcrypt
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+        
+        // Update password directly
+        doctor.password = hashedPassword;
         await doctor.save();
+        
+        // Verify password was saved correctly
+        const testMatch = await bcrypt.compare(newPassword, doctor.password);
+        if (!testMatch) {
+          throw new Error('Password verification failed after reset');
+        }
         
         console.log(`✅ Password reset for: ${doctor.email} (${doctor.fullName})`);
         successCount++;
