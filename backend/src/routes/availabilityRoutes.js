@@ -15,3 +15,4 @@ router.post("/doctor/:doctorId", updateDoctorAvailability); // Allow POST as wel
 
 export default router;
 
+

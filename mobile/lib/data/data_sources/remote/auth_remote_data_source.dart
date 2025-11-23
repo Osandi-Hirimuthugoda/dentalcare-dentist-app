@@ -24,21 +24,32 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
+      final url = '${AppConstants.baseUrl}${AppConstants.loginEndpoint}';
+      debugPrint('🔐 Login request: POST $url');
+      
       final response = await client
           .post(
-            Uri.parse('${AppConstants.baseUrl}${AppConstants.loginEndpoint}'),
-            body: jsonEncode({
-              'email': email,
-              'password': password,
-            }),
-            headers: {'Content-Type': 'application/json'},
+        Uri.parse(url),
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+        }),
+        headers: {'Content-Type': 'application/json'},
           )
           .timeout(
-            const Duration(seconds: 10),
+            const Duration(seconds: 30), // Increased timeout to 30 seconds
             onTimeout: () {
-              throw NetworkException('Login request timed out. Please try again.');
+              debugPrint('❌ Login timeout - Server did not respond in 30 seconds');
+              throw NetworkException(
+                'Login request timed out. Please check:\n'
+                '1. Backend server is running (port 4000)\n'
+                '2. API URL is correct: http://10.0.2.2:4000/api\n'
+                '3. Your internet connection'
+              );
             },
-          );
+      );
+      
+      debugPrint('📥 Login response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -68,9 +79,38 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       rethrow;
     } on InvalidCredentialsException {
       rethrow;
+    } on NetworkException {
+      rethrow;
     } catch (e) {
       // Log the actual error for debugging
-      debugPrint('Login error: $e');
+      debugPrint('❌ Login error details: $e');
+      
+      final errorString = e.toString().toLowerCase();
+      
+      // Check for specific connection errors
+      if (errorString.contains('socketexception') || 
+          errorString.contains('failed host lookup') ||
+          errorString.contains('connection refused') ||
+          errorString.contains('network is unreachable')) {
+        throw NetworkException(
+          'Cannot connect to server. Please check:\n'
+          '1. Backend server is running on port 4000\n'
+          '2. Run: cd backend && npm start\n'
+          '3. API URL: ${AppConstants.baseUrl}\n'
+          '4. For Android emulator: http://10.0.2.2:4000/api\n'
+          '5. For physical device: Use your computer IP address'
+        );
+      }
+      
+      if (errorString.contains('timeout')) {
+        throw NetworkException(
+          'Connection timeout. Please check:\n'
+          '1. Backend server is running\n'
+          '2. Check server logs for errors\n'
+          '3. Try restarting the server'
+        );
+      }
+      
       throw NetworkException('Network error occurred: ${e.toString()}');
     }
   }
@@ -82,23 +122,23 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final userJson = user.toJson();
       final response = await client
           .post(
-            Uri.parse('${AppConstants.baseUrl}${AppConstants.registerEndpoint}'),
-            body: jsonEncode({
-              'name': userJson['name'] ?? userJson['fullName'] ?? '',
-              'email': userJson['email'] ?? '',
-              'password': password,
-              'phone': userJson['phone'] ?? userJson['phoneNumber'] ?? '',
-              'age': userJson['age'],
-              'gender': userJson['gender'] ?? 'other',
-            }),
-            headers: {'Content-Type': 'application/json'},
+        Uri.parse('${AppConstants.baseUrl}${AppConstants.registerEndpoint}'),
+        body: jsonEncode({
+          'name': userJson['name'] ?? userJson['fullName'] ?? '',
+          'email': userJson['email'] ?? '',
+          'password': password,
+          'phone': userJson['phone'] ?? userJson['phoneNumber'] ?? '',
+          'age': userJson['age'],
+          'gender': userJson['gender'] ?? 'other',
+        }),
+        headers: {'Content-Type': 'application/json'},
           )
           .timeout(
-            const Duration(seconds: 10),
+            const Duration(seconds: 30), // Increased timeout
             onTimeout: () {
-              throw NetworkException('Registration request timed out. Please try again.');
+              throw NetworkException('Registration request timed out. Please check your connection.');
             },
-          );
+      );
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);

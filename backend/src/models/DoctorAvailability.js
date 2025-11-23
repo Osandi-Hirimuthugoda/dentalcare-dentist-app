@@ -68,3 +68,4 @@ doctorAvailabilitySchema.index({ doctor: 1 });
 
 export default mongoose.model("DoctorAvailability", doctorAvailabilitySchema);
 
+

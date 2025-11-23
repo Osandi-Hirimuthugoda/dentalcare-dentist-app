@@ -13,6 +13,8 @@ const doctorSchema = mongoose.Schema(
     hospital: { type: String },
     experience: { type: Number },
     services: [{ type: String }], // Services/categories doctor offers
+    averageRating: { type: Number, default: 0 }, // Calculated from reviews
+    totalReviews: { type: Number, default: 0 }, // Total number of reviews
   },
   { timestamps: true }
 );

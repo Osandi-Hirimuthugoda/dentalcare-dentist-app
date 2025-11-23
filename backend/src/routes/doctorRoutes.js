@@ -6,6 +6,7 @@ import {
   getAllDoctors,
   changePassword,
   updateDoctorProfile,
+  updateDoctorServices,
   resetPassword,
 } from "../controllers/doctorController.js";
 
@@ -20,6 +21,9 @@ router.get("/all", getAllDoctors); // Get all doctors (for admin)
 
 // Update doctor profile
 router.put("/:doctorId/profile", updateDoctorProfile);
+
+// Update doctor services
+router.put("/:doctorId/services", updateDoctorServices);
 
 // Change password
 router.put("/:doctorId/change-password", changePassword);

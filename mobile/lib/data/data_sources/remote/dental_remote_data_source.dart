@@ -20,6 +20,9 @@ abstract class DentalRemoteDataSource {
   Future<List<dynamic>> getMessages(); // Get messages/conversations for patient
   Future<List<dynamic>> getConversation(String doctorId); // Get conversation with a doctor
   Future<dynamic> sendMessage(String doctorId, String message); // Send message to doctor
+  Future<dynamic> createReview(String doctorId, String? appointmentId, int rating, String? comment); // Create a review
+  Future<List<dynamic>> getDoctorReviews(String doctorId); // Get reviews for a doctor
+  Future<List<dynamic>> getPatientReviews(); // Get patient's reviews
 }
 
 class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
@@ -40,7 +43,14 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
     // Add authentication token if available
     final token = await localDataSource.getString(AppConstants.tokenKey);
     if (token != null && token.isNotEmpty) {
-      headers['Authorization'] = 'Bearer $token';
+      // Trim token to remove any whitespace
+      final cleanToken = token.trim();
+      headers['Authorization'] = 'Bearer $cleanToken';
+      
+      debugPrint('🔑 Auth header - Token length: ${cleanToken.length}');
+      debugPrint('   Token preview: ${cleanToken.substring(0, 20)}...');
+    } else {
+      debugPrint('⚠️ No token found in storage');
     }
     
     return headers;
@@ -400,6 +410,131 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
         final errorBody = jsonDecode(response.body);
         final errorMessage = errorBody['message'] ?? 'Failed to send message';
         throw ServerException(errorMessage, response.statusCode);
+      }
+    } catch (e) {
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<dynamic> createReview(String doctorId, String? appointmentId, int rating, String? comment) async {
+    try {
+      // Check if token exists before making request
+      final token = await localDataSource.getString(AppConstants.tokenKey);
+      if (token == null || token.isEmpty) {
+        debugPrint('❌ Create review: No token found');
+        throw ServerException('Authentication required. Please login again.', 401);
+      }
+      
+      debugPrint('✅ Create review: Token found (length: ${token.length})');
+      
+      final headers = await _getHeaders();
+      
+      // Verify Authorization header was added
+      if (!headers.containsKey('Authorization') || headers['Authorization'] == null) {
+        debugPrint('❌ Create review: Authorization header missing');
+        throw ServerException('Authentication required. Please login again.', 401);
+      }
+      
+      final body = {
+        'doctorId': doctorId,
+        'rating': rating,
+        if (appointmentId != null) 'appointmentId': appointmentId,
+        if (comment != null && comment.isNotEmpty) 'comment': comment,
+      };
+      
+      debugPrint('📤 Create review request: POST ${AppConstants.baseUrl}/reviews');
+      debugPrint('   Body: ${jsonEncode(body)}');
+      
+      final response = await client.post(
+        Uri.parse('${AppConstants.baseUrl}/reviews'),
+        body: jsonEncode(body),
+        headers: headers,
+      );
+
+      debugPrint('📥 Create review response: ${response.statusCode}');
+      debugPrint('   Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return jsonDecode(response.body);
+      } else {
+        final errorBody = jsonDecode(response.body);
+        final errorMessage = errorBody['message'] ?? 'Failed to create review';
+        
+        // Handle token expiration specifically
+        if (response.statusCode == 401) {
+          debugPrint('❌ Create review: Unauthorized - token may be expired');
+          throw ServerException(
+            'Your session has expired. Please logout and login again.',
+            response.statusCode
+          );
+        }
+        
+        throw ServerException(errorMessage, response.statusCode);
+      }
+    } catch (e) {
+      if (e is ServerException) {
+        rethrow;
+      }
+      debugPrint('❌ Create review exception: $e');
+      throw NetworkException('Network error occurred: $e');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getDoctorReviews(String doctorId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.get(
+        Uri.parse('${AppConstants.baseUrl}/reviews/doctor/$doctorId'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        debugPrint('📥 Get reviews response: ${data is Map ? 'Map with ${data.keys}' : 'List'}');
+        
+        // Backend returns { reviews: [...], totalReviews: number, hasMore: boolean }
+        if (data is Map && data.containsKey('reviews')) {
+          final reviews = data['reviews'] as List? ?? [];
+          debugPrint('✅ Found ${reviews.length} reviews');
+          return reviews;
+        } else if (data is List) {
+          debugPrint('✅ Found ${data.length} reviews (direct list)');
+          return data;
+        } else {
+          debugPrint('⚠️ Unexpected response format');
+          return [];
+        }
+      } else {
+        throw ServerException('Failed to fetch reviews', response.statusCode);
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching reviews: $e');
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getPatientReviews() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.get(
+        Uri.parse('${AppConstants.baseUrl}/reviews/patient'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data is List ? data : (data['reviews'] ?? []);
+      } else {
+        throw ServerException('Failed to fetch reviews', response.statusCode);
       }
     } catch (e) {
       if (e is ServerException) {

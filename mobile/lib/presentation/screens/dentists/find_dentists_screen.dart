@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/themes/colors.dart';
 import 'package:flutter_application_1/core/themes/text_styles.dart';
+import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
+import 'package:flutter_application_1/injection_container.dart';
+import 'package:flutter_application_1/presentation/widgets/reviews/add_review_dialog.dart';
+import 'package:flutter_application_1/presentation/widgets/reviews/reviews_list_dialog.dart';
 
 class FindDentistsScreen extends StatefulWidget {
   const FindDentistsScreen({super.key});
@@ -13,98 +17,110 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
   String _selectedFilter = 'All';
   final TextEditingController _searchController = TextEditingController();
   
-  // Original data保持不变
-  final Map<String, List<Map<String, dynamic>>> _categorizedDentists = {
-    'General Dentistry': [
-      {
-        'id': '1',
-        'name': 'Dr. Kamal Fernando',
-        'specialty': 'General Dentistry',
-        'hospital': 'Dental Care Center - Colombo',
-        'rating': 4.8,
-        'reviews': 127,
-        'experience': '15 years',
-        'distance': '2.5 km',
-        'fee': 'LKR 2,500',
-        'availability': 'Available Today',
-        'image': 'assets/images/doctor1.png',
-        'isFavorite': true,
-      },
-    ],
-    'Orthodontist': [
-      {
-        'id': '2',
-        'name': 'Dr. Sameera Perera',
-        'specialty': 'Orthodontist',
-        'hospital': 'City Dental Hospital',
-        'rating': 4.9,
-        'reviews': 89,
-        'experience': '12 years',
-        'distance': '3.1 km',
-        'fee': 'LKR 3,000',
-        'availability': 'Available Tomorrow',
-        'image': 'assets/images/doctor2.png',
-        'isFavorite': false,
-      },
-    ],
-    'Oral Surgery': [
-      {
-        'id': '3',
-        'name': 'Dr. Nimal Silva',
-        'specialty': 'Oral Surgery',
-        'hospital': 'National Dental Institute',
-        'rating': 4.7,
-        'reviews': 203,
-        'experience': '20 years',
-        'distance': '4.2 km',
-        'fee': 'LKR 4,000',
-        'availability': 'Available Today',
-        'image': 'assets/images/doctor3.png',
-        'isFavorite': true,
-      },
-    ],
-    'Pediatric Dentistry': [
-      {
-        'id': '4',
-        'name': 'Dr. Anoma Rajapaksa',
-        'specialty': 'Pediatric Dentistry',
-        'hospital': 'Kids Dental Care',
-        'rating': 4.9,
-        'reviews': 67,
-        'experience': '10 years',
-        'distance': '1.8 km',
-        'fee': 'LKR 2,800',
-        'availability': 'Available Today',
-        'image': 'assets/images/doctor4.png',
-        'isFavorite': false,
-      },
-    ],
-    'Cosmetic Dentistry': [
-      {
-        'id': '5',
-        'name': 'Dr. Sanjay Perera',
-        'specialty': 'Cosmetic Dentistry',
-        'hospital': 'Smile Design Clinic',
-        'rating': 4.8,
-        'reviews': 145,
-        'experience': '8 years',
-        'distance': '5.0 km',
-        'fee': 'LKR 5,000',
-        'availability': 'Available Tomorrow',
-        'image': 'assets/images/doctor5.png',
-        'isFavorite': false,
-      },
-    ],
-  };
-
-  final List<String> _filters = [
-    'All',
-    'General Dentistry',
-    'Orthodontist',
-    'Oral Surgery',
-    'Pediatric Dentistry',
-    'Cosmetic Dentistry',
-  ];
+  Map<String, List<Map<String, dynamic>>> _categorizedDentists = {};
+  bool _isLoading = true;
+  String? _errorMessage;
+  
+  late final DentalRemoteDataSource _dentalDataSource;
+  
+  @override
+  void initState() {
+    super.initState();
+    _dentalDataSource = getIt<DentalRemoteDataSource>();
+    _searchController.addListener(_onSearchChanged);
+    _loadDentists();
+  }
+  
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+  
+  void _onSearchChanged() {
+    setState(() {});
+  }
+  
+  Future<void> _loadDentists() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    
+    try {
+      final dentists = await _dentalDataSource.getDentists();
+      
+      // Convert to list of maps with ratings
+      final dentistsList = dentists.map((dentist) {
+        final id = dentist['_id']?.toString() ?? dentist['id']?.toString() ?? '';
+        final rating = dentist['averageRating'] != null 
+            ? (dentist['averageRating'] as num).toDouble() 
+            : 0.0;
+        final reviews = dentist['totalReviews'] != null 
+            ? (dentist['totalReviews'] as num).toInt() 
+            : 0;
+        return {
+          'id': id,
+          'name': dentist['fullName'] ?? dentist['name'] ?? 'Unknown Doctor',
+          'specialty': dentist['specialization'] ?? dentist['specialty'] ?? 'General Dentistry',
+          'hospital': dentist['hospital'] ?? 'Dental Clinic',
+          'rating': rating > 0 ? rating : 0.0, // Use actual rating from backend
+          'reviews': reviews,
+          'experience': dentist['experience'] != null 
+              ? '${dentist['experience']} years' 
+              : 'N/A',
+          'distance': 'N/A',
+          'fee': 'Contact for pricing',
+          'availability': 'Available',
+          'isFavorite': false,
+          'services': dentist['services'] ?? [],
+        };
+      }).toList();
+      
+      // Sort by rating (highest first), then by number of reviews
+      dentistsList.sort((a, b) {
+        final ratingA = a['rating'] as double;
+        final ratingB = b['rating'] as double;
+        final reviewsA = a['reviews'] as int;
+        final reviewsB = b['reviews'] as int;
+        
+        // First sort by rating (descending)
+        if (ratingA != ratingB) {
+          return ratingB.compareTo(ratingA);
+        }
+        // If same rating, sort by number of reviews (descending)
+        return reviewsB.compareTo(reviewsA);
+      });
+      
+      // Categorize dentists by specialization
+      final categorized = <String, List<Map<String, dynamic>>>{};
+      for (var dentist in dentistsList) {
+        final specialty = dentist['specialty'] as String;
+        if (!categorized.containsKey(specialty)) {
+          categorized[specialty] = [];
+        }
+        categorized[specialty]!.add(dentist);
+      }
+      
+      setState(() {
+        _categorizedDentists = categorized;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to load dentists. Please try again.';
+        _isLoading = false;
+      });
+      debugPrint('❌ Error loading dentists: $e');
+    }
+  }
+  
+  // Get filters list dynamically from loaded categories
+  List<String> get _filters {
+    final categories = ['All', ..._categorizedDentists.keys];
+    return categories;
+  }
 
   // Get filtered dentists based on search query and selected filter
   Map<String, List<Map<String, dynamic>>> get _filteredDentists {
@@ -173,170 +189,51 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
     });
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _searchController.addListener(_onSearchChanged);
+  void _bookAppointment(Map<String, dynamic> dentist) {
+    // Navigate to book appointment screen with selected dentist
+    Navigator.pushNamed(
+      context,
+      '/book-appointment',
+      arguments: dentist,
+    );
   }
 
-  void _onSearchChanged() {
-    setState(() {
-      // Rebuild the UI when search text changes
+  void _showAddReviewDialog(Map<String, dynamic> dentist) {
+    showDialog(
+      context: context,
+      builder: (context) => AddReviewDialog(
+        doctorId: dentist['id'] as String,
+        doctorName: dentist['name'] as String,
+      ),
+    ).then((success) {
+      if (success == true) {
+        // Refresh dentist data to show updated ratings
+        _loadDentists();
+        
+        // Show success message - check if widget is still mounted
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Review added successfully!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
     });
   }
 
-  @override
-  void dispose() {
-    _searchController.removeListener(_onSearchChanged);
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _bookAppointment(Map<String, dynamic> dentist) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        height: MediaQuery.of(context).size.height * 0.7,
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Book Appointment',
-                  style: TextStyles.heading4,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            _buildDentistInfo(dentist),
-            const SizedBox(height: 20),
-            _buildAppointmentForm(dentist),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDentistInfo(Map<String, dynamic> dentist) {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 30,
-          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-          child: Text(
-            dentist['name'].split(' ').map((e) => e[0]).join(),
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
-            ),
-          ),
-        ),
-        const SizedBox(width: 15),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                dentist['name'],
-                style: TextStyles.bodyMedium.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                dentist['specialty'],
-                style: TextStyles.bodySmall,
-              ),
-              Text(
-                dentist['hospital'],
-                style: TextStyles.caption,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAppointmentForm(Map<String, dynamic> dentist) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Select Date:'),
-          const SizedBox(height: 10),
-          OutlinedButton.icon(
-            onPressed: () {
-              // Date picker
-            },
-            icon: const Icon(Icons.calendar_today),
-            label: const Text('Choose Date'),
-          ),
-          const SizedBox(height: 20),
-          const Text('Select Time:'),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: ['09:00 AM', '10:30 AM', '02:00 PM', '03:30 PM']
-                .map((time) => FilterChip(
-                      label: Text(time),
-                      selected: false,
-                      onSelected: (bool value) {},
-                    ))
-                .toList(),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _showBookingConfirmation(dentist);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.white,
-              ),
-              child: const Text('Confirm Appointment'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showBookingConfirmation(Map<String, dynamic> dentist) {
+  void _showReviewsDialog(Map<String, dynamic> dentist) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Appointment Booked!'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.check_circle, size: 60, color: Colors.green),
-            const SizedBox(height: 15),
-            Text('Appointment with ${dentist['name']} has been confirmed.'),
-            const SizedBox(height: 10),
-            const Text('You will receive a confirmation message shortly.'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
+      builder: (context) => ReviewsListDialog(
+        doctorId: dentist['id'] as String,
+        doctorName: dentist['name'] as String,
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -345,17 +242,45 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
         title: const Text('Find Dentists'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.white,
-      ),
-      body: Column(
-        children: [
-          _buildSearchBar(),
-          _buildFilterChips(),
-          _buildResultsCount(),
-          Expanded(
-            child: _buildDentistsView(),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadDentists,
+            tooltip: 'Refresh',
           ),
         ],
       ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        _errorMessage!,
+                        style: TextStyles.bodyMedium.copyWith(
+                          color: Colors.red,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadDentists,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                )
+              : Column(
+                  children: [
+                    _buildSearchBar(),
+                    _buildFilterChips(),
+                    _buildResultsCount(),
+                    Expanded(
+                      child: _buildDentistsView(),
+                    ),
+                  ],
+                ),
     );
   }
 
@@ -618,11 +543,40 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
                         dentist['specialty'],
                         style: TextStyles.bodySmall,
                       ),
-                      Row(
-                        children: [
-                          Icon(Icons.star, size: 16, color: Colors.amber),
-                          Text(' ${dentist['rating']} (${dentist['reviews']} reviews)'),
-                        ],
+                      GestureDetector(
+                        onTap: () => _showReviewsDialog(dentist),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.star, size: 16, color: Colors.amber),
+                            Flexible(
+                              child: Text(
+                                ' ${dentist['rating'] > 0 ? dentist['rating'].toStringAsFixed(1) : 'N/A'}',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (dentist['reviews'] > 0) ...[
+                              Flexible(
+                                child: Text(
+                                  ' (${dentist['reviews']} reviews)',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: AppColors.primary,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ] else ...[
+                              const Flexible(
+                                child: Text(
+                                  ' (No reviews yet)',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -670,16 +624,34 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => _bookAppointment(dentist),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.white,
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _showAddReviewDialog(dentist),
+                    icon: const Icon(Icons.rate_review, size: 18),
+                    label: const Text('Review'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: BorderSide(color: AppColors.primary),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
                 ),
-                child: const Text('Book Appointment'),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton(
+                    onPressed: () => _bookAppointment(dentist),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text('Book Appointment'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -690,12 +662,17 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
   Widget _buildInfoItem(IconData icon, String text) {
     return Expanded(
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 16, color: AppColors.textSecondary),
           const SizedBox(width: 4),
-          Text(
-            text,
-            style: TextStyles.caption,
+          Flexible(
+            child: Text(
+              text,
+              style: TextStyles.caption,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
           ),
         ],
       ),

@@ -117,6 +117,17 @@ export default function DoctorSidebar() {
 
           <li className={sidebarStyles.navItem}>
             <Link
+              to="/doctor/services"
+              className={`${sidebarStyles.navLink} ${
+                isActive("/doctor/services") ? sidebarStyles.active : ""
+              }`}
+            >
+              <Stethoscope size={20} className={sidebarStyles.navIcon} /> Services
+            </Link>
+          </li>
+
+          <li className={sidebarStyles.navItem}>
+            <Link
               to="/doctor/settings"
               className={`${sidebarStyles.navLink} ${
                 isActive("/doctor/settings") ? sidebarStyles.active : ""

@@ -25,6 +25,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   DateTime? _selectedDate;
   String? _selectedTime;
   String? _selectedService;
+  String? _selectedCategory;
   final TextEditingController _symptomsController = TextEditingController();
   bool _isBooking = false;
 
@@ -364,6 +365,14 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Get unique categories from services
+    final Set<String> categories = {};
+    for (var service in _services) {
+      final category = service['category']?.toString() ?? 'General';
+      categories.add(category);
+    }
+    final sortedCategories = categories.toList()..sort();
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Book Appointment'),
@@ -375,6 +384,11 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Category filter dropdown
+            if (sortedCategories.length > 1) ...[
+              _buildCategoryFilter(sortedCategories),
+              const SizedBox(height: 20),
+            ],
             _buildServiceSelection(),
             const SizedBox(height: 20),
             _buildDoctorSelection(),
@@ -384,6 +398,52 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             _buildSymptomsInput(),
             const SizedBox(height: 30),
             _buildBookButton(),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildCategoryFilter(List<String> categories) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Filter by Category',
+              style: TextStyles.heading4,
+            ),
+            const SizedBox(height: 15),
+            DropdownButtonFormField<String>(
+              value: _selectedCategory,
+              hint: const Text('All Categories'),
+              isExpanded: true,
+              items: [
+                const DropdownMenuItem<String>(
+                  value: null,
+                  child: Text('All Categories'),
+                ),
+                ...categories.map((category) => DropdownMenuItem<String>(
+                      value: category,
+                      child: Text(category),
+                    )),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  _selectedCategory = value;
+                  _selectedService = null;
+                  _selectedDentist = null;
+                  _selectedTime = null;
+                });
+              },
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'Select Category',
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+              ),
+            ),
           ],
         ),
       ),
@@ -665,6 +725,24 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   }
 
   Widget _buildServiceSelection() {
+    // Filter services by selected category
+    final filteredServices = _selectedCategory == null
+        ? _services
+        : _services.where((service) {
+            final category = service['category']?.toString() ?? 'General';
+            return category == _selectedCategory;
+          }).toList();
+    
+    // Group filtered services by category
+    final Map<String, List<Map<String, dynamic>>> servicesByCategory = {};
+    for (var service in filteredServices) {
+      final category = service['category']?.toString() ?? 'General';
+      if (!servicesByCategory.containsKey(category)) {
+        servicesByCategory[category] = [];
+      }
+      servicesByCategory[category]!.add(service);
+    }
+    
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -678,15 +756,18 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             const SizedBox(height: 15),
             if (_isLoadingServices)
               const Center(child: CircularProgressIndicator())
-            else if (_services.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(8.0),
+            else if (filteredServices.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(8.0),
                 child: Text(
-                  'No services available. Please check your connection.',
-                  style: TextStyle(color: Colors.grey),
+                  _selectedCategory == null
+                      ? 'No services available. Please check your connection.'
+                      : 'No services available in "$_selectedCategory" category.',
+                  style: const TextStyle(color: Colors.grey),
                 ),
               )
-            else
+            else if (servicesByCategory.length == 1)
+              // Single category - show simple dropdown
               DropdownButtonFormField<String>(
                 value: _selectedService,
                 hint: const Text('Select Service'),
@@ -707,7 +788,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                   if (value != null) {
                     setState(() {
                       _selectedService = value;
-                      // Reset selected dentist when service changes
                       _selectedDentist = null;
                       _selectedTime = null;
                     });
@@ -718,6 +798,79 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                   hintText: 'Select Service',
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                 ),
+              )
+            else
+              // Multiple categories - show categorized view
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Category selector
+                  DropdownButtonFormField<String>(
+                    value: _selectedCategory ?? servicesByCategory.keys.first,
+                    hint: const Text('Select Category'),
+                    isExpanded: true,
+                    items: servicesByCategory.keys
+                        .map((category) => DropdownMenuItem<String>(
+                              value: category,
+                              child: Text(category),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          _selectedCategory = value;
+                          _selectedService = null;
+                          _selectedDentist = null;
+                          _selectedTime = null;
+                        });
+                      }
+                    },
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: 'Select Category',
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  // Service selector for selected category
+                  DropdownButtonFormField<String>(
+                    value: _selectedService,
+                    hint: Text(_selectedCategory == null 
+                        ? 'Select Category First' 
+                        : 'Select Service'),
+                    isExpanded: true,
+                    items: (_selectedCategory != null 
+                        ? servicesByCategory[_selectedCategory] ?? []
+                        : [])
+                        .map((service) {
+                          final serviceName = service['name'] as String? ?? '';
+                          return DropdownMenuItem<String>(
+                            value: serviceName,
+                            child: Text(
+                              serviceName,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        })
+                        .toList(),
+                    onChanged: _selectedCategory != null
+                        ? (value) {
+                            if (value != null) {
+                              setState(() {
+                                _selectedService = value;
+                                _selectedDentist = null;
+                                _selectedTime = null;
+                              });
+                            }
+                          }
+                        : null,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: 'Select Service',
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    ),
+                  ),
+                ],
               ),
           ],
         ),

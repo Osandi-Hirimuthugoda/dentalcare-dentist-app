@@ -202,8 +202,23 @@ export const getDoctorProfile = async (req, res) => {
 // 🔹 Get All Doctors (Admin only)
 export const getAllDoctors = async (req, res) => {
   try {
-    const doctors = await Doctor.find().select("-password").sort({ createdAt: -1 });
-    res.status(200).json(doctors);
+    // Sort by averageRating (highest first), then by totalReviews, then by creation date
+    const doctors = await Doctor.find()
+      .select("-password")
+      .sort({ 
+        averageRating: -1,  // Highest rating first
+        totalReviews: -1,   // Most reviews first (if same rating)
+        createdAt: -1       // Newest first (if same rating and reviews)
+      });
+    
+    // Ensure averageRating and totalReviews are numbers
+    const doctorsWithRatings = doctors.map(doctor => ({
+      ...doctor.toObject(),
+      averageRating: doctor.averageRating || 0,
+      totalReviews: doctor.totalReviews || 0,
+    }));
+    
+    res.status(200).json(doctorsWithRatings);
   } catch (error) {
     console.error("❌ Error fetching doctors:", error);
     res.status(500).json({ message: "Error fetching doctors", error });
@@ -296,11 +311,20 @@ export const changePassword = async (req, res) => {
 export const updateDoctorProfile = async (req, res) => {
   try {
     const { doctorId } = req.params;
-    const { fullName, phone, specialization, qualifications, hospital, experience } = req.body;
+    const { fullName, phone, specialization, qualifications, hospital, experience, services } = req.body;
+
+    const updateData = {};
+    if (fullName !== undefined) updateData.fullName = fullName;
+    if (phone !== undefined) updateData.phone = phone;
+    if (specialization !== undefined) updateData.specialization = specialization;
+    if (qualifications !== undefined) updateData.qualifications = qualifications;
+    if (hospital !== undefined) updateData.hospital = hospital;
+    if (experience !== undefined) updateData.experience = experience;
+    if (services !== undefined) updateData.services = services; // Allow updating services
 
     const doctor = await Doctor.findByIdAndUpdate(
       doctorId,
-      { fullName, phone, specialization, qualifications, hospital, experience },
+      updateData,
       { new: true, runValidators: true }
     ).select("-password");
 
@@ -312,5 +336,32 @@ export const updateDoctorProfile = async (req, res) => {
   } catch (error) {
     console.error("❌ Error updating profile:", error);
     res.status(500).json({ message: "Error updating profile", error });
+  }
+};
+
+// Update doctor services
+export const updateDoctorServices = async (req, res) => {
+  try {
+    const { doctorId } = req.params;
+    const { services } = req.body;
+
+    if (!Array.isArray(services)) {
+      return res.status(400).json({ message: "Services must be an array" });
+    }
+
+    const doctor = await Doctor.findByIdAndUpdate(
+      doctorId,
+      { services },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
+
+    res.status(200).json({ message: "Services updated successfully", doctor });
+  } catch (error) {
+    console.error("❌ Error updating doctor services:", error);
+    res.status(500).json({ message: "Error updating doctor services", error });
   }
 };

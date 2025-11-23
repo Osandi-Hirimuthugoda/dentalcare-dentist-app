@@ -32,7 +32,7 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     // Wrap in try-catch to prevent crashes during build
     try {
-      return BlocProvider(
+    return BlocProvider(
         create: (context) {
           try {
             return AuthBloc(
@@ -44,31 +44,31 @@ class _RegisterPageState extends State<RegisterPage> {
             debugPrint('Error creating AuthBloc: $e');
             // Return a default bloc if creation fails
             return AuthBloc(
-              loginUseCase: di.getIt(),
-              registerUseCase: di.getIt(),
-              logoutUseCase: di.getIt(),
+        loginUseCase: di.getIt(),
+        registerUseCase: di.getIt(),
+        logoutUseCase: di.getIt(),
             );
           }
         },
-        child: Scaffold(
+      child: Scaffold(
           backgroundColor: Colors.white,
-          body: BlocConsumer<AuthBloc, AuthState>(
-            listener: (context, state) {
-              if (state is AuthAuthenticated) {
-                // Get email before navigation
-                final email = emailController.text.trim();
-                
+        body: BlocConsumer<AuthBloc, AuthState>(
+          listener: (context, state) {
+            if (state is AuthAuthenticated) {
+              // Get email before navigation
+              final email = emailController.text.trim();
+              
                 // Navigate safely using postFrameCallback
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (!context.mounted) return;
                   
                   try {
                     // Navigate to login page with email pre-filled
-                    Navigator.pushReplacementNamed(
-                      context,
-                      RouteNames.login,
-                      arguments: email,
-                    );
+              Navigator.pushReplacementNamed(
+                context,
+                RouteNames.login,
+                arguments: email,
+              );
                   } catch (e) {
                     debugPrint('Navigation error: $e');
                   }
@@ -92,8 +92,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   );
                 }
-              }
-            },
+            }
+          },
           builder: (context, state) {
             final isLoading = state is AuthLoading;
             
@@ -235,7 +235,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       onPressed: isLoading ? null : () {
                         try {
                           if (_formKey.currentState?.validate() ?? false) {
-                            _handleRegister(context);
+                          _handleRegister(context);
                           }
                         } catch (e) {
                           debugPrint('Error in register button: $e');
@@ -257,9 +257,9 @@ class _RegisterPageState extends State<RegisterPage> {
                                 child: SizedBox(
                                   width: 16,
                                   height: 16,
-                                  child: CircularProgressIndicator(
+                              child: CircularProgressIndicator(
                                     strokeWidth: 2.5,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                   ),
                                 ),
                               ),
@@ -350,17 +350,17 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       if (!context.mounted) return;
       
-      // Create user entity
-      final user = UserEntity(
-        id: '',
-        name: nameController.text.trim(),
-        email: emailController.text.trim(),
-        phone: phoneController.text.trim(),
-      );
+    // Create user entity
+    final user = UserEntity(
+      id: '',
+      name: nameController.text.trim(),
+      email: emailController.text.trim(),
+      phone: phoneController.text.trim(),
+    );
 
-      // Get age and gender from form
-      final age = int.tryParse(ageController.text.trim());
-      final gender = _selectedGender?.toLowerCase() ?? 'other';
+    // Get age and gender from form
+    final age = int.tryParse(ageController.text.trim());
+    final gender = _selectedGender?.toLowerCase() ?? 'other';
 
       // Check if Bloc is available
       final bloc = context.read<AuthBloc>();
@@ -369,15 +369,15 @@ class _RegisterPageState extends State<RegisterPage> {
         return;
       }
 
-      // Register user with age and gender
+    // Register user with age and gender
       bloc.add(
-        RegisterRequested(
-          user: user,
-          password: passwordController.text,
-          age: age,
-          gender: gender,
-        ),
-      );
+      RegisterRequested(
+        user: user,
+        password: passwordController.text,
+        age: age,
+        gender: gender,
+      ),
+    );
     } catch (e, stackTrace) {
       debugPrint('Error in _handleRegister: $e');
       debugPrint('Stack trace: $stackTrace');
