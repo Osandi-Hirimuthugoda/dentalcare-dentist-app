@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/models/notification_model.dart';
-import 'package:flutter_application_1/core/services/notification_service.dart';
 import 'package:flutter_application_1/core/themes/colors.dart';
 import 'package:flutter_application_1/core/themes/text_styles.dart';
+import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
+import 'package:flutter_application_1/injection_container.dart' as di;
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -12,36 +13,136 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  final NotificationService _notificationService = NotificationService();
+  late final DentalRemoteDataSource _dentalDataSource;
   List<NotificationModel> _notifications = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+  int _unreadCount = 0;
 
   @override
   void initState() {
     super.initState();
+    _dentalDataSource = di.getIt<DentalRemoteDataSource>();
     _loadNotifications();
   }
 
-  void _loadNotifications() {
+  Future<void> _loadNotifications() async {
     setState(() {
-      _notifications = _notificationService.notifications;
+      _isLoading = true;
+      _errorMessage = null;
     });
+
+    try {
+      final notificationsData = await _dentalDataSource.getNotifications();
+      
+      final notifications = notificationsData.map<NotificationModel>((data) {
+        final id = data['_id']?.toString() ?? data['id']?.toString() ?? '';
+        final title = data['title']?.toString() ?? 'Notification';
+        final message = data['message']?.toString() ?? '';
+        final isRead = data['isRead'] ?? false;
+        final typeString = data['type']?.toString() ?? 'general';
+        
+        // Parse date
+        DateTime date = DateTime.now();
+        if (data['createdAt'] != null) {
+          try {
+            final utcDate = DateTime.parse(data['createdAt']).toUtc();
+            date = utcDate.add(const Duration(hours: 5, minutes: 30)); // Sri Lankan time
+          } catch (e) {
+            debugPrint('Error parsing notification date: $e');
+          }
+        }
+        
+        // Map type string to enum
+        NotificationType type = NotificationType.general;
+        switch (typeString) {
+          case 'appointment':
+            type = NotificationType.appointment;
+            break;
+          case 'reminder':
+            type = NotificationType.reminder;
+            break;
+          case 'emergency':
+            type = NotificationType.emergency;
+            break;
+          case 'promotion':
+            type = NotificationType.promotion;
+            break;
+          default:
+            type = NotificationType.general;
+        }
+        
+        return NotificationModel(
+          id: id,
+          title: title,
+          message: message,
+          date: date,
+          isRead: isRead,
+          type: type,
+        );
+      }).toList();
+      
+      setState(() {
+        _notifications = notifications;
+        _unreadCount = notifications.where((n) => !n.isRead).length;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('❌ Error loading notifications: $e');
+      setState(() {
+        _errorMessage = 'Failed to load notifications. Please try again.';
+        _isLoading = false;
+        _notifications = [];
+      });
+    }
   }
 
-  void _markAllAsRead() {
-    setState(() {
-      _notificationService.markAllAsRead();
-      _loadNotifications();
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('All notifications marked as read')),
-    );
+  Future<void> _markAllAsRead() async {
+    try {
+      await _dentalDataSource.markAllNotificationsAsRead();
+      await _loadNotifications();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All notifications marked as read')),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error marking all as read: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to mark all as read. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
-  void _deleteNotification(String id) {
-    setState(() {
-      _notificationService.deleteNotification(id);
-      _loadNotifications();
-    });
+  Future<void> _deleteNotification(String id) async {
+    try {
+      await _dentalDataSource.deleteNotification(id);
+      await _loadNotifications();
+    } catch (e) {
+      debugPrint('❌ Error deleting notification: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to delete notification. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _markAsRead(String id) async {
+    try {
+      await _dentalDataSource.markNotificationAsRead(id);
+      await _loadNotifications();
+    } catch (e) {
+      debugPrint('❌ Error marking notification as read: $e');
+    }
   }
 
   Widget _buildNotificationIcon(NotificationType type) {
@@ -102,7 +203,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         backgroundColor: Colors.teal[700],
         foregroundColor: Colors.white,
         actions: [
-          if (_notificationService.unreadCount > 0)
+          if (_unreadCount > 0)
             IconButton(
               icon: const Icon(Icons.mark_email_read),
               onPressed: _markAllAsRead,
@@ -110,16 +211,45 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
         ],
       ),
-      body: _notifications.isEmpty
-          ? _buildEmptyState()
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _notifications.length,
-              itemBuilder: (context, index) {
-                final notification = _notifications[index];
-                return _buildNotificationCard(notification);
-              },
-            ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 64,
+                        color: Colors.red.withValues(alpha: 0.5),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _errorMessage!,
+                        style: TextStyles.bodyMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadNotifications,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                )
+              : _notifications.isEmpty
+                  ? _buildEmptyState()
+                  : RefreshIndicator(
+                      onRefresh: _loadNotifications,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _notifications.length,
+                        itemBuilder: (context, index) {
+                          final notification = _notifications[index];
+                          return _buildNotificationCard(notification);
+                        },
+                      ),
+                    ),
     );
   }
 
@@ -170,9 +300,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ),
           onTap: () {
             if (!notification.isRead) {
-              setState(() {
-                _notificationService.markAsRead(notification.id);
-              });
+              _markAsRead(notification.id);
             }
           },
         ),

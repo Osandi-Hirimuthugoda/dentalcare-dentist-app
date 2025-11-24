@@ -1,6 +1,7 @@
 import Appointment from "../models/Appointment.js";
 import Patient from "../models/Patient.js";
 import Doctor from "../models/doctorModel.js";
+import { createNotification } from "./notificationController.js";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dentalcare_secret_key_change_in_production";
@@ -271,6 +272,9 @@ export const createAppointment = async (req, res) => {
 // ✏️ Update appointment
 export const updateAppointment = async (req, res) => {
   try {
+    // Get the old appointment to check if status changed
+    const oldAppt = await Appointment.findById(req.params.id);
+    
     const appt = await Appointment.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -281,6 +285,38 @@ export const updateAppointment = async (req, res) => {
     
     if (!appt) {
       return res.status(404).json({ message: "Appointment not found" });
+    }
+    
+    // Create notification if status changed to "confirmed"
+    if (req.body.status === "confirmed" && oldAppt && oldAppt.status !== "confirmed") {
+      try {
+        const doctorName = appt.doctor?.fullName || "Your doctor";
+        const appointmentDate = new Date(appt.startTime);
+        const formattedDate = appointmentDate.toLocaleDateString('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric'
+        });
+        const formattedTime = appointmentDate.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Asia/Colombo'
+        });
+        
+        await createNotification({
+          patient: appt.patient._id,
+          doctor: appt.doctor?._id,
+          appointment: appt._id,
+          title: "Appointment Confirmed",
+          message: `Your appointment with ${doctorName} has been confirmed for ${formattedDate} at ${formattedTime}.`,
+          type: "appointment"
+        });
+        
+        console.log(`✅ Notification created for appointment confirmation: ${appt._id}`);
+      } catch (notifError) {
+        // Don't fail the appointment update if notification creation fails
+        console.error("❌ Error creating notification:", notifError);
+      }
     }
     
     res.json(appt);

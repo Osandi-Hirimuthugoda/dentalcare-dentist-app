@@ -25,6 +25,10 @@ abstract class DentalRemoteDataSource {
   Future<List<dynamic>> getPatientReviews(); // Get patient's reviews
   Future<List<dynamic>> getAnnouncements(); // Get announcements from doctors
   Future<void> markMessageAsRead(String messageId); // Mark a message as read
+  Future<List<dynamic>> getNotifications(); // Get notifications for patient
+  Future<void> markNotificationAsRead(String notificationId); // Mark a notification as read
+  Future<void> markAllNotificationsAsRead(); // Mark all notifications as read
+  Future<void> deleteNotification(String notificationId); // Delete a notification
 }
 
 class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
@@ -595,6 +599,94 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
     } catch (e) {
       debugPrint('❌ Error marking message as read: $e');
       // Don't throw - this is not critical
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getNotifications() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.get(
+        Uri.parse('${AppConstants.baseUrl}/notifications/patient'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        debugPrint('📬 Notifications loaded: ${data is List ? data.length : 0}');
+        return data is List ? data : [];
+      } else {
+        throw ServerException('Failed to fetch notifications', response.statusCode);
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching notifications: $e');
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<void> markNotificationAsRead(String notificationId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.put(
+        Uri.parse('${AppConstants.baseUrl}/notifications/$notificationId/read'),
+        headers: headers,
+      );
+
+      if (response.statusCode != 200) {
+        throw ServerException('Failed to mark notification as read', response.statusCode);
+      }
+    } catch (e) {
+      debugPrint('❌ Error marking notification as read: $e');
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<void> markAllNotificationsAsRead() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.put(
+        Uri.parse('${AppConstants.baseUrl}/notifications/read-all'),
+        headers: headers,
+      );
+
+      if (response.statusCode != 200) {
+        throw ServerException('Failed to mark all notifications as read', response.statusCode);
+      }
+    } catch (e) {
+      debugPrint('❌ Error marking all notifications as read: $e');
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<void> deleteNotification(String notificationId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.delete(
+        Uri.parse('${AppConstants.baseUrl}/notifications/$notificationId'),
+        headers: headers,
+      );
+
+      if (response.statusCode != 200) {
+        throw ServerException('Failed to delete notification', response.statusCode);
+      }
+    } catch (e) {
+      debugPrint('❌ Error deleting notification: $e');
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
     }
   }
 }
