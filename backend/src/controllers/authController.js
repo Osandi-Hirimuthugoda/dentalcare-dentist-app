@@ -62,6 +62,8 @@ export const registerPatient = async (req, res) => {
       phone: patient.phone,
       age: patient.age,
       gender: patient.gender,
+      bloodGroup: patient.bloodGroup,
+      address: patient.address,
       status: patient.status,
       isEmailVerified: patient.isEmailVerified,
       createdAt: patient.createdAt,
@@ -148,6 +150,8 @@ export const loginPatient = async (req, res) => {
       phone: patient.phone,
       age: patient.age,
       gender: patient.gender,
+      bloodGroup: patient.bloodGroup,
+      address: patient.address,
       status: patient.status,
       isEmailVerified: patient.isEmailVerified,
       createdAt: patient.createdAt,
@@ -166,6 +170,136 @@ export const loginPatient = async (req, res) => {
     console.error("❌ Login error:", error.message);
     res.status(500).json({ 
       message: "Login failed. Please try again later." 
+    });
+  }
+};
+
+// 👤 Get current patient profile (for mobile app)
+export const getCurrentPatient = async (req, res) => {
+  try {
+    // Extract user from token
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ message: "No authorization header" });
+    }
+    
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+    
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+    
+    if (decoded.role !== "patient") {
+      return res.status(403).json({ message: "Access denied. Patient account required." });
+    }
+    
+    // Find patient by ID
+    const patient = await Patient.findById(decoded.id);
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+    
+    // Format response for mobile app
+    const patientResponse = {
+      id: patient._id.toString(),
+      name: patient.name,
+      email: patient.email,
+      phone: patient.phone,
+      age: patient.age,
+      gender: patient.gender,
+      bloodGroup: patient.bloodGroup,
+      address: patient.address,
+      status: patient.status,
+      isEmailVerified: patient.isEmailVerified,
+      createdAt: patient.createdAt,
+      updatedAt: patient.updatedAt,
+    };
+    
+    res.json({
+      message: "Patient profile retrieved successfully",
+      user: patientResponse,
+    });
+  } catch (error) {
+    console.error("❌ Error getting patient profile:", error.message);
+    res.status(500).json({ 
+      message: "Failed to retrieve profile. Please try again later." 
+    });
+  }
+};
+
+// ✏️ Update patient profile (for mobile app)
+export const updatePatientProfile = async (req, res) => {
+  try {
+    // Extract user from token
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ message: "No authorization header" });
+    }
+    
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+    
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+    
+    if (decoded.role !== "patient") {
+      return res.status(403).json({ message: "Access denied. Patient account required." });
+    }
+    
+    // Find patient by ID
+    const patient = await Patient.findById(decoded.id);
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+    
+    // Update allowed fields
+    const { name, phone, age, gender, bloodGroup, address } = req.body;
+    
+    if (name !== undefined) patient.name = name.trim();
+    if (phone !== undefined) patient.phone = phone.trim();
+    if (age !== undefined) patient.age = age ? parseInt(age) : undefined;
+    if (gender !== undefined) patient.gender = gender ? gender.toLowerCase() : undefined;
+    if (bloodGroup !== undefined) patient.bloodGroup = bloodGroup;
+    if (address !== undefined) patient.address = address.trim();
+    
+    await patient.save();
+    
+    // Format response for mobile app
+    const patientResponse = {
+      id: patient._id.toString(),
+      name: patient.name,
+      email: patient.email,
+      phone: patient.phone,
+      age: patient.age,
+      gender: patient.gender,
+      bloodGroup: patient.bloodGroup,
+      address: patient.address,
+      status: patient.status,
+      isEmailVerified: patient.isEmailVerified,
+      createdAt: patient.createdAt,
+      updatedAt: patient.updatedAt,
+    };
+    
+    res.json({
+      message: "Profile updated successfully",
+      user: patientResponse,
+    });
+  } catch (error) {
+    console.error("❌ Error updating patient profile:", error.message);
+    res.status(500).json({ 
+      message: "Failed to update profile. Please try again later." 
     });
   }
 };

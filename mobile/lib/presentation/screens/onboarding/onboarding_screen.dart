@@ -64,8 +64,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _goToHome() {
     // Always navigate to login page after onboarding
     // User must login to access the app
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, RouteNames.login);
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, RouteNames.login);
     }
   }
 

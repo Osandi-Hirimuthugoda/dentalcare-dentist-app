@@ -17,6 +17,7 @@ abstract class DentalRemoteDataSource {
   Future<dynamic> uploadTeethScan(String imagePath);
   Future<List<dynamic>> getBills(); // Get all bills for patient
   Future<dynamic> processPayment(String billId, String paymentMethod, Map<String, dynamic>? cardDetails); // Process payment
+  Future<dynamic> createBillFromAppointment(String appointmentId); // Create bill from appointment
   Future<List<dynamic>> getMessages(); // Get messages/conversations for patient
   Future<List<dynamic>> getConversation(String doctorId); // Get conversation with a doctor
   Future<dynamic> sendMessage(String doctorId, String message); // Send message to doctor
@@ -29,6 +30,9 @@ abstract class DentalRemoteDataSource {
   Future<void> markNotificationAsRead(String notificationId); // Mark a notification as read
   Future<void> markAllNotificationsAsRead(); // Mark all notifications as read
   Future<void> deleteNotification(String notificationId); // Delete a notification
+  Future<List<dynamic>> searchHospitals({String? query, String? district}); // Search hospitals
+  Future<List<dynamic>> getHospitalsByDistrict(String district); // Get hospitals by district
+  Future<List<dynamic>> getDistrictsWithCounts(); // Get all districts with hospital counts
 }
 
 class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
@@ -277,6 +281,31 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
       } else {
         final errorBody = jsonDecode(response.body);
         final errorMessage = errorBody['message'] ?? 'Failed to process payment';
+        throw ServerException(errorMessage, response.statusCode);
+      }
+    } catch (e) {
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<dynamic> createBillFromAppointment(String appointmentId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.post(
+        Uri.parse('${AppConstants.baseUrl}/bills/from-appointment'),
+        body: jsonEncode({'appointmentId': appointmentId}),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return jsonDecode(response.body);
+      } else {
+        final errorBody = jsonDecode(response.body);
+        final errorMessage = errorBody['message'] ?? 'Failed to create bill';
         throw ServerException(errorMessage, response.statusCode);
       }
     } catch (e) {
@@ -683,6 +712,100 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
       }
     } catch (e) {
       debugPrint('❌ Error deleting notification: $e');
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> searchHospitals({String? query, String? district}) async {
+    try {
+      // Hospital search is public, no auth required
+      final uri = Uri.parse('${AppConstants.baseUrl}/hospitals/search').replace(
+        queryParameters: {
+          if (query != null && query.isNotEmpty) 'query': query,
+          if (district != null && district.isNotEmpty) 'district': district,
+        },
+      );
+      
+      final response = await client.get(uri);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        debugPrint('🏥 Hospitals search response: ${data is Map ? 'Map' : 'List'}');
+        
+        if (data is Map && data.containsKey('hospitals')) {
+          final hospitals = data['hospitals'] as List? ?? [];
+          debugPrint('✅ Found ${hospitals.length} hospitals');
+          return hospitals;
+        } else if (data is List) {
+          debugPrint('✅ Found ${data.length} hospitals (direct list)');
+          return data;
+        } else {
+          debugPrint('⚠️ Unexpected response format');
+          return [];
+        }
+      } else {
+        throw ServerException('Failed to search hospitals', response.statusCode);
+      }
+    } catch (e) {
+      debugPrint('❌ Error searching hospitals: $e');
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getHospitalsByDistrict(String district) async {
+    try {
+      final response = await client.get(
+        Uri.parse('${AppConstants.baseUrl}/hospitals/district/$district'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is Map && data.containsKey('hospitals')) {
+          return data['hospitals'] as List? ?? [];
+        } else if (data is List) {
+          return data;
+        }
+        return [];
+      } else {
+        throw ServerException('Failed to fetch hospitals by district', response.statusCode);
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching hospitals by district: $e');
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getDistrictsWithCounts() async {
+    try {
+      final response = await client.get(
+        Uri.parse('${AppConstants.baseUrl}/hospitals/districts'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is Map && data.containsKey('districts')) {
+          return data['districts'] as List? ?? [];
+        } else if (data is List) {
+          return data;
+        }
+        return [];
+      } else {
+        throw ServerException('Failed to fetch districts', response.statusCode);
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching districts: $e');
       if (e is ServerException) {
         rethrow;
       }

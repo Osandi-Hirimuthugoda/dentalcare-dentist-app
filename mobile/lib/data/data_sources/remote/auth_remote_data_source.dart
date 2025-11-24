@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_application_1/core/constants/app_constants.dart';
 import 'package:flutter_application_1/core/errors/exceptions.dart';
+import 'package:flutter_application_1/data/data_sources/local/shared_prefs.dart';
 import 'package:flutter_application_1/data/models/user_model.dart';
 import 'package:http/http.dart' as http;
 // import 'package:dental_care/core/constants/app_constants.dart';
@@ -11,6 +12,8 @@ import 'package:http/http.dart' as http;
 abstract class AuthRemoteDataSource {
   Future<Map<String, dynamic>> login(String email, String password); // Returns user and token
   Future<Map<String, dynamic>> register(UserModel user, String password); // Returns user and token
+  Future<Map<String, dynamic>> getCurrentUser(); // Get current logged in user profile
+  Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> profileData); // Update user profile
   Future<void> forgotPassword(String email);
   Future<void> verifyEmail(String email, String otp);
   Future<void> logout();
@@ -18,8 +21,26 @@ abstract class AuthRemoteDataSource {
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final http.Client client;
+  final LocalDataSource localDataSource;
 
-  AuthRemoteDataSourceImpl({required this.client});
+  AuthRemoteDataSourceImpl({
+    required this.client,
+    required this.localDataSource,
+  });
+  
+  // Helper method to get headers with authentication
+  Future<Map<String, String>> _getHeaders() async {
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+    };
+    
+    final token = await localDataSource.getString(AppConstants.tokenKey);
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer ${token.trim()}';
+    }
+    
+    return headers;
+  }
 
   @override
   Future<Map<String, dynamic>> login(String email, String password) async {
@@ -224,6 +245,83 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
     } catch (e) {
       throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getCurrentUser() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.get(
+        Uri.parse('${AppConstants.baseUrl}/auth/me'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['user'] == null) {
+          throw ServerException('Invalid response: user data missing', response.statusCode);
+        }
+        return data['user'] as Map<String, dynamic>;
+      } else if (response.statusCode == 401) {
+        throw InvalidCredentialsException();
+      } else {
+        try {
+          final errorData = jsonDecode(response.body);
+          throw ServerException(
+            errorData['message'] ?? 'Failed to get user profile',
+            response.statusCode,
+          );
+        } catch (_) {
+          throw ServerException('Failed to get user profile', response.statusCode);
+        }
+      }
+    } on ServerException {
+      rethrow;
+    } on InvalidCredentialsException {
+      rethrow;
+    } catch (e) {
+      debugPrint('❌ Get current user error: $e');
+      throw NetworkException('Network error occurred: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> profileData) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.put(
+        Uri.parse('${AppConstants.baseUrl}/auth/me'),
+        body: jsonEncode(profileData),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['user'] == null) {
+          throw ServerException('Invalid response: user data missing', response.statusCode);
+        }
+        return data['user'] as Map<String, dynamic>;
+      } else if (response.statusCode == 401) {
+        throw InvalidCredentialsException();
+      } else {
+        try {
+          final errorData = jsonDecode(response.body);
+          throw ServerException(
+            errorData['message'] ?? 'Failed to update profile',
+            response.statusCode,
+          );
+        } catch (_) {
+          throw ServerException('Failed to update profile', response.statusCode);
+        }
+      }
+    } on ServerException {
+      rethrow;
+    } on InvalidCredentialsException {
+      rethrow;
+    } catch (e) {
+      debugPrint('❌ Update profile error: $e');
+      throw NetworkException('Network error occurred: ${e.toString()}');
     }
   }
 

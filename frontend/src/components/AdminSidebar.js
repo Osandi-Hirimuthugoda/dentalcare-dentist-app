@@ -10,6 +10,7 @@ import {
   LogOut,
   Shield,
   UserCircle,
+  Building2,
 } from "lucide-react";
 import sidebarStyles from "../styles/DoctorSidebar.module.css";
 
@@ -97,6 +98,17 @@ export default function AdminSidebar() {
               }`}
             >
               <Activity size={20} className={sidebarStyles.navIcon} /> Activity
+            </Link>
+          </li>
+
+          <li className={sidebarStyles.navItem}>
+            <Link
+              to="/admin/hospitals"
+              className={`${sidebarStyles.navLink} ${
+                isActive("/admin/hospitals") ? sidebarStyles.active : ""
+              }`}
+            >
+              <Building2 size={20} className={sidebarStyles.navIcon} /> Hospitals
             </Link>
           </li>
         </ul>

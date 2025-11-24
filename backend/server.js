@@ -13,6 +13,7 @@ import availabilityRoutes from "./src/routes/availabilityRoutes.js";
 import billRoutes from "./src/routes/billRoutes.js";
 import reviewRoutes from "./src/routes/reviewRoutes.js";
 import notificationRoutes from "./src/routes/notificationRoutes.js";
+import hospitalRoutes from "./src/routes/hospitalRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -68,6 +69,9 @@ app.use("/api/reviews", reviewRoutes);
 
 // Notification routes (for patient notifications)
 app.use("/api/notifications", notificationRoutes);
+
+// Hospital routes (for hospital management and search)
+app.use("/api/hospitals", hospitalRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

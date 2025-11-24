@@ -73,7 +73,7 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
           'distance': 'N/A',
           'fee': 'Contact for pricing',
           'availability': 'Available',
-          'isFavorite': false,
+        'isFavorite': false,
           'services': dentist['services'] ?? [],
         };
       }).toList();
@@ -204,7 +204,7 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
       builder: (context) => AddReviewDialog(
         doctorId: dentist['id'] as String,
         doctorName: dentist['name'] as String,
-      ),
+              ),
     ).then((success) {
       if (success == true) {
         // Refresh dentist data to show updated ratings
@@ -272,15 +272,15 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
                   ),
                 )
               : Column(
-                  children: [
-                    _buildSearchBar(),
-                    _buildFilterChips(),
-                    _buildResultsCount(),
-                    Expanded(
-                      child: _buildDentistsView(),
-                    ),
-                  ],
-                ),
+        children: [
+          _buildSearchBar(),
+          _buildFilterChips(),
+          _buildResultsCount(),
+          Expanded(
+            child: _buildDentistsView(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -547,8 +547,8 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
                         onTap: () => _showReviewsDialog(dentist),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.star, size: 16, color: Colors.amber),
+                        children: [
+                          Icon(Icons.star, size: 16, color: Colors.amber),
                             Flexible(
                               child: Text(
                                 ' ${dentist['rating'] > 0 ? dentist['rating'].toStringAsFixed(1) : 'N/A'}',
@@ -641,15 +641,15 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   flex: 2,
-                  child: ElevatedButton(
-                    onPressed: () => _bookAppointment(dentist),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.white,
+              child: ElevatedButton(
+                onPressed: () => _bookAppointment(dentist),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: const Text('Book Appointment'),
-                  ),
+                ),
+                child: const Text('Book Appointment'),
+              ),
                 ),
               ],
             ),
@@ -668,8 +668,8 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
           const SizedBox(width: 4),
           Flexible(
             child: Text(
-              text,
-              style: TextStyles.caption,
+            text,
+            style: TextStyles.caption,
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),

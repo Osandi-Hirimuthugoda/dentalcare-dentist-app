@@ -10,6 +10,9 @@ import 'package:flutter_application_1/presentation/screens/auth/login_page.dart'
 import 'package:flutter_application_1/presentation/screens/auth/register_page.dart';
 import 'package:flutter_application_1/presentation/screens/auth/verify_email_page.dart';
 import 'package:flutter_application_1/presentation/screens/dentists/find_dentists_screen.dart';
+import 'package:flutter_application_1/presentation/screens/hospitals/search_hospitals_screen.dart';
+import 'package:flutter_application_1/presentation/screens/hospitals/nearby_hospitals_map_screen.dart';
+import 'package:flutter_application_1/presentation/screens/emergency/emergency_help_screen.dart';
 import 'package:flutter_application_1/presentation/screens/home/home_screen.dart';
 import 'package:flutter_application_1/presentation/screens/home/appointments/appointments_screen.dart';
 import 'package:flutter_application_1/presentation/screens/home/profile/profile_screen.dart';
@@ -22,6 +25,7 @@ import 'package:flutter_application_1/presentation/screens/treatments/my_treatme
 import 'package:flutter_application_1/features/payment/card_payment_screen.dart';
 import 'package:flutter_application_1/presentation/screens/messages/messages_screen.dart';
 import 'package:flutter_application_1/presentation/widgets/auth/protected_route.dart';
+import 'package:flutter_application_1/core/utils/theme_notifier.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,15 +40,65 @@ void main() async {
   runApp(const DentalCareApp());
 }
 
-class DentalCareApp extends StatelessWidget {
+class DentalCareApp extends StatefulWidget {
   const DentalCareApp({super.key});
+
+  @override
+  State<DentalCareApp> createState() => _DentalCareAppState();
+}
+
+class _DentalCareAppState extends State<DentalCareApp> {
+  final ThemeNotifier _themeNotifier = ThemeNotifier();
+  bool _isDarkMode = false;
+  bool _isEyeComfortMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTheme();
+    _themeNotifier.addListener(_onThemeChanged);
+  }
+
+  @override
+  void dispose() {
+    _themeNotifier.removeListener(_onThemeChanged);
+    _themeNotifier.dispose();
+    super.dispose();
+  }
+
+  void _onThemeChanged() {
+    setState(() {
+      _isDarkMode = _themeNotifier.isDarkMode;
+      _isEyeComfortMode = _themeNotifier.isEyeComfortMode;
+    });
+  }
+
+  Future<void> _loadTheme() async {
+    await _themeNotifier.loadTheme();
+    setState(() {
+      _isDarkMode = _themeNotifier.isDarkMode;
+      _isEyeComfortMode = _themeNotifier.isEyeComfortMode;
+    });
+  }
+
+  ThemeData _getCurrentTheme() {
+    if (_isEyeComfortMode) {
+      return AppTheme.eyeComfortTheme;
+    } else if (_isDarkMode) {
+      return AppTheme.darkTheme;
+    } else {
+      return AppTheme.lightTheme;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Dental Care+',
-      theme: AppTheme.lightTheme,
+      theme: _getCurrentTheme(),
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
       initialRoute: RouteNames.splash,
       routes: {
         RouteNames.splash: (context) => const SplashScreen(),
@@ -89,6 +143,15 @@ class DentalCareApp extends StatelessWidget {
         '/find-dentists': (context) => const ProtectedRoute(
           child: FindDentistsScreen(),
         ),
+        '/search-hospitals': (context) => const ProtectedRoute(
+          child: SearchHospitalsScreen(),
+        ),
+        '/nearby-hospitals-map': (context) => const ProtectedRoute(
+          child: NearbyHospitalsMapScreen(),
+        ),
+        '/emergency-help': (context) => const ProtectedRoute(
+          child: EmergencyHelpScreen(),
+        ),
         '/messages': (context) {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
           return ProtectedRoute(
@@ -102,14 +165,12 @@ class DentalCareApp extends StatelessWidget {
           );
         },
         '/card-payment': (context) {
-          final bill = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          final bill = args?['bill'] as Map<String, dynamic>? ?? {};
           return ProtectedRoute(
             child: CardPaymentScreen(
-              bill: bill ?? {},
-              onPaymentSuccess: () {
-                // Handle payment success
-                Navigator.pop(context);
-              },
+              bill: bill,
+              onPaymentSuccess: null, // Bills page will handle reload
             ),
           );
         },
@@ -118,14 +179,13 @@ class DentalCareApp extends StatelessWidget {
         // Handle dynamic routes with arguments
         switch (settings.name) {
           case '/card-payment':
-            final bill = settings.arguments as Map<String, dynamic>?;
+            final args = settings.arguments as Map<String, dynamic>?;
+            final bill = args?['bill'] as Map<String, dynamic>? ?? {};
             return MaterialPageRoute(
               builder: (context) => ProtectedRoute(
                 child: CardPaymentScreen(
-                  bill: bill ?? {},
-                  onPaymentSuccess: () {
-                    Navigator.pop(context);
-                  },
+                  bill: bill,
+                  onPaymentSuccess: null, // Bills page will handle reload
                 ),
               ),
             );

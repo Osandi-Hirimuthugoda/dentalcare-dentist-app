@@ -20,6 +20,7 @@ import AdminDoctors from "./pages/AdminDoctors";
 import AdminAppointments from "./pages/AdminAppointments";
 import AdminActivity from "./pages/AdminActivity";
 import AdminPatients from "./pages/AdminPatients";
+import AdminHospitals from "./pages/AdminHospitals";
 import NotFound from "./pages/NotFound";
 
 // Protected Route Component for Admin
@@ -172,6 +173,14 @@ const App = () => {
           element={
             <AdminProtectedRoute>
               <AdminPatients />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/hospitals"
+          element={
+            <AdminProtectedRoute>
+              <AdminHospitals />
             </AdminProtectedRoute>
           }
         />

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/themes/colors.dart';
 import 'package:flutter_application_1/core/themes/text_styles.dart';
 import 'package:flutter_application_1/core/constants/route_names.dart';
+import 'package:flutter_application_1/presentation/widgets/common/bottom_navigation_bar_widget.dart';
 
 class HealthScreen extends StatelessWidget {
   const HealthScreen({super.key});
@@ -40,6 +41,12 @@ class HealthScreen extends StatelessWidget {
           const SizedBox(height: 24),
           _buildEmergencySection(context),
         ],
+      ),
+      bottomNavigationBar: BottomNavigationBarWidget(
+        currentIndex: 2, // Health tab
+        onTap: (index) {
+          BottomNavigationBarWidget.navigateToScreen(context, index);
+        },
       ),
     );
   }

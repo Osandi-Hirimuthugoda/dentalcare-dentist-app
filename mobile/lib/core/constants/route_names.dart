@@ -19,6 +19,9 @@ class RouteNames {
   static const String myTreatments = '/my-treatments';
   static const String myBills = '/my-bills';
   static const String findDentists = '/find-dentists';
+  static const String searchHospitals = '/search-hospitals';
+  static const String nearbyHospitalsMap = '/nearby-hospitals-map';
+  static const String emergencyHelp = '/emergency-help';
   static const String messages = '/messages';
   static const String announcements = '/announcements';
   

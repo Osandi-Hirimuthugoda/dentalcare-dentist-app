@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/themes/colors.dart';
 import 'package:flutter_application_1/core/themes/text_styles.dart';
 import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
+import 'package:flutter_application_1/domain/entities/appoinment_entity.dart';
 import 'package:flutter_application_1/domain/use_cases/appointment/book_appointment_use_case.dart';
 import 'package:flutter_application_1/injection_container.dart';
 import 'package:intl/intl.dart';
@@ -310,8 +311,19 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         (failure) {
           _showSnackBar('Failed to book appointment: ${failure.message}');
         },
-        (appointment) {
-          _showSuccessDialog();
+        (appointment) async {
+          // Create bill from appointment
+          try {
+            final appointmentId = appointment.id;
+            if (appointmentId.isNotEmpty) {
+              await _dentalDataSource.createBillFromAppointment(appointmentId);
+              debugPrint('✅ Bill created for appointment: $appointmentId');
+            }
+          } catch (e) {
+            debugPrint('⚠️ Failed to create bill: $e');
+            // Continue even if bill creation fails
+          }
+          _showSuccessDialog(appointment);
         },
       );
     } catch (e) {
@@ -323,9 +335,10 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     }
   }
 
-  void _showSuccessDialog() {
+  void _showSuccessDialog([AppointmentEntity? appointment]) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text('Appointment Booked!'),
         content: Column(
@@ -338,16 +351,20 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             Text('Date: ${DateFormat('dd/MM/yyyy').format(_selectedDate!)}'),
             Text('Time: $_selectedTime'),
             const SizedBox(height: 10),
+            const Text('A bill has been generated for this appointment.'),
+            const SizedBox(height: 5),
             const Text('You will receive a confirmation SMS and email.'),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
+              Navigator.pop(context); // Close dialog
+              Navigator.pop(context); // Close book appointment screen
+              // Navigate to Bills page
+              Navigator.pushNamed(context, '/my-bills');
             },
-            child: const Text('OK'),
+            child: const Text('View Bill'),
           ),
         ],
       ),
@@ -657,12 +674,14 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
                           return DropdownButtonFormField<String>(
+                            isExpanded: true,
                             hint: const Text('Loading times...'),
                             items: const [],
                             onChanged: null,
                             decoration: const InputDecoration(
                               border: OutlineInputBorder(),
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                              isDense: true,
                             ),
                           );
                         }
@@ -671,17 +690,20 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                         
                         if (availableTimes.isEmpty) {
                           return DropdownButtonFormField<String>(
+                            isExpanded: true,
                             hint: const Text('No slots available'),
                             items: [],
                             onChanged: null,
                             decoration: const InputDecoration(
                               border: OutlineInputBorder(),
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                              isDense: true,
                             ),
                           );
                         }
                         
                         return DropdownButtonFormField<String>(
+                          isExpanded: true,
                           value: _selectedTime,
                           hint: const Text('Select Time'),
                           items: availableTimes
@@ -697,7 +719,8 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                           },
                           decoration: const InputDecoration(
                             border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                            isDense: true,
                           ),
                         );
                       },

@@ -29,7 +29,10 @@ Future<void> init() async {
 
   // Data sources
   getIt.registerLazySingleton<AuthRemoteDataSource>(
-    () => AuthRemoteDataSourceImpl(client: getIt()),
+    () => AuthRemoteDataSourceImpl(
+      client: getIt(),
+      localDataSource: getIt(),
+    ),
   );
   getIt.registerLazySingleton<DentalRemoteDataSource>(
     () => DentalRemoteDataSourceImpl(

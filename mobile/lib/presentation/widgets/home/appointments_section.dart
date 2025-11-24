@@ -247,11 +247,11 @@ class _AppointmentsSectionState extends State<AppointmentsSection> {
             )
           // Appointments List
           else
-            Column(
+          Column(
               children: _appointments.map((appointment) {
-                return _buildAppointmentCard(appointment);
-              }).toList(),
-            ),
+              return _buildAppointmentCard(appointment);
+            }).toList(),
+          ),
         ],
       ),
     );

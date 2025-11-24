@@ -20,4 +20,9 @@ class AppConstants {
   // App Settings
   static const int splashDelay = 3000; // 3 seconds
   static const int otpTimeout = 120; // 2 minutes
+  
+  // Google Maps API Key - Replace with your actual API key from Google Cloud Console
+  // Get it from: https://console.cloud.google.com/google/maps-apis
+  static const String googleMapsApiKey = 'YOUR_GOOGLE_MAPS_API_KEY';
+  static const String googlePlacesApiKey = 'YOUR_GOOGLE_PLACES_API_KEY';
 }

@@ -4,6 +4,13 @@ import 'dart:io';
 import 'package:flutter_application_1/core/constants/route_names.dart';
 import 'package:flutter_application_1/core/themes/colors.dart';
 import 'package:flutter_application_1/core/themes/text_styles.dart';
+import 'package:flutter_application_1/core/utils/extensions.dart';
+import 'package:flutter_application_1/data/data_sources/remote/auth_remote_data_source.dart';
+import 'package:flutter_application_1/domain/repositories/auth_repository.dart';
+import 'package:flutter_application_1/injection_container.dart' as di;
+import 'package:flutter_application_1/presentation/screens/home/profile/settings_screen.dart';
+import 'package:flutter_application_1/presentation/widgets/common/bottom_navigation_bar_widget.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -15,15 +22,60 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
+  late final AuthRemoteDataSource _authDataSource;
+  late final AuthRepository _authRepository;
   
   // User data
-  String _name = 'Kasun Perera';
-  String _email = 'kasun.perera@email.com';
-  String _phone = '+94 77 123 4567';
-  String _gender = 'Male';
-  String _age = '32 years';
-  String _bloodGroup = 'O+';
-  String _address = '123 Main Street, Colombo';
+  String _name = '';
+  String _email = '';
+  String _phone = '';
+  String _gender = '';
+  String _age = '';
+  String _bloodGroup = '';
+  String _address = '';
+  
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _authDataSource = di.getIt<AuthRemoteDataSource>();
+    _authRepository = di.getIt<AuthRepository>();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final userData = await _authDataSource.getCurrentUser();
+      
+      setState(() {
+        _name = userData['name']?.toString() ?? '';
+        _email = userData['email']?.toString() ?? '';
+        _phone = userData['phone']?.toString() ?? '';
+        _gender = userData['gender']?.toString() ?? '';
+        if (userData['age'] != null) {
+          _age = '${userData['age']} years';
+        } else {
+          _age = '';
+        }
+        _bloodGroup = userData['bloodGroup']?.toString() ?? '';
+        _address = userData['address']?.toString() ?? '';
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('❌ Error loading user profile: $e');
+      setState(() {
+        _errorMessage = 'Failed to load profile. Please try again.';
+        _isLoading = false;
+      });
+    }
+  }
 
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -197,13 +249,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   
                   // Edit Form
                   _buildEditFormField('Full Name', nameController, Icons.person),
-                  _buildEditFormField('Email', emailController, Icons.email),
+                  _buildEditFormField('Email', emailController, Icons.email, enabled: false),
                   _buildEditFormField('Phone', phoneController, Icons.phone),
                   _buildEditFormField('Age', ageController, Icons.cake),
                   _buildEditFormField('Address', addressController, Icons.location_on),
                   
                   // Gender Dropdown
                   Container(
+                    margin: const EdgeInsets.only(bottom: 15),
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
@@ -211,9 +264,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: DropdownButton<String>(
-                      value: _gender,
+                      value: _gender.isNotEmpty 
+                          ? _gender.capitalizeFirst 
+                          : null,
                       isExpanded: true,
                       underline: const SizedBox(),
+                      hint: const Text('Select Gender'),
                       items: ['Male', 'Female', 'Other']
                           .map((gender) => DropdownMenuItem(
                                 value: gender,
@@ -222,7 +278,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           .toList(),
                       onChanged: (value) {
                         setState(() {
-                          _gender = value!;
+                          _gender = value?.toLowerCase() ?? '';
                         });
                       },
                     ),
@@ -231,6 +287,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   
                   // Blood Group Dropdown
                   Container(
+                    margin: const EdgeInsets.only(bottom: 15),
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
@@ -238,9 +295,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: DropdownButton<String>(
-                      value: _bloodGroup,
+                      value: _bloodGroup.isNotEmpty ? _bloodGroup : null,
                       isExpanded: true,
                       underline: const SizedBox(),
+                      hint: const Text('Select Blood Group'),
                       items: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
                           .map((blood) => DropdownMenuItem(
                                 value: blood,
@@ -249,7 +307,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           .toList(),
                       onChanged: (value) {
                         setState(() {
-                          _bloodGroup = value!;
+                          _bloodGroup = value ?? '';
                         });
                       },
                     ),
@@ -260,16 +318,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _name = nameController.text;
-                          _email = emailController.text;
-                          _phone = phoneController.text;
-                          _age = ageController.text;
-                          _address = addressController.text;
-                        });
-                        Navigator.pop(context);
-                        _showSnackBar('Profile updated successfully');
+                      onPressed: () async {
+                        try {
+                          // Extract age number from string
+                          int? ageValue;
+                          if (ageController.text.isNotEmpty) {
+                            final ageMatch = RegExp(r'\d+').firstMatch(ageController.text);
+                            if (ageMatch != null) {
+                              ageValue = int.tryParse(ageMatch.group(0) ?? '');
+                            }
+                          }
+                          
+                          // Update profile via API
+                          final updatedUser = await _authDataSource.updateProfile({
+                            'name': nameController.text.trim(),
+                            'phone': phoneController.text.trim(),
+                            'age': ageValue,
+                            'gender': _gender.toLowerCase(),
+                            'bloodGroup': _bloodGroup.isNotEmpty ? _bloodGroup : null,
+                            'address': addressController.text.trim(),
+                          });
+                          
+                          // Update local state
+                          setState(() {
+                            _name = updatedUser['name']?.toString() ?? nameController.text;
+                            _phone = updatedUser['phone']?.toString() ?? phoneController.text;
+                            if (updatedUser['age'] != null) {
+                              _age = '${updatedUser['age']} years';
+                            } else {
+                              _age = ageController.text;
+                            }
+                            _gender = updatedUser['gender']?.toString() ?? _gender;
+                            _bloodGroup = updatedUser['bloodGroup']?.toString() ?? _bloodGroup;
+                            _address = updatedUser['address']?.toString() ?? addressController.text;
+                          });
+                          
+                          if (mounted) {
+                            Navigator.pop(context);
+                            _showSnackBar('Profile updated successfully');
+                          }
+                        } catch (e) {
+                          debugPrint('❌ Error updating profile: $e');
+                          if (mounted) {
+                            _showSnackBar('Failed to update profile. Please try again.');
+                          }
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
@@ -288,69 +381,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildEditFormField(String label, TextEditingController controller, IconData icon) {
+  Widget _buildEditFormField(String label, TextEditingController controller, IconData icon, {bool enabled = true}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       child: TextField(
         controller: controller,
+        enabled: enabled,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
           ),
+          filled: !enabled,
+          fillColor: enabled ? null : Colors.grey.withValues(alpha: 0.1),
         ),
       ),
     );
   }
 
-  void _showNotificationsSettings() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Notifications Settings'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              _buildNotificationSetting('Appointment Reminders', true),
-              _buildNotificationSetting('Health Tips', true),
-              _buildNotificationSetting('Promotional Offers', false),
-              _buildNotificationSetting('Emergency Alerts', true),
-              _buildNotificationSetting('New Features', true),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showSnackBar('Notification settings updated');
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNotificationSetting(String title, bool value) {
-    return StatefulBuilder(
-      builder: (context, setState) => SwitchListTile(
-        title: Text(title),
-        value: value,
-        onChanged: (newValue) {
-          setState(() {});
-        },
-      ),
-    );
-  }
-
+  // Removed - now handled in SettingsScreen
+  // Unused methods - kept for potential future use
+  // ignore: unused_element
   void _showPrivacySecurity() {
     Navigator.push(
       context,
@@ -419,9 +471,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
       onTap: () {
         if (isDelete) {
           _showDeleteConfirmation();
+        } else {
+          _showPrivacyContent(title, subtitle);
         }
       },
     );
+  }
+
+  void _showPrivacyContent(String title, String subtitle) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: SingleChildScrollView(
+          child: Text(
+            _getPrivacyContent(title),
+            style: TextStyles.bodyMedium,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getPrivacyContent(String title) {
+    switch (title) {
+      case 'Data Privacy':
+        return 'We are committed to protecting your personal information. Your data is encrypted and stored securely. We only use your information to provide dental care services and improve your experience. We never share your data with third parties without your consent.';
+      case 'Account Security':
+        return 'Your account is protected with secure authentication. We recommend:\n\n• Use a strong password\n• Never share your login credentials\n• Log out when using shared devices\n• Report any suspicious activity immediately';
+      case 'Privacy Policy':
+        return 'Our Privacy Policy outlines how we collect, use, and protect your personal information. By using DentalCare+, you agree to our privacy practices. For the complete privacy policy, please visit our website or contact support.';
+      case 'Terms of Service':
+        return 'By using DentalCare+, you agree to our Terms of Service. These terms govern your use of our app and services. Please read them carefully. For the complete terms, please visit our website or contact support.';
+      case 'Data Export':
+        return 'You can request a copy of all your personal data stored in our system. To export your data:\n\n1. Contact our support team\n2. Verify your identity\n3. Receive your data in a secure format\n\nThis process may take up to 7 business days.';
+      default:
+        return 'Information about $title';
+    }
   }
 
   void _showDeleteConfirmation() {
@@ -450,6 +542,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ignore: unused_element
   void _showHelpSupport() {
     Navigator.push(
       context,
@@ -483,11 +576,188 @@ class _ProfileScreenState extends State<ProfileScreen> {
       subtitle: Text(subtitle),
       trailing: const Icon(Icons.chevron_right),
       onTap: () {
-        _showSnackBar('Opening $title');
+        _showHelpContent(title, subtitle, icon);
       },
     );
   }
 
+  void _showHelpContent(String title, String subtitle, IconData icon) {
+    if (title == 'Contact Support') {
+      _showContactSupport();
+    } else if (title == 'Emergency Contact') {
+      _showEmergencyContact();
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(icon, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Expanded(child: Text(title)),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Text(
+              _getHelpContent(title, subtitle),
+              style: TextStyles.bodyMedium,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  String _getHelpContent(String title, String subtitle) {
+    switch (title) {
+      case 'FAQs':
+        return 'Frequently Asked Questions:\n\nQ: How do I book an appointment?\nA: Go to Book Appointment, select a doctor, date, and time.\n\nQ: How do I view my bills?\nA: Navigate to My Bills section from the home screen.\n\nQ: Can I cancel an appointment?\nA: Yes, you can cancel appointments from the Appointments section.\n\nQ: How do I contact my doctor?\nA: Use the Messages section to chat with your doctor.\n\nQ: Is my data secure?\nA: Yes, we use encryption and follow strict security protocols.';
+      case 'User Guide':
+        return 'Welcome to DentalCare+!\n\nGetting Started:\n1. Complete your profile\n2. Book your first appointment\n3. Explore features like AI Teeth Scan\n4. Track your treatments\n5. Manage your bills\n\nFeatures:\n• Book appointments with your preferred doctor\n• Chat with doctors via Messages\n• View treatment history\n• Pay bills online\n• Get health tips and reminders\n\nFor more help, contact our support team.';
+      case 'Report Issue':
+        return 'Found a bug or issue? We\'d love to help!\n\nPlease provide:\n• Description of the issue\n• Steps to reproduce\n• Screenshots if possible\n• Device information\n\nContact us at:\nEmail: support@dentalcare.com\nPhone: +94 11 234 5678\n\nWe typically respond within 24 hours.';
+      case 'Feature Request':
+        return 'Have an idea for a new feature? We\'re all ears!\n\nShare your suggestions:\n• What feature would you like?\n• How would it help you?\n• Any specific requirements?\n\nContact us at:\nEmail: feedback@dentalcare.com\n\nWe review all suggestions and implement the most requested features.';
+      default:
+        return subtitle;
+    }
+  }
+
+  void _showContactSupport() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Contact Support'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Get in touch with our support team:'),
+            const SizedBox(height: 16),
+            _buildContactOption(Icons.email, 'Email', 'support@dentalcare.com', () {
+              _launchEmail('support@dentalcare.com');
+            }),
+            const SizedBox(height: 12),
+            _buildContactOption(Icons.phone, 'Phone', '+94 11 234 5678', () {
+              _makePhoneCall('+94112345678');
+            }),
+            const SizedBox(height: 12),
+            _buildContactOption(Icons.chat, 'Live Chat', 'Available 9 AM - 6 PM', () {
+              _showSnackBar('Live chat feature coming soon!');
+            }),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactOption(IconData icon, String label, String value, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.primary, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: TextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+                  Text(value, style: TextStyles.bodySmall),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEmergencyContact() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.emergency, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Emergency Contact'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('For dental emergencies, contact:'),
+            const SizedBox(height: 16),
+            _buildContactOption(Icons.local_hospital, 'Emergency Line', '1990', () {
+              _makePhoneCall('1990');
+            }),
+            const SizedBox(height: 12),
+            _buildContactOption(Icons.phone, '24/7 Dental Hotline', '+94 11 234 5678', () {
+              _makePhoneCall('+94112345678');
+            }),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'For life-threatening emergencies, call 1990 immediately.',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _launchEmail(String email) async {
+    final Uri emailUri = Uri(
+      scheme: 'mailto',
+      path: email,
+      query: 'subject=DentalCare+ Support Request',
+    );
+    if (await canLaunchUrl(emailUri)) {
+      await launchUrl(emailUri);
+    } else {
+      _showSnackBar('Cannot open email app');
+    }
+  }
+
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunchUrl(phoneUri)) {
+      await launchUrl(phoneUri);
+    } else {
+      _showSnackBar('Cannot make phone call');
+    }
+  }
+
+  // ignore: unused_element
   void _showAboutApp() {
     showAboutDialog(
       context: context,
@@ -510,22 +780,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            TextButton(
+            TextButton.icon(
               onPressed: () {
-                _showSnackBar('Rate us on App Store');
+                // Open app store rating page
+                _showSnackBar('Thank you for your interest! Rating feature coming soon.');
               },
-              child: const Text('Rate App'),
+              icon: const Icon(Icons.star),
+              label: const Text('Rate App'),
             ),
-            TextButton(
+            TextButton.icon(
               onPressed: () {
-                _showSnackBar('Share with friends');
+                _shareApp();
               },
-              child: const Text('Share'),
+              icon: const Icon(Icons.share),
+              label: const Text('Share'),
             ),
           ],
         ),
       ],
     );
+  }
+
+  Future<void> _shareApp() async {
+    const String shareText = 'Check out DentalCare+ - Your comprehensive dental care companion! Download now.';
+    // In a real app, you would use share_plus package
+    _showSnackBar('Share: $shareText');
   }
 
   void _logout() {
@@ -540,9 +819,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              Navigator.pushReplacementNamed(context, RouteNames.login);
+              try {
+                // Clear authentication data
+                final result = await _authRepository.logout();
+                result.fold(
+                  (failure) {
+                    // Even if logout fails, clear local data and navigate
+                    debugPrint('Logout error: ${failure.message}');
+                  },
+                  (_) {
+                    debugPrint('Logout successful');
+                  },
+                );
+                // Navigate to login screen
+                if (mounted && context.mounted) {
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    RouteNames.login,
+                    (route) => false,
+                  );
+                }
+              } catch (e) {
+                debugPrint('Logout error: $e');
+                // Navigate anyway
+                if (mounted && context.mounted) {
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    RouteNames.login,
+                    (route) => false,
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -568,15 +877,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.white,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildProfileHeader(),
-          const SizedBox(height: 24),
-          _buildProfileSection(),
-          const SizedBox(height: 24),
-          _buildSettingsSection(),
-        ],
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 64,
+                        color: Colors.red.withValues(alpha: 0.5),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _errorMessage!,
+                        style: TextStyles.bodyMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadUserProfile,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadUserProfile,
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      _buildProfileHeader(),
+                      const SizedBox(height: 24),
+                      _buildProfileSection(),
+                      const SizedBox(height: 24),
+                      _buildSettingsSection(),
+                    ],
+                  ),
+                ),
+      bottomNavigationBar: BottomNavigationBarWidget(
+        currentIndex: 3, // Profile tab
+        onTap: (index) {
+          BottomNavigationBarWidget.navigateToScreen(context, index);
+        },
       ),
     );
   }
@@ -623,12 +967,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 16),
         Text(
-          _name,
+          _name.isNotEmpty ? _name : 'User',
           style: TextStyles.heading3.copyWith(color: AppColors.textPrimary),
         ),
         const SizedBox(height: 4),
         Text(
-          _email,
+          _email.isNotEmpty ? _email : 'No email',
           style: TextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
         ),
         const SizedBox(height: 16),
@@ -656,11 +1000,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: TextStyles.heading4.copyWith(color: AppColors.textPrimary),
             ),
             const SizedBox(height: 16),
-            _buildInfoRow('Phone', _phone),
-            _buildInfoRow('Gender', _gender),
-            _buildInfoRow('Age', _age),
-            _buildInfoRow('Blood Group', _bloodGroup),
-            _buildInfoRow('Address', _address),
+            if (_phone.isNotEmpty) _buildInfoRow('Phone', _phone),
+            if (_gender.isNotEmpty) _buildInfoRow('Gender', _gender.capitalizeFirst),
+            if (_age.isNotEmpty) _buildInfoRow('Age', _age),
+            _buildInfoRow('Blood Group', _bloodGroup.isNotEmpty ? _bloodGroup : 'Not set'),
+            _buildInfoRow('Address', _address.isNotEmpty ? _address : 'Not set'),
           ],
         ),
       ),
@@ -694,25 +1038,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         children: [
           _buildSettingsItem(
-            icon: Icons.notifications,
-            title: 'Notifications',
-            onTap: _showNotificationsSettings,
+            icon: Icons.settings,
+            title: 'Settings',
+            subtitle: 'App settings and preferences',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(),
+                ),
+              );
+            },
           ),
-          _buildSettingsItem(
-            icon: Icons.security,
-            title: 'Privacy & Security',
-            onTap: _showPrivacySecurity,
-          ),
-          _buildSettingsItem(
-            icon: Icons.help,
-            title: 'Help & Support',
-            onTap: _showHelpSupport,
-          ),
-          _buildSettingsItem(
-            icon: Icons.info,
-            title: 'About App',
-            onTap: _showAboutApp,
-          ),
+          const Divider(height: 1),
           _buildSettingsItem(
             icon: Icons.logout,
             title: 'Logout',
@@ -728,6 +1066,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    String? subtitle,
     bool isLogout = false,
   }) {
     return ListTile(
@@ -741,6 +1080,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           color: isLogout ? AppColors.error : AppColors.textPrimary,
         ),
       ),
+      subtitle: subtitle != null
+          ? Text(
+              subtitle,
+              style: TextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            )
+          : null,
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
     );

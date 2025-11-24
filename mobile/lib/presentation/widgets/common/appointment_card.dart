@@ -60,6 +60,7 @@ class AppointmentCard extends StatelessWidget {
         ),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
@@ -69,28 +70,31 @@ class AppointmentCard extends StatelessWidget {
                 color: isNext ? AppColors.primary : AppColors.textPrimary,
               ),
             ),
+            const SizedBox(height: 2),
             Text(
               dateTime.toReadableTime,
               style: TextStyles.caption.copyWith(
                 color: AppColors.textSecondary,
               ),
             ),
-            if (isNext)
+            if (isNext) ...[
+              const SizedBox(height: 2),
               Container(
-                margin: const EdgeInsets.only(top: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   "Next",
                   style: TextStyles.overline.copyWith(
                     color: AppColors.primary,
                     fontWeight: FontWeight.bold,
+                    fontSize: 10,
                   ),
                 ),
               ),
+            ],
           ],
         ),
         onTap: onTap,
