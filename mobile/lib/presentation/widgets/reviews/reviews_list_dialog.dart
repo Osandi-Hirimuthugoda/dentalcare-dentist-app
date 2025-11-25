@@ -40,9 +40,9 @@ class _ReviewsListDialogState extends State<ReviewsListDialog> {
     });
 
     try {
-      debugPrint('📥 Loading reviews for doctor: ${widget.doctorId}');
+      debugPrint(' Loading reviews for doctor: ${widget.doctorId}');
       final reviews = await _dentalDataSource.getDoctorReviews(widget.doctorId);
-      debugPrint('✅ Loaded ${reviews.length} reviews');
+      debugPrint(' Loaded ${reviews.length} reviews');
       
       setState(() {
         _reviews = reviews;
@@ -53,7 +53,7 @@ class _ReviewsListDialogState extends State<ReviewsListDialog> {
         _errorMessage = 'Failed to load reviews: $e';
         _isLoading = false;
       });
-      debugPrint('❌ Error loading reviews: $e');
+      debugPrint(' Error loading reviews: $e');
     }
   }
 

@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/constants/route_names.dart';
+import 'package:flutter_application_1/core/services/notification_service.dart';
 import 'package:flutter_application_1/core/utils/helpers.dart';
 import 'package:flutter_application_1/presentation/widgets/home/appointments_section.dart';
 import 'package:flutter_application_1/presentation/widgets/home/emergency_contact.dart';
 import 'package:flutter_application_1/presentation/widgets/home/health_tips_carousel.dart.dart';
 import 'package:flutter_application_1/presentation/widgets/home/quick_actions_grid.dart';
 import 'package:flutter_application_1/presentation/widgets/home/welcome_section.dart';
-import 'package:flutter_application_1/presentation/widgets/home/announcements_section.dart';
-import 'package:flutter_application_1/domain/repositories/auth_repository.dart';
-import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
-import 'package:flutter_application_1/injection_container.dart' as di;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,45 +17,10 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  late final DentalRemoteDataSource _dentalDataSource;
-  int _unreadNotificationCount = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _dentalDataSource = di.getIt<DentalRemoteDataSource>();
-    _loadNotificationCount();
-  }
-
-  Future<void> _loadNotificationCount() async {
-    try {
-      final notifications = await _dentalDataSource.getNotifications();
-      final unreadCount = notifications.where((n) => !(n['isRead'] ?? false)).length;
-      if (mounted) {
-        setState(() {
-          _unreadNotificationCount = unreadCount;
-        });
-      }
-    } catch (e) {
-      debugPrint('❌ Error loading notification count: $e');
-      // Don't show error to user, just keep count at 0
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Reload notification count when returning to home screen
-    _loadNotificationCount();
-  }
+  final NotificationService _notificationService = NotificationService();
 
 
   void _onItemTapped(int index, BuildContext context) {
-    // Don't update index if already on that screen
-    if (_currentIndex == index) {
-      return;
-    }
-
     setState(() {
       _currentIndex = index;
     });
@@ -68,146 +30,17 @@ class _HomeScreenState extends State<HomeScreen> {
         // Already on home screen, do nothing
         break;
       case 1: // Appointments
-        // Navigate to appointments screen
-        _navigateToAppointments(context);
+        // Check authentication before navigating
+        Helpers.navigateIfAuthenticated(context, RouteNames.appointments);
         break;
       case 2: // Health
-        // Navigate to health screen
-        _navigateToHealth(context);
+        // Check authentication before navigating
+        Helpers.navigateIfAuthenticated(context, RouteNames.health);
         break;
       case 3: // Profile
-        // Navigate to profile screen
-        _navigateToProfile(context);
+        // Check authentication before navigating
+        Helpers.navigateIfAuthenticated(context, RouteNames.profile);
         break;
-    }
-  }
-
-  Future<void> _navigateToAppointments(BuildContext context) async {
-    try {
-      final authRepo = di.getIt<AuthRepository>();
-      final result = await authRepo.isUserLoggedIn();
-
-      result.fold(
-        (failure) {
-          if (mounted && context.mounted) {
-            Helpers.showLoginRequiredMessage(context);
-            // Reset index if navigation fails
-            setState(() {
-              _currentIndex = 0;
-            });
-          }
-        },
-        (isLoggedIn) {
-          if (isLoggedIn == true) {
-            if (mounted && context.mounted) {
-              Navigator.pushReplacementNamed(
-                context,
-                RouteNames.appointments,
-              );
-            }
-          } else {
-            if (mounted && context.mounted) {
-              Helpers.showLoginRequiredMessage(context);
-              // Reset index if navigation fails
-              setState(() {
-                _currentIndex = 0;
-              });
-            }
-          }
-        },
-      );
-    } catch (e) {
-      if (mounted && context.mounted) {
-        Helpers.showLoginRequiredMessage(context);
-        // Reset index if navigation fails
-        setState(() {
-          _currentIndex = 0;
-        });
-      }
-    }
-  }
-
-  Future<void> _navigateToHealth(BuildContext context) async {
-    try {
-      final authRepo = di.getIt<AuthRepository>();
-      final result = await authRepo.isUserLoggedIn();
-
-      result.fold(
-        (failure) {
-          if (mounted && context.mounted) {
-            Helpers.showLoginRequiredMessage(context);
-            setState(() {
-              _currentIndex = 0;
-            });
-          }
-        },
-        (isLoggedIn) {
-          if (isLoggedIn == true) {
-            if (mounted && context.mounted) {
-              Navigator.pushReplacementNamed(
-                context,
-                RouteNames.health,
-              );
-            }
-          } else {
-            if (mounted && context.mounted) {
-              Helpers.showLoginRequiredMessage(context);
-              setState(() {
-                _currentIndex = 0;
-              });
-            }
-          }
-        },
-      );
-    } catch (e) {
-      if (mounted && context.mounted) {
-        Helpers.showLoginRequiredMessage(context);
-        setState(() {
-          _currentIndex = 0;
-        });
-      }
-    }
-  }
-
-  Future<void> _navigateToProfile(BuildContext context) async {
-    try {
-      final authRepo = di.getIt<AuthRepository>();
-      final result = await authRepo.isUserLoggedIn();
-
-      result.fold(
-        (failure) {
-          if (mounted && context.mounted) {
-            Helpers.showLoginRequiredMessage(context);
-            setState(() {
-              _currentIndex = 0;
-            });
-          }
-        },
-        (isLoggedIn) {
-          if (isLoggedIn == true) {
-            if (mounted && context.mounted) {
-              Navigator.pushReplacementNamed(
-                context,
-                RouteNames.profile,
-              );
-            }
-          } else {
-            if (mounted && context.mounted) {
-              Helpers.showLoginRequiredMessage(context);
-              setState(() {
-                _currentIndex = 0;
-              });
-            }
-          }
-        },
-      );
-    } catch (e) {
-      if (mounted && context.mounted) {
-        Helpers.showLoginRequiredMessage(context);
-        setState(() {
-          _currentIndex = 0;
-        });
-      }
     }
   }
 
@@ -273,14 +106,12 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.notifications_none, color: Colors.white),
-                onPressed: () async {
+                onPressed: () {
                   // Check authentication before navigating
-                  await Helpers.navigateIfAuthenticated(context, RouteNames.notification);
-                  // Reload notification count when returning
-                  _loadNotificationCount();
+                  Helpers.navigateIfAuthenticated(context, RouteNames.notification);
                 },
               ),
-              if (_unreadNotificationCount > 0)
+              if (_notificationService.unreadCount > 0)
                 Positioned(
                   right: 8,
                   top: 8,
@@ -295,9 +126,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       minHeight: 16,
                     ),
                     child: Text(
-                      _unreadNotificationCount > 9 
+                      _notificationService.unreadCount > 9 
                           ? '9+' 
-                          : _unreadNotificationCount.toString(),
+                          : _notificationService.unreadCount.toString(),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,
@@ -326,11 +157,6 @@ class _HomeScreenState extends State<HomeScreen> {
             
             // Quick Actions Grid
             const QuickActionsGrid(),
-            
-            // Doctor Updates (Announcements & Messages)
-            const AnnouncementsSection(),
-            
-            const SizedBox(height: 16),
             
             // Upcoming Appointments
             AppointmentsSection(context: context),

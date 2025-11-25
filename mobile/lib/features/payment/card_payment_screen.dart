@@ -7,12 +7,12 @@ import 'package:flutter_application_1/injection_container.dart';
 
 class CardPaymentScreen extends StatefulWidget {
   final Map<String, dynamic> bill;
-  final VoidCallback onPaymentSuccess;
+  final VoidCallback? onPaymentSuccess;
 
   const CardPaymentScreen({
     super.key,
     required this.bill,
-    required this.onPaymentSuccess,
+    this.onPaymentSuccess,
   });
 
   @override
@@ -605,16 +605,16 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
           'last4Digits': last4Digits,
           'cardHolder': _cardHolderController.text.trim(),
         };
-        
+
         // Show processing message
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Processing payment...'),
-              duration: Duration(seconds: 1),
-            ),
-          );
-        }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Processing payment...'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
         
         // Process payment via backend
         final result = await _dentalDataSource.processPayment(
@@ -623,19 +623,19 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
           cardDetails,
         );
         
-        if (mounted) {
-          setState(() {
-            _isProcessing = false;
-          });
-          
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+        
           if (result['success'] == true) {
             _showPaymentSuccess(result);
-          } else {
+        } else {
             _showPaymentFailure(result['message'] ?? 'Payment failed');
-          }
         }
+      }
       } catch (e) {
-        debugPrint('❌ Payment error: $e');
+        debugPrint('Payment error: $e');
         if (mounted) {
           setState(() {
             _isProcessing = false;
@@ -699,8 +699,12 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context); // Close dialog
-              widget.onPaymentSuccess();
-              Navigator.pop(context); // Go back to bills screen
+              // Call onPaymentSuccess callback if provided
+              if (widget.onPaymentSuccess != null) {
+                widget.onPaymentSuccess!();
+              }
+              // Go back to previous screen (could be bills page or book appointment)
+              Navigator.pop(context);
             },
             child: const Text('Done'),
           ),

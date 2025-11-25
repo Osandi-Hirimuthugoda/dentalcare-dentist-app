@@ -1026,7 +1026,7 @@ class AboutScreen extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 15),
-                    const Text('Developed with ❤️ for better dental health'),
+                    const Text('Developed with love for better dental health'),
                   ],
                 );
               },

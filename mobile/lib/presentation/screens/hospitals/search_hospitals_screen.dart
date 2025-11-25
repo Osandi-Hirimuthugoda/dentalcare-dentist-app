@@ -91,7 +91,7 @@ class _SearchHospitalsScreenState extends State<SearchHospitalsScreen> {
         _errorMessage = 'Failed to load hospitals. Please try again.';
         _isLoading = false;
       });
-      debugPrint('❌ Error loading hospitals: $e');
+      debugPrint(' Error loading hospitals: $e');
     }
   }
 
@@ -105,7 +105,7 @@ class _SearchHospitalsScreenState extends State<SearchHospitalsScreen> {
         }).toList();
       });
     } catch (e) {
-      debugPrint('❌ Error loading districts: $e');
+      debugPrint(' Error loading districts: $e');
     }
   }
 
@@ -154,7 +154,7 @@ class _SearchHospitalsScreenState extends State<SearchHospitalsScreen> {
         _errorMessage = 'Failed to search hospitals. Please try again.';
         _isLoading = false;
       });
-      debugPrint('❌ Error searching hospitals: $e');
+      debugPrint(' Error searching hospitals: $e');
     }
   }
 

@@ -66,7 +66,7 @@ class _MyTreatmentsScreenState extends State<MyTreatmentsScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('❌ Error loading treatments: $e');
+      debugPrint(' Error loading treatments: $e');
       setState(() {
         _errorMessage = 'Failed to load treatments. Please try again.';
         _isLoading = false;

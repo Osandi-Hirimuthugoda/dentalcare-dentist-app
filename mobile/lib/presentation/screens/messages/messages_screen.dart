@@ -45,7 +45,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
     try {
       final conversations = await _dentalDataSource.getMessages();
-      debugPrint('💬 Conversations loaded: ${conversations.length} conversations');
+      debugPrint('Conversations loaded: ${conversations.length} conversations');
       
       setState(() {
         _conversations = conversations.map<Map<String, dynamic>>((conv) {
@@ -62,7 +62,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('❌ Error loading messages: $e');
+      debugPrint('Error loading messages: $e');
       setState(() {
         _errorMessage = 'Failed to load messages. Please try again.';
         _isLoading = false;
@@ -79,7 +79,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
     try {
       final announcements = await _dentalDataSource.getAnnouncements();
-      debugPrint('📢 Announcements loaded: ${announcements.length}');
+      debugPrint('Announcements loaded: ${announcements.length}');
       
       // Filter by type if filterType is provided
       List<dynamic> filtered = announcements;
@@ -98,7 +98,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('❌ Error loading announcements: $e');
+      debugPrint('Error loading announcements: $e');
       setState(() {
         _errorMessage = 'Failed to load announcements. Please try again.';
         _isLoading = false;

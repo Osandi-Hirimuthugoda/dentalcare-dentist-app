@@ -60,7 +60,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           .timeout(
             const Duration(seconds: 30), // Increased timeout to 30 seconds
             onTimeout: () {
-              debugPrint('❌ Login timeout - Server did not respond in 30 seconds');
+              debugPrint('Login timeout - Server did not respond in 30 seconds');
               throw NetworkException(
                 'Login request timed out. Please check:\n'
                 '1. Backend server is running (port 4000)\n'
@@ -70,7 +70,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
             },
       );
       
-      debugPrint('📥 Login response: ${response.statusCode}');
+      debugPrint('Login response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -104,7 +104,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       rethrow;
     } catch (e) {
       // Log the actual error for debugging
-      debugPrint('❌ Login error details: $e');
+      debugPrint('Login error details: $e');
       
       final errorString = e.toString().toLowerCase();
       
@@ -281,7 +281,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     } on InvalidCredentialsException {
       rethrow;
     } catch (e) {
-      debugPrint('❌ Get current user error: $e');
+      debugPrint('Get current user error: $e');
       throw NetworkException('Network error occurred: ${e.toString()}');
     }
   }
@@ -320,7 +320,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     } on InvalidCredentialsException {
       rethrow;
     } catch (e) {
-      debugPrint('❌ Update profile error: $e');
+      debugPrint('Update profile error: $e');
       throw NetworkException('Network error occurred: ${e.toString()}');
     }
   }

@@ -65,9 +65,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
         if (!isRead && messageId != null && senderModel == 'Doctor') {
           try {
             await _dentalDataSource.markMessageAsRead(messageId);
-            debugPrint('✅ Marked message $messageId as read');
+            debugPrint('Marked message $messageId as read');
           } catch (e) {
-            debugPrint('⚠️ Failed to mark message as read: $e');
+            debugPrint('Failed to mark message as read: $e');
           }
         }
       }
@@ -97,7 +97,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
         );
       }
     } catch (e) {
-      debugPrint('❌ Error loading conversation: $e');
+      debugPrint('Error loading conversation: $e');
       setState(() {
         _isLoading = false;
         _messages = [];
@@ -127,12 +127,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
     try {
       await _dentalDataSource.sendMessage(widget.doctorId, messageText);
-      debugPrint('✅ Message sent successfully');
+      debugPrint('Message sent successfully');
       
       // Reload conversation to show the new message
       await _loadConversation();
     } catch (e) {
-      debugPrint('❌ Error sending message: $e');
+      debugPrint('Error sending message: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

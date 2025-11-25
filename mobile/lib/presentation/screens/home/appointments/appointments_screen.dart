@@ -92,7 +92,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             past.add(appointmentData);
           }
         } catch (e) {
-          debugPrint('❌ Error parsing appointment: $e');
+          debugPrint(' Error parsing appointment: $e');
           continue;
         }
       }
@@ -109,7 +109,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('❌ Error loading appointments: $e');
+      debugPrint(' Error loading appointments: $e');
       setState(() {
         _errorMessage = 'Failed to load appointments. Please try again.';
         _isLoading = false;

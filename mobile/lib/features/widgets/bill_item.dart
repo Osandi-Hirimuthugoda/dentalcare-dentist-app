@@ -72,6 +72,25 @@ class BillItem extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (bill['doctorName'] != null && bill['doctorName'].toString().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.person, size: 12, color: AppColors.primary),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          bill['doctorName'],
+                          style: TextStyles.caption.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 if (isPayable) ...[
                   const SizedBox(height: 4),
                   Row(

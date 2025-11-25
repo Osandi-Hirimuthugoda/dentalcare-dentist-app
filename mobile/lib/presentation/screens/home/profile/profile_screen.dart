@@ -358,7 +358,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _showSnackBar('Profile updated successfully');
                           }
                         } catch (e) {
-                          debugPrint('❌ Error updating profile: $e');
+                          debugPrint(' Error updating profile: $e');
                           if (mounted) {
                             _showSnackBar('Failed to update profile. Please try again.');
                           }
@@ -775,7 +775,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 15),
-        const Text('Developed with ❤️ for better dental health'),
+        const Text('Developed with Love for better dental health'),
         const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,

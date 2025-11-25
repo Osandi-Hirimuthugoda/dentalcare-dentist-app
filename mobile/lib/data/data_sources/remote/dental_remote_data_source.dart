@@ -57,10 +57,10 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
       final cleanToken = token.trim();
       headers['Authorization'] = 'Bearer $cleanToken';
       
-      debugPrint('🔑 Auth header - Token length: ${cleanToken.length}');
+      debugPrint(' Auth header - Token length: ${cleanToken.length}');
       debugPrint('   Token preview: ${cleanToken.substring(0, 20)}...');
     } else {
-      debugPrint('⚠️ No token found in storage');
+      debugPrint(' No token found in storage');
     }
     
     return headers;
@@ -327,20 +327,20 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
         headers: headers,
       );
 
-      debugPrint('📥 Messages response status: ${response.statusCode}');
+      debugPrint(' Messages response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final messages = data is List ? data : (data['conversations'] ?? []);
-        debugPrint('✅ Received ${messages.length} message conversations');
+        debugPrint(' Received ${messages.length} message conversations');
         return messages;
       } else {
         final errorBody = jsonDecode(response.body);
-        debugPrint('❌ Messages API error: ${errorBody['message']}');
+        debugPrint(' Messages API error: ${errorBody['message']}');
         throw ServerException('Failed to fetch messages', response.statusCode);
       }
     } catch (e) {
-      debugPrint('❌ getMessages exception: $e');
+      debugPrint(' getMessages exception: $e');
       if (e is ServerException) {
         rethrow;
       }
@@ -469,17 +469,17 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
       // Check if token exists before making request
       final token = await localDataSource.getString(AppConstants.tokenKey);
       if (token == null || token.isEmpty) {
-        debugPrint('❌ Create review: No token found');
+        debugPrint(' Create review: No token found');
         throw ServerException('Authentication required. Please login again.', 401);
       }
       
-      debugPrint('✅ Create review: Token found (length: ${token.length})');
+      debugPrint(' Create review: Token found (length: ${token.length})');
       
       final headers = await _getHeaders();
       
       // Verify Authorization header was added
       if (!headers.containsKey('Authorization') || headers['Authorization'] == null) {
-        debugPrint('❌ Create review: Authorization header missing');
+        debugPrint(' Create review: Authorization header missing');
         throw ServerException('Authentication required. Please login again.', 401);
       }
       
@@ -490,7 +490,7 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
         if (comment != null && comment.isNotEmpty) 'comment': comment,
       };
       
-      debugPrint('📤 Create review request: POST ${AppConstants.baseUrl}/reviews');
+      debugPrint(' Create review request: POST ${AppConstants.baseUrl}/reviews');
       debugPrint('   Body: ${jsonEncode(body)}');
       
       final response = await client.post(
@@ -499,7 +499,7 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
         headers: headers,
       );
 
-      debugPrint('📥 Create review response: ${response.statusCode}');
+      debugPrint(' Create review response: ${response.statusCode}');
       debugPrint('   Body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -510,7 +510,7 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
         
         // Handle token expiration specifically
         if (response.statusCode == 401) {
-          debugPrint('❌ Create review: Unauthorized - token may be expired');
+          debugPrint(' Create review: Unauthorized - token may be expired');
           throw ServerException(
             'Your session has expired. Please logout and login again.',
             response.statusCode
@@ -523,7 +523,7 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
       if (e is ServerException) {
         rethrow;
       }
-      debugPrint('❌ Create review exception: $e');
+      debugPrint(' Create review exception: $e');
       throw NetworkException('Network error occurred: $e');
     }
   }
@@ -539,25 +539,25 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        debugPrint('📥 Get reviews response: ${data is Map ? 'Map with ${data.keys}' : 'List'}');
+        debugPrint(' Get reviews response: ${data is Map ? 'Map with ${data.keys}' : 'List'}');
         
         // Backend returns { reviews: [...], totalReviews: number, hasMore: boolean }
         if (data is Map && data.containsKey('reviews')) {
           final reviews = data['reviews'] as List? ?? [];
-          debugPrint('✅ Found ${reviews.length} reviews');
+          debugPrint(' Found ${reviews.length} reviews');
           return reviews;
         } else if (data is List) {
-          debugPrint('✅ Found ${data.length} reviews (direct list)');
+          debugPrint(' Found ${data.length} reviews (direct list)');
           return data;
         } else {
-          debugPrint('⚠️ Unexpected response format');
+          debugPrint(' Unexpected response format');
           return [];
         }
       } else {
         throw ServerException('Failed to fetch reviews', response.statusCode);
       }
     } catch (e) {
-      debugPrint('❌ Error fetching reviews: $e');
+      debugPrint(' Error fetching reviews: $e');
       if (e is ServerException) {
         rethrow;
       }
@@ -599,13 +599,13 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        debugPrint('📢 Announcements loaded: ${data is List ? data.length : 0}');
+        debugPrint(' Announcements loaded: ${data is List ? data.length : 0}');
         return data is List ? data : [];
       } else {
         throw ServerException('Failed to fetch announcements', response.statusCode);
       }
     } catch (e) {
-      debugPrint('❌ Error fetching announcements: $e');
+      debugPrint(' Error fetching announcements: $e');
       if (e is ServerException) {
         rethrow;
       }
@@ -626,7 +626,7 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
         throw ServerException('Failed to mark message as read', response.statusCode);
       }
     } catch (e) {
-      debugPrint('❌ Error marking message as read: $e');
+      debugPrint(' Error marking message as read: $e');
       // Don't throw - this is not critical
     }
   }
@@ -642,13 +642,13 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        debugPrint('📬 Notifications loaded: ${data is List ? data.length : 0}');
+        debugPrint(' Notifications loaded: ${data is List ? data.length : 0}');
         return data is List ? data : [];
       } else {
         throw ServerException('Failed to fetch notifications', response.statusCode);
       }
     } catch (e) {
-      debugPrint('❌ Error fetching notifications: $e');
+      debugPrint(' Error fetching notifications: $e');
       if (e is ServerException) {
         rethrow;
       }
@@ -669,7 +669,7 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
         throw ServerException('Failed to mark notification as read', response.statusCode);
       }
     } catch (e) {
-      debugPrint('❌ Error marking notification as read: $e');
+      debugPrint(' Error marking notification as read: $e');
       if (e is ServerException) {
         rethrow;
       }
@@ -690,7 +690,7 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
         throw ServerException('Failed to mark all notifications as read', response.statusCode);
       }
     } catch (e) {
-      debugPrint('❌ Error marking all notifications as read: $e');
+      debugPrint(' Error marking all notifications as read: $e');
       if (e is ServerException) {
         rethrow;
       }
@@ -711,7 +711,7 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
         throw ServerException('Failed to delete notification', response.statusCode);
       }
     } catch (e) {
-      debugPrint('❌ Error deleting notification: $e');
+      debugPrint(' Error deleting notification: $e');
       if (e is ServerException) {
         rethrow;
       }
@@ -734,24 +734,24 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        debugPrint('🏥 Hospitals search response: ${data is Map ? 'Map' : 'List'}');
+        debugPrint(' Hospitals search response: ${data is Map ? 'Map' : 'List'}');
         
         if (data is Map && data.containsKey('hospitals')) {
           final hospitals = data['hospitals'] as List? ?? [];
-          debugPrint('✅ Found ${hospitals.length} hospitals');
+          debugPrint(' Found ${hospitals.length} hospitals');
           return hospitals;
         } else if (data is List) {
-          debugPrint('✅ Found ${data.length} hospitals (direct list)');
+          debugPrint(' Found ${data.length} hospitals (direct list)');
           return data;
         } else {
-          debugPrint('⚠️ Unexpected response format');
+          debugPrint(' Unexpected response format');
           return [];
         }
       } else {
         throw ServerException('Failed to search hospitals', response.statusCode);
       }
     } catch (e) {
-      debugPrint('❌ Error searching hospitals: $e');
+      debugPrint(' Error searching hospitals: $e');
       if (e is ServerException) {
         rethrow;
       }
@@ -778,7 +778,7 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
         throw ServerException('Failed to fetch hospitals by district', response.statusCode);
       }
     } catch (e) {
-      debugPrint('❌ Error fetching hospitals by district: $e');
+      debugPrint(' Error fetching hospitals by district: $e');
       if (e is ServerException) {
         rethrow;
       }
@@ -805,7 +805,7 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
         throw ServerException('Failed to fetch districts', response.statusCode);
       }
     } catch (e) {
-      debugPrint('❌ Error fetching districts: $e');
+      debugPrint(' Error fetching districts: $e');
       if (e is ServerException) {
         rethrow;
       }

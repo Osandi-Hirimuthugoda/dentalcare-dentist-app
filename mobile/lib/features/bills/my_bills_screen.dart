@@ -39,7 +39,7 @@ class _MyBillsScreenState extends State<MyBillsScreen> {
 
     try {
       final bills = await _dentalDataSource.getBills();
-      debugPrint('📋 Bills loaded: ${bills.length} bills');
+      debugPrint('Bills loaded: ${bills.length} bills');
       
       setState(() {
         _allBills = bills.map<Map<String, dynamic>>((bill) {
@@ -72,12 +72,14 @@ class _MyBillsScreenState extends State<MyBillsScreen> {
             'icon': icon,
             'dueDate': bill['dueDate']?.toString() ?? '',
             '_id': bill['_id']?.toString() ?? '',
+            'doctorName': bill['doctorName']?.toString() ?? '',
+            'appointmentId': bill['appointmentId']?.toString() ?? '',
           };
         }).toList();
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('❌ Error loading bills: $e');
+      debugPrint('Error loading bills: $e');
       setState(() {
         _errorMessage = 'Failed to load bills. Please try again.';
         _isLoading = false;
@@ -140,6 +142,8 @@ class _MyBillsScreenState extends State<MyBillsScreen> {
   }
 
   Widget _buildPaymentBottomSheet(Map<String, dynamic> bill) {
+    final hasDoctor = bill['doctorName'] != null && bill['doctorName'].toString().isNotEmpty;
+    
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: const BoxDecoration(
@@ -175,6 +179,22 @@ class _MyBillsScreenState extends State<MyBillsScreen> {
               color: AppColors.textSecondary,
             ),
           ),
+          if (hasDoctor) ...[
+            const SizedBox(height: 5),
+            Row(
+              children: [
+                Icon(Icons.person, size: 16, color: AppColors.primary),
+                const SizedBox(width: 6),
+                Text(
+                  'Doctor: ${bill['doctorName']}',
+                  style: TextStyles.bodySmall.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 5),
           Text(
             bill['amount'],
@@ -190,13 +210,24 @@ class _MyBillsScreenState extends State<MyBillsScreen> {
             ),
           ),
           const SizedBox(height: 15),
-          _buildPaymentMethodOption(
-            'Credit/Debit Card',
-            Icons.credit_card,
-            Colors.blue,
-            'Pay securely with your card',
-            () => _navigateToCardPayment(bill),
-          ),
+          // Show card payment prominently if bill has a doctor
+          if (hasDoctor)
+            _buildPaymentMethodOption(
+              'Credit/Debit Card (Online)',
+              Icons.credit_card,
+              Colors.blue,
+              'Pay securely online with your card',
+              () => _navigateToCardPayment(bill),
+              isHighlighted: true,
+            )
+          else
+            _buildPaymentMethodOption(
+              'Credit/Debit Card',
+              Icons.credit_card,
+              Colors.blue,
+              'Pay securely with your card',
+              () => _navigateToCardPayment(bill),
+            ),
           _buildPaymentMethodOption(
             'Bank Transfer',
             Icons.account_balance,
@@ -224,19 +255,51 @@ class _MyBillsScreenState extends State<MyBillsScreen> {
     );
   }
 
-  Widget _buildPaymentMethodOption(String title, IconData icon, Color color, String description, VoidCallback onTap) {
+  Widget _buildPaymentMethodOption(String title, IconData icon, Color color, String description, VoidCallback onTap, {bool isHighlighted = false}) {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
+      elevation: isHighlighted ? 4 : 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isHighlighted ? BorderSide(color: color, width: 2) : BorderSide.none,
+      ),
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
+            color: color.withValues(alpha: isHighlighted ? 0.2 : 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color),
         ),
-        title: Text(title, style: TextStyles.bodyMedium),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyles.bodyMedium.copyWith(
+                  fontWeight: isHighlighted ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ),
+            if (isHighlighted)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'RECOMMENDED',
+                  style: TextStyles.caption.copyWith(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
+        ),
         subtitle: Text(description, style: TextStyles.caption),
         trailing: const Icon(Icons.chevron_right),
         onTap: onTap,
@@ -251,9 +314,11 @@ class _MyBillsScreenState extends State<MyBillsScreen> {
       RouteNames.cardPayment,
       arguments: {
         'bill': bill,
-        'onSuccess': () => _updateBillStatus(bill),
       },
-    );
+    ).then((_) {
+      // Reload bills after returning from payment screen
+      _loadBills();
+    });
   }
 
   void _processBankTransfer(Map<String, dynamic> bill) {
@@ -347,18 +412,6 @@ class _MyBillsScreenState extends State<MyBillsScreen> {
             child: const Text('OK'),
           ),
         ],
-      ),
-    );
-  }
-
-  void _updateBillStatus(Map<String, dynamic> bill) {
-    // Reload bills from backend after payment
-    _loadBills();
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${bill['treatment']} payment completed!'),
-        backgroundColor: Colors.green,
       ),
     );
   }

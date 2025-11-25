@@ -49,7 +49,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
 
     try {
       final services = await _dentalDataSource.getServices();
-      debugPrint('📦 Services loaded: ${services.length} services');
+      debugPrint('Services loaded: ${services.length} services');
       
       if (services.isNotEmpty) {
         setState(() {
@@ -63,25 +63,25 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             };
           }).toList();
           
-          debugPrint('✅ Total services in dropdown: ${_services.length}');
+          debugPrint('Total services in dropdown: ${_services.length}');
           
           // Set first service as default if available
           if (_services.isNotEmpty && _selectedService == null) {
             final firstServiceName = _services.first['name'] as String?;
             if (firstServiceName != null && firstServiceName.isNotEmpty) {
               _selectedService = firstServiceName;
-              debugPrint('✅ Default service selected: $_selectedService');
+              debugPrint('Default service selected: $_selectedService');
             }
           }
           _isLoadingServices = false;
         });
       } else {
         // If services list is empty, use fallback
-        debugPrint('⚠️ No services received from server, using fallback');
+        debugPrint(' No services received from server, using fallback');
         throw Exception('No services received from server');
       }
     } catch (e) {
-      debugPrint('❌ Error loading services: $e');
+      debugPrint('Error loading services: $e');
       // Fallback to default services if API fails
       setState(() {
         _services = <Map<String, dynamic>>[
@@ -142,11 +142,11 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
 
   Future<void> _loadDoctorAvailability(String doctorId) async {
     try {
-      debugPrint('📅 Loading availability for doctor: $doctorId');
+      debugPrint('Loading availability for doctor: $doctorId');
       final availability = await _dentalDataSource.getDoctorAvailability(doctorId);
       
       final availableSlots = availability['availableSlots'] as List<dynamic>? ?? [];
-      debugPrint('📅 Available slots: ${availableSlots.length}');
+      debugPrint('Available slots: ${availableSlots.length}');
       
       // Group slots by date
       final slotsByDate = <String, List<String>>{};
@@ -317,10 +317,10 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             final appointmentId = appointment.id;
             if (appointmentId.isNotEmpty) {
               await _dentalDataSource.createBillFromAppointment(appointmentId);
-              debugPrint('✅ Bill created for appointment: $appointmentId');
+              debugPrint('Bill created for appointment: $appointmentId');
             }
           } catch (e) {
-            debugPrint('⚠️ Failed to create bill: $e');
+            debugPrint('Failed to create bill: $e');
             // Continue even if bill creation fails
           }
           _showSuccessDialog(appointment);

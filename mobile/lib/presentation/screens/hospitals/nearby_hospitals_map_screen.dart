@@ -228,7 +228,7 @@ class _NearbyHospitalsMapScreenState extends State<NearbyHospitalsMapScreen> {
             position: LatLng(lat, lng),
             infoWindow: InfoWindow(
               title: name,
-              snippet: isEmergency ? '🟢 Open Now - Emergency Available' : address,
+              snippet: isEmergency ? ' Open Now - Emergency Available' : address,
               onTap: () {
                 setState(() {
                   _selectedHospitalId = placeId;
@@ -415,7 +415,7 @@ class _NearbyHospitalsMapScreenState extends State<NearbyHospitalsMapScreen> {
           position: LatLng(hospitalLat, hospitalLng),
           infoWindow: InfoWindow(
             title: name,
-            snippet: isOpen ? '🟢 Open Now' : address,
+            snippet: isOpen ? ' Open Now' : address,
             onTap: () {
               setState(() {
                 _selectedHospitalId = placeId;
@@ -603,7 +603,7 @@ class _NearbyHospitalsMapScreenState extends State<NearbyHospitalsMapScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      (hospital['isOpen'] as bool) ? '🟢 Open Now' : 'Closed',
+                      (hospital['isOpen'] as bool) ? ' Open Now' : 'Closed',
                       style: TextStyles.bodySmall.copyWith(
                         color: (hospital['isOpen'] as bool) ? Colors.green[700] : Colors.red[700],
                         fontWeight: FontWeight.w600,
@@ -677,7 +677,7 @@ class _NearbyHospitalsMapScreenState extends State<NearbyHospitalsMapScreen> {
         }
       }
     } catch (e) {
-      debugPrint('❌ Error getting place details: $e');
+      debugPrint(' Error getting place details: $e');
     }
   }
 
@@ -1205,7 +1205,7 @@ class _NearbyHospitalsMapScreenState extends State<NearbyHospitalsMapScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        hospital['isOpen'] ? '🟢 Open Now - Emergency Available' : 'Closed',
+                        hospital['isOpen'] ? ' Open Now - Emergency Available' : 'Closed',
                         style: TextStyles.bodySmall.copyWith(
                           color: hospital['isOpen'] ? Colors.green[700] : Colors.red[700],
                           fontWeight: FontWeight.w600,
@@ -1321,7 +1321,7 @@ class _NearbyHospitalsMapScreenState extends State<NearbyHospitalsMapScreen> {
                     position: LatLng(lat, lng),
                     infoWindow: InfoWindow(
                       title: name,
-                      snippet: isOpen ? '🟢 Open Now' : address,
+                      snippet: isOpen ? ' Open Now' : address,
                       onTap: () {
                         setState(() {
                           _selectedHospitalId = placeId;
@@ -1414,7 +1414,7 @@ class _NearbyHospitalsMapScreenState extends State<NearbyHospitalsMapScreen> {
           });
       }
     } catch (e) {
-      debugPrint('❌ Error searching hospitals: $e');
+      debugPrint(' Error searching hospitals: $e');
       setState(() {
         _errorMessage = 'Error searching hospitals: $e';
         _isLoading = false;

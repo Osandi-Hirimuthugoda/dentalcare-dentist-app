@@ -32,23 +32,23 @@ class _AnnouncementsSectionState extends State<AnnouncementsSection> {
     });
 
     try {
-      debugPrint('📥 Loading announcements and messages...');
+      debugPrint(' Loading announcements and messages...');
       
       // Load announcements
       final announcements = await _dentalDataSource.getAnnouncements();
-      debugPrint('✅ Loaded ${announcements.length} announcements');
+      debugPrint(' Loaded ${announcements.length} announcements');
       
       // Load messages (conversations) - only to check if there are unread messages
       int unreadCount = 0;
       try {
         final messages = await _dentalDataSource.getMessages();
-        debugPrint('✅ Loaded ${messages.length} messages');
+        debugPrint(' Loaded ${messages.length} messages');
         // Count unread messages
         for (var msg in messages) {
           unreadCount += (msg['unreadCount'] as int? ?? 0);
         }
       } catch (e) {
-        debugPrint('⚠️ Error loading messages (will continue without): $e');
+        debugPrint(' Error loading messages (will continue without): $e');
       }
       
       setState(() {
@@ -57,9 +57,9 @@ class _AnnouncementsSectionState extends State<AnnouncementsSection> {
         _isLoading = false;
       });
       
-      debugPrint('📊 Displaying: ${_announcements.length} announcements, unread messages: $unreadCount');
+      debugPrint(' Displaying: ${_announcements.length} announcements, unread messages: $unreadCount');
     } catch (e) {
-      debugPrint('❌ Error loading announcements/messages: $e');
+      debugPrint(' Error loading announcements/messages: $e');
       debugPrint('   Error type: ${e.runtimeType}');
       setState(() {
         _isLoading = false;
