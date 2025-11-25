@@ -11,21 +11,21 @@ const getUserFromToken = (req) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
-      console.log("⚠️ No Authorization header in request");
+      console.log(" No Authorization header in request");
       return null;
     }
     
     const token = authHeader.split(" ")[1];
     if (!token) {
-      console.log("⚠️ No token found in Authorization header");
+      console.log(" No token found in Authorization header");
       return null;
     }
     
     const decoded = jwt.verify(token, JWT_SECRET);
-    console.log(`✅ Token decoded successfully - ID: ${decoded.id}, Role: ${decoded.role || 'undefined'}`);
+    console.log(` Token decoded successfully - ID: ${decoded.id}, Role: ${decoded.role || 'undefined'}`);
     return decoded;
   } catch (err) {
-    console.error(`❌ Token verification failed: ${err.message}`);
+    console.error(` Token verification failed: ${err.message}`);
     if (err.name === 'JsonWebTokenError') {
       console.error("   Token is invalid or malformed");
     } else if (err.name === 'TokenExpiredError') {
@@ -35,7 +35,7 @@ const getUserFromToken = (req) => {
   }
 };
 
-// 📋 Get all appointments (admin)
+//  Get all appointments (admin)
 export const listAppointments = async (req, res) => {
   try {
     const items = await Appointment.find()
@@ -48,7 +48,7 @@ export const listAppointments = async (req, res) => {
   }
 };
 
-// 📋 Get appointments by patient ID (for mobile app)
+//  Get appointments by patient ID (for mobile app)
 export const getAppointmentsByPatient = async (req, res) => {
   try {
     const user = getUserFromToken(req);
@@ -209,16 +209,16 @@ export const createAppointment = async (req, res) => {
     // If token exists and user is a patient, use token's patient ID
     if (user && user.role === "patient") {
       patientId = user.id;
-      console.log(`✅ Patient ID extracted from token: ${patientId}`);
+      console.log(` Patient ID extracted from token: ${patientId}`);
     } else if (user) {
-      console.log(`⚠️ Token found but user role is: ${user.role || 'undefined'}, expected 'patient'`);
+      console.log(` Token found but user role is: ${user.role || 'undefined'}, expected 'patient'`);
     } else {
-      console.log(`⚠️ No valid token found in request. Headers:`, req.headers.authorization ? "Present but invalid" : "Missing");
+      console.log(` No valid token found in request. Headers:`, req.headers.authorization ? "Present but invalid" : "Missing");
     }
     
     // Validate required fields
     if (!patientId) {
-      console.error("❌ Patient ID missing - Token user:", user ? `Present (role: ${user.role || 'undefined'}, id: ${user.id || 'undefined'})` : "Missing", "- Body patient:", req.body.patient || "Missing");
+      console.error(" Patient ID missing - Token user:", user ? `Present (role: ${user.role || 'undefined'}, id: ${user.id || 'undefined'})` : "Missing", "- Body patient:", req.body.patient || "Missing");
       return res.status(400).json({ 
         message: "Patient ID is required. Please ensure you are logged in as a patient. If you just logged in, please try again." 
       });
@@ -262,6 +262,47 @@ export const createAppointment = async (req, res) => {
     await appt.populate("patient", "name email phone age gender");
     await appt.populate("doctor", "fullName specialization email phone hospital");
     
+    // Create notification when appointment is created
+    try {
+      const doctorName = appt.doctor?.fullName || "Your doctor";
+      const appointmentDate = new Date(appt.startTime);
+      const formattedDate = appointmentDate.toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      });
+      const formattedTime = appointmentDate.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Asia/Colombo'
+      });
+      
+      let notificationTitle = "Appointment Booked";
+      let notificationMessage = `Your appointment with ${doctorName} has been booked for ${formattedDate} at ${formattedTime}.`;
+      
+      if (appt.status === "confirmed") {
+        notificationTitle = "Appointment Confirmed";
+        notificationMessage = `Your appointment with ${doctorName} has been confirmed for ${formattedDate} at ${formattedTime}.`;
+      } else if (appt.status === "pending") {
+        notificationTitle = "Appointment Pending";
+        notificationMessage = `Your appointment with ${doctorName} is pending confirmation for ${formattedDate} at ${formattedTime}. You will be notified once it's confirmed.`;
+      }
+      
+      await createNotification({
+        patient: appt.patient._id,
+        doctor: appt.doctor?._id,
+        appointment: appt._id,
+        title: notificationTitle,
+        message: notificationMessage,
+        type: "appointment"
+      });
+      
+      console.log(`✅ Notification created for appointment booking: ${appt._id}`);
+    } catch (notifError) {
+      // Don't fail the appointment creation if notification creation fails
+      console.error("❌ Error creating notification:", notifError);
+    }
+    
     res.status(201).json(appt);
   } catch (err) {
     console.error("Error creating appointment:", err);
@@ -269,7 +310,7 @@ export const createAppointment = async (req, res) => {
   }
 };
 
-// ✏️ Update appointment
+//  Update appointment
 export const updateAppointment = async (req, res) => {
   try {
     // Get the old appointment to check if status changed
@@ -287,8 +328,8 @@ export const updateAppointment = async (req, res) => {
       return res.status(404).json({ message: "Appointment not found" });
     }
     
-    // Create notification if status changed to "confirmed"
-    if (req.body.status === "confirmed" && oldAppt && oldAppt.status !== "confirmed") {
+    // Create notifications for status changes
+    if (oldAppt && oldAppt.status !== req.body.status) {
       try {
         const doctorName = appt.doctor?.fullName || "Your doctor";
         const appointmentDate = new Date(appt.startTime);
@@ -303,16 +344,36 @@ export const updateAppointment = async (req, res) => {
           timeZone: 'Asia/Colombo'
         });
         
-        await createNotification({
-          patient: appt.patient._id,
-          doctor: appt.doctor?._id,
-          appointment: appt._id,
-          title: "Appointment Confirmed",
-          message: `Your appointment with ${doctorName} has been confirmed for ${formattedDate} at ${formattedTime}.`,
-          type: "appointment"
-        });
+        let notificationTitle = "";
+        let notificationMessage = "";
+        let notificationType = "appointment";
         
-        console.log(`✅ Notification created for appointment confirmation: ${appt._id}`);
+        if (req.body.status === "confirmed" && oldAppt.status !== "confirmed") {
+          notificationTitle = "Appointment Confirmed";
+          notificationMessage = `Your appointment with ${doctorName} has been confirmed for ${formattedDate} at ${formattedTime}.`;
+        } else if (req.body.status === "cancelled" && oldAppt.status !== "cancelled") {
+          notificationTitle = "Appointment Cancelled";
+          notificationMessage = `Your appointment with ${doctorName} scheduled for ${formattedDate} at ${formattedTime} has been cancelled.`;
+        } else if (req.body.status === "rescheduled" && oldAppt.status !== "rescheduled") {
+          notificationTitle = "Appointment Rescheduled";
+          notificationMessage = `Your appointment with ${doctorName} has been rescheduled to ${formattedDate} at ${formattedTime}.`;
+        } else if (req.body.status === "completed" && oldAppt.status !== "completed") {
+          notificationTitle = "Appointment Completed";
+          notificationMessage = `Your appointment with ${doctorName} on ${formattedDate} has been completed. Thank you for visiting!`;
+        }
+        
+        if (notificationTitle) {
+          await createNotification({
+            patient: appt.patient._id,
+            doctor: appt.doctor?._id,
+            appointment: appt._id,
+            title: notificationTitle,
+            message: notificationMessage,
+            type: notificationType
+          });
+          
+          console.log(`✅ Notification created for appointment status change: ${appt._id} - ${req.body.status}`);
+        }
       } catch (notifError) {
         // Don't fail the appointment update if notification creation fails
         console.error("❌ Error creating notification:", notifError);
@@ -325,7 +386,7 @@ export const updateAppointment = async (req, res) => {
   }
 };
 
-// 🗑️ Delete appointment
+//  Delete appointment
 export const deleteAppointment = async (req, res) => {
   try {
     const appt = await Appointment.findByIdAndDelete(req.params.id);
