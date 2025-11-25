@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/constants/route_names.dart';
-import 'package:flutter_application_1/core/services/notification_service.dart';
 import 'package:flutter_application_1/core/utils/helpers.dart';
+import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
+import 'package:flutter_application_1/injection_container.dart' as di;
 import 'package:flutter_application_1/presentation/widgets/home/appointments_section.dart';
 import 'package:flutter_application_1/presentation/widgets/home/emergency_contact.dart';
 import 'package:flutter_application_1/presentation/widgets/home/health_tips_carousel.dart.dart';
@@ -17,7 +18,37 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  final NotificationService _notificationService = NotificationService();
+  late final DentalRemoteDataSource _dentalDataSource;
+  int _unreadNotificationCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _dentalDataSource = di.getIt<DentalRemoteDataSource>();
+    _loadNotificationCount();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload notification count when returning to home screen
+    _loadNotificationCount();
+  }
+
+  Future<void> _loadNotificationCount() async {
+    try {
+      final notifications = await _dentalDataSource.getNotifications();
+      final unreadCount = notifications.where((n) => !(n['isRead'] ?? false)).length;
+      if (mounted) {
+        setState(() {
+          _unreadNotificationCount = unreadCount;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading notification count: $e');
+      // Don't show error to user, just keep count at 0
+    }
+  }
 
 
   void _onItemTapped(int index, BuildContext context) {
@@ -106,12 +137,21 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.notifications_none, color: Colors.white),
-                onPressed: () {
-                  // Check authentication before navigating
-                  Helpers.navigateIfAuthenticated(context, RouteNames.notification);
+                tooltip: 'Notifications',
+                onPressed: () async {
+                  try {
+                    // Check authentication before navigating
+                    await Helpers.navigateIfAuthenticated(context, RouteNames.notification);
+                    // Reload notification count when returning
+                    if (mounted) {
+                      _loadNotificationCount();
+                    }
+                  } catch (e) {
+                    debugPrint('Error navigating to notifications: $e');
+                  }
                 },
               ),
-              if (_notificationService.unreadCount > 0)
+              if (_unreadNotificationCount > 0)
                 Positioned(
                   right: 8,
                   top: 8,
@@ -126,9 +166,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       minHeight: 16,
                     ),
                     child: Text(
-                      _notificationService.unreadCount > 9 
+                      _unreadNotificationCount > 9 
                           ? '9+' 
-                          : _notificationService.unreadCount.toString(),
+                          : _unreadNotificationCount.toString(),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,
