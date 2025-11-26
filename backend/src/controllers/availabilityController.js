@@ -36,12 +36,12 @@ export const getDoctorAvailability = async (req, res) => {
       availableSlots
     });
   } catch (error) {
-    console.error("❌ Error fetching doctor availability:", error);
+    console.error(" Error fetching doctor availability:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
-// 📅 Update doctor availability
+// Update doctor availability
 export const updateDoctorAvailability = async (req, res) => {
   try {
     const { doctorId } = req.params;
@@ -81,19 +81,19 @@ export const updateDoctorAvailability = async (req, res) => {
     
     await availability.save();
     
-    console.log(`✅ Doctor availability updated for: ${doctor.fullName}`);
+    console.log(` Doctor availability updated for: ${doctor.fullName}`);
     
     res.status(200).json({
       message: "Availability updated successfully",
       availability
     });
   } catch (error) {
-    console.error("❌ Error updating doctor availability:", error);
+    console.error(" Error updating doctor availability:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
-// 🔧 Helper function to generate available time slots
+//  Helper function to generate available time slots
 async function generateAvailableSlots(doctorId, availability) {
   const slots = [];
   const today = new Date();

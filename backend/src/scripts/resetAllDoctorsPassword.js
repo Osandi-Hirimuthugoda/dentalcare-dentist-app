@@ -47,27 +47,27 @@ const resetDoctorsPasswords = async () => {
         // Verify password was saved correctly
         const testMatch = await bcrypt.compare(defaultPassword, doctor.password);
         if (testMatch) {
-          console.log(`✅ Password reset for: ${doctor.email} (verified)`);
+          console.log(`Password reset for: ${doctor.email} (verified)`);
           successCount++;
         } else {
-          console.log(`⚠️  Password reset for: ${doctor.email} but verification failed`);
+          console.log(`Password reset for: ${doctor.email} but verification failed`);
           errorCount++;
         }
       } catch (error) {
-        console.error(`❌ Error resetting password for ${doctor.email}:`, error.message);
+        console.error(`Error resetting password for ${doctor.email}:`, error.message);
         errorCount++;
       }
     }
     
-    console.log(`\n📊 Summary:`);
-    console.log(`   ✅ Successfully reset: ${successCount} doctors`);
-    console.log(`   ❌ Failed: ${errorCount} doctors`);
-    console.log(`\n🔐 All passwords have been reset to: ${defaultPassword}`);
-    console.log(`   ⚠️  Please ask doctors to change their passwords after login!`);
+    console.log(`\n Summary:`);
+    console.log(` Successfully reset: ${successCount} doctors`);
+    console.log(` Failed: ${errorCount} doctors`);
+    console.log(`\n All passwords have been reset to: ${defaultPassword}`);
+    console.log(` Please ask doctors to change their passwords after login!`);
     
     process.exit(0);
   } catch (error) {
-    console.error(`❌ Error:`, error);
+    console.error(`Error:`, error);
     process.exit(1);
   }
 };
@@ -76,10 +76,10 @@ const resetDoctorsPasswords = async () => {
 const resetSpecificDoctors = async (emails, newPassword) => {
   try {
     await connectDB();
-    console.log(`\n🔧 Resetting passwords for specific doctors...\n`);
+    console.log(`\n Resetting passwords for specific doctors...\n`);
     
     if (!emails || emails.length === 0) {
-      console.log("❌ No emails provided");
+      console.log(" No emails provided");
       process.exit(1);
     }
     
@@ -92,7 +92,7 @@ const resetSpecificDoctors = async (emails, newPassword) => {
         const doctor = await Doctor.findOne({ email: email.toLowerCase().trim() });
         
         if (!doctor) {
-          console.log(`⚠️  Doctor not found: ${email}`);
+          console.log(`  Doctor not found: ${email}`);
           notFound.push(email);
           continue;
         }
@@ -111,25 +111,25 @@ const resetSpecificDoctors = async (emails, newPassword) => {
           throw new Error('Password verification failed after reset');
         }
         
-        console.log(`✅ Password reset for: ${doctor.email} (${doctor.fullName})`);
+        console.log(` Password reset for: ${doctor.email} (${doctor.fullName})`);
         successCount++;
       } catch (error) {
-        console.error(`❌ Error resetting password for ${email}:`, error.message);
+        console.error(` Error resetting password for ${email}:`, error.message);
         errorCount++;
       }
     }
     
-    console.log(`\n📊 Summary:`);
-    console.log(`   ✅ Successfully reset: ${successCount} doctors`);
-    console.log(`   ❌ Failed: ${errorCount} doctors`);
+    console.log(`\n Summary:`);
+    console.log(`    Successfully reset: ${successCount} doctors`);
+    console.log(`    Failed: ${errorCount} doctors`);
     if (notFound.length > 0) {
-      console.log(`   ⚠️  Not found: ${notFound.join(", ")}`);
+      console.log(`     Not found: ${notFound.join(", ")}`);
     }
-    console.log(`\n🔐 New password: ${newPassword}`);
+    console.log(`\n New password: ${newPassword}`);
     
     process.exit(0);
   } catch (error) {
-    console.error(`❌ Error:`, error);
+    console.error(` Error:`, error);
     process.exit(1);
   }
 };

@@ -4,7 +4,7 @@ import Patient from "../models/Patient.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dentalcare_secret_key_change_in_production";
 
-// 📝 Register new patient (for mobile app)
+// Register new patient (for mobile app)
 export const registerPatient = async (req, res) => {
   try {
     const { name, email, password, phone, age, gender } = req.body;
@@ -70,7 +70,7 @@ export const registerPatient = async (req, res) => {
       updatedAt: patient.updatedAt,
     };
 
-    console.log(`✅ New patient registered: ${patient.email}`);
+    console.log(`New patient registered: ${patient.email}`);
 
     res.status(201).json({
       message: "Registration successful",
@@ -79,7 +79,7 @@ export const registerPatient = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Registration error:", error.message);
+    console.error("Registration error:", error.message);
     
     // Handle duplicate key error
     if (error.code === 11000) {
@@ -100,7 +100,7 @@ export const registerPatient = async (req, res) => {
   }
 };
 
-// 🔐 Login patient (for mobile app)
+// Login patient (for mobile app)
 export const loginPatient = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -158,7 +158,7 @@ export const loginPatient = async (req, res) => {
       updatedAt: patient.updatedAt,
     };
 
-    console.log(`✅ Patient logged in: ${patient.email}`);
+    console.log(`Patient logged in: ${patient.email}`);
 
     res.json({
       message: "Login successful",
@@ -167,7 +167,7 @@ export const loginPatient = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Login error:", error.message);
+    console.error("Login error:", error.message);
     res.status(500).json({ 
       message: "Login failed. Please try again later." 
     });
@@ -226,14 +226,14 @@ export const getCurrentPatient = async (req, res) => {
       user: patientResponse,
     });
   } catch (error) {
-    console.error("❌ Error getting patient profile:", error.message);
+    console.error("Error getting patient profile:", error.message);
     res.status(500).json({ 
       message: "Failed to retrieve profile. Please try again later." 
     });
   }
 };
 
-// ✏️ Update patient profile (for mobile app)
+// Update patient profile (for mobile app)
 export const updatePatientProfile = async (req, res) => {
   try {
     // Extract user from token
@@ -297,14 +297,14 @@ export const updatePatientProfile = async (req, res) => {
       user: patientResponse,
     });
   } catch (error) {
-    console.error("❌ Error updating patient profile:", error.message);
+    console.error("Error updating patient profile:", error.message);
     res.status(500).json({ 
       message: "Failed to update profile. Please try again later." 
     });
   }
 };
 
-// 🔑 Forgot password
+// Forgot password
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -328,14 +328,14 @@ export const forgotPassword = async (req, res) => {
     // }
 
   } catch (error) {
-    console.error("❌ Forgot password error:", error.message);
+    console.error("Forgot password error:", error.message);
     res.status(500).json({ 
       message: "Unable to process request. Please try again later." 
     });
   }
 };
 
-// ✅ Verify email
+// Verify email
 export const verifyEmail = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -362,7 +362,7 @@ export const verifyEmail = async (req, res) => {
     }
 
   } catch (error) {
-    console.error("❌ Email verification error:", error.message);
+    console.error("Email verification error:", error.message);
     res.status(500).json({ 
       message: "Email verification failed. Please try again later." 
     });

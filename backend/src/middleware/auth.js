@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import Admin from "../models/Admin.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "change_this_secret";
+const JWT_SECRET = process.env.JWT_SECRET || "dentalcare_secret_key_change_in_production";
 
 export const requireAuth = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -17,7 +17,7 @@ export const requireAuth = (req, res, next) => {
   }
 };
 
-// ✅ Allow only admin access
+// Allow only admin access
 export const requireAdmin = (req, res, next) => {
   if (req.user?.role !== "admin") {
     return res.status(403).json({ message: "Admin access only" });
@@ -25,7 +25,7 @@ export const requireAdmin = (req, res, next) => {
   next();
 };
 
-// 🔐 Protect admin routes - checks for admin authentication
+// Protect admin routes - checks for admin authentication
 export const protectAdmin = async (req, res, next) => {
   try {
     // Check for authorization header
@@ -71,7 +71,7 @@ export const protectAdmin = async (req, res, next) => {
       return res.status(401).json({ message: "Not authorized, token verification failed" });
     }
   } catch (error) {
-    console.error("❌ Error in protectAdmin middleware:", error);
+    console.error("Error in protectAdmin middleware:", error);
     return res.status(500).json({ message: "Server error in authentication" });
   }
 };

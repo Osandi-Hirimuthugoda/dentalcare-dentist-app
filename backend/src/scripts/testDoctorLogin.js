@@ -15,32 +15,32 @@ const testDoctorLogin = async (email, password) => {
     const doctor = await Doctor.findOne({ email: email.toLowerCase().trim() });
     
     if (!doctor) {
-      console.log(`❌ Doctor not found: ${email}`);
+      console.log(`Doctor not found: ${email}`);
       process.exit(1);
     }
     
-    console.log(`✅ Doctor found: ${doctor.fullName}`);
+    console.log(`Doctor found: ${doctor.fullName}`);
     console.log(`   Email: ${doctor.email}`);
     console.log(`   Password in DB starts with: ${doctor.password.substring(0, 20)}...`);
-    console.log(`   Password is hashed: ${doctor.password.startsWith('$2') ? 'Yes ✅' : 'No ❌'}`);
+    console.log(`   Password is hashed: ${doctor.password.startsWith('$2') ? 'Yes ' : 'No '}`);
     
     // Test password comparison
     const isMatch = await bcrypt.compare(password, doctor.password);
     
-    console.log(`\n🔐 Testing password: "${password}"`);
-    console.log(`   Password matches: ${isMatch ? 'Yes ✅' : 'No ❌'}`);
+    console.log(`\n Testing password: "${password}"`);
+    console.log(`   Password matches: ${isMatch ? 'Yes ' : 'No '}`);
     
     if (!isMatch) {
-      console.log(`\n💡 Suggestions:`);
+      console.log(`\n Suggestions:`);
       console.log(`   1. Reset password using: node resetDoctorPassword.js ${email} password123`);
       console.log(`   2. Make sure you're using the correct password`);
     } else {
-      console.log(`\n✅ Login should work with these credentials!`);
+      console.log(`\n Login should work with these credentials!`);
     }
     
     process.exit(0);
   } catch (error) {
-    console.error(`❌ Error:`, error);
+    console.error(`Error:`, error);
     process.exit(1);
   }
 };

@@ -4,6 +4,7 @@ import {
   loginDoctor, 
   getDoctorProfile,
   getAllDoctors,
+  getAvailableDoctorsNow,
   changePassword,
   updateDoctorProfile,
   updateDoctorServices,
@@ -18,6 +19,7 @@ router.post("/register", registerDoctor);
 router.post("/login", loginDoctor); // <--- This is the route we're looking for!
 router.get("/profile/:id", getDoctorProfile);
 router.get("/all", getAllDoctors); // Get all doctors (for admin)
+router.get("/available-now", getAvailableDoctorsNow); // Get available doctors at current time
 
 // Update doctor profile
 router.put("/:doctorId/profile", updateDoctorProfile);

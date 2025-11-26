@@ -33,6 +33,11 @@ abstract class DentalRemoteDataSource {
   Future<List<dynamic>> searchHospitals({String? query, String? district}); // Search hospitals
   Future<List<dynamic>> getHospitalsByDistrict(String district); // Get hospitals by district
   Future<List<dynamic>> getDistrictsWithCounts(); // Get all districts with hospital counts
+  Future<Map<String, dynamic>> getWalletBalance(); // Get wallet balance
+  Future<Map<String, dynamic>> topUpWallet(int amount, String paymentMethod, Map<String, dynamic>? cardDetails); // Top-up wallet
+  Future<Map<String, dynamic>> payBillWithWallet(String billId); // Pay bill using wallet
+  Future<Map<String, dynamic>> payAppointmentWithWallet(String appointmentId, double amount); // Pay appointment using wallet
+  Future<List<dynamic>> getWalletTransactions(); // Get wallet transaction history
 }
 
 class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
@@ -806,6 +811,144 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
       }
     } catch (e) {
       debugPrint(' Error fetching districts: $e');
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getWalletBalance() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.get(
+        Uri.parse('${AppConstants.baseUrl}/wallet/balance'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw ServerException('Failed to fetch wallet balance', response.statusCode);
+      }
+    } catch (e) {
+      debugPrint(' Error fetching wallet balance: $e');
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> topUpWallet(int amount, String paymentMethod, Map<String, dynamic>? cardDetails) async {
+    try {
+      final headers = await _getHeaders();
+      final body = {
+        'amount': amount,
+        'paymentMethod': paymentMethod,
+        if (cardDetails != null) 'cardDetails': cardDetails,
+      };
+
+      final response = await client.post(
+        Uri.parse('${AppConstants.baseUrl}/wallet/topup'),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        final error = jsonDecode(response.body);
+        throw ServerException(error['message'] ?? 'Failed to top up wallet', response.statusCode);
+      }
+    } catch (e) {
+      debugPrint(' Error topping up wallet: $e');
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> payBillWithWallet(String billId) async {
+    try {
+      final headers = await _getHeaders();
+      final body = {'billId': billId};
+
+      final response = await client.post(
+        Uri.parse('${AppConstants.baseUrl}/wallet/pay-bill'),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        final error = jsonDecode(response.body);
+        throw ServerException(error['message'] ?? 'Failed to pay bill', response.statusCode);
+      }
+    } catch (e) {
+      debugPrint(' Error paying bill with wallet: $e');
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> payAppointmentWithWallet(String appointmentId, double amount) async {
+    try {
+      final headers = await _getHeaders();
+      final body = {
+        'appointmentId': appointmentId,
+        'amount': amount,
+      };
+
+      final response = await client.post(
+        Uri.parse('${AppConstants.baseUrl}/wallet/pay-appointment'),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        final error = jsonDecode(response.body);
+        throw ServerException(error['message'] ?? 'Failed to pay appointment', response.statusCode);
+      }
+    } catch (e) {
+      debugPrint('❌ Error paying appointment with wallet: $e');
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getWalletTransactions() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.get(
+        Uri.parse('${AppConstants.baseUrl}/wallet/transactions'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is List) {
+          return data;
+        }
+        return [];
+      } else {
+        throw ServerException('Failed to fetch wallet transactions', response.statusCode);
+      }
+    } catch (e) {
+      debugPrint(' Error fetching wallet transactions: $e');
       if (e is ServerException) {
         rethrow;
       }

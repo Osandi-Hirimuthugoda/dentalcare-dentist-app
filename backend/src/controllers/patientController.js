@@ -2,7 +2,7 @@ import Patient from "../models/Patient.js";
 import Appointment from "../models/Appointment.js";
 import Doctor from "../models/doctorModel.js";
 
-// 📋 Get all patients
+//  Get all patients
 export const getPatients = async (req, res) => {
   try {
     const patients = await Patient.find().populate("selectedDoctor", "fullName specialization email phone");
@@ -12,7 +12,7 @@ export const getPatients = async (req, res) => {
   }
 };
 
-// 📋 Get patients by doctor ID (for web app - doctors viewing their patients)
+//  Get patients by doctor ID (for web app - doctors viewing their patients)
 export const getPatientsByDoctor = async (req, res) => {
   try {
     const { doctorId } = req.params;
@@ -36,7 +36,7 @@ export const getPatientsByDoctor = async (req, res) => {
     
     res.status(200).json(patients);
   } catch (error) {
-    console.error("❌ Error fetching patients by doctor:", error);
+    console.error(" Error fetching patients by doctor:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -67,7 +67,7 @@ export const addPatient = async (req, res) => {
   }
 };
 
-// 🔗 User selects a doctor (from mobile app)
+//  User selects a doctor (from mobile app)
 export const selectDoctor = async (req, res) => {
   try {
     const { patientId, doctorId } = req.body;
@@ -111,7 +111,7 @@ export const selectDoctor = async (req, res) => {
   }
 };
 
-// 📄 Get patient details by ID
+//  Get patient details by ID
 export const getPatientById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -128,7 +128,7 @@ export const getPatientById = async (req, res) => {
   }
 };
 
-// ✏️ Update patient information (doctor can add notes, diagnosis, etc.)
+//  Update patient information (doctor can add notes, diagnosis, etc.)
 export const updatePatient = async (req, res) => {
   try {
     const { id } = req.params;
@@ -150,7 +150,7 @@ export const updatePatient = async (req, res) => {
   }
 };
 
-// 🗑️ Delete patient (Admin only)
+//  Delete patient (Admin only)
 export const deletePatient = async (req, res) => {
   try {
     const { id } = req.params;
@@ -169,7 +169,7 @@ export const deletePatient = async (req, res) => {
 
     res.status(200).json({ message: "Patient deleted successfully" });
   } catch (error) {
-    console.error("❌ Error deleting patient:", error);
+    console.error(" Error deleting patient:", error);
     res.status(500).json({ message: "Error deleting patient", error: error.message });
   }
 };

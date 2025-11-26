@@ -121,13 +121,23 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text(
-          "DentalCare+",
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+        title: Row(
+          children: [
+            const Icon(
+              Icons.health_and_safety,
+              color: Colors.white,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              "DentalCare+",
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ],
         ),
         backgroundColor: Colors.teal[700],
         elevation: 0,

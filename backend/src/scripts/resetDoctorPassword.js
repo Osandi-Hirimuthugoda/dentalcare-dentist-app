@@ -10,12 +10,12 @@ dotenv.config();
 const resetDoctorPassword = async (email, newPassword) => {
   try {
     await connectDB();
-    console.log(`\n🔧 Resetting password for: ${email}...`);
+    console.log(`\n Resetting password for: ${email}...`);
     
     const doctor = await Doctor.findOne({ email: email.toLowerCase() });
     
     if (!doctor) {
-      console.log(`❌ Doctor not found: ${email}`);
+      console.log(` Doctor not found: ${email}`);
       return;
     }
     
@@ -30,21 +30,21 @@ const resetDoctorPassword = async (email, newPassword) => {
     // Verify the password was saved correctly
     const savedDoctor = await Doctor.findOne({ email: email.toLowerCase() });
     if (savedDoctor && savedDoctor.password.startsWith('$2')) {
-      console.log(`   ✅ Password successfully hashed and saved`);
+      console.log(`    Password successfully hashed and saved`);
       
       // Test password match
       const testMatch = await bcrypt.compare(newPassword, savedDoctor.password);
-      console.log(`   ✅ Password verification test: ${testMatch ? 'PASSED ✅' : 'FAILED ❌'}`);
+      console.log(`    Password verification test: ${testMatch ? 'PASSED ' : 'FAILED '}`);
     } else {
-      console.log(`   ⚠️  Warning: Password may not be hashed correctly`);
+      console.log(`     Warning: Password may not be hashed correctly`);
     }
     
-    console.log(`✅ Password reset successfully for: ${email}`);
+    console.log(` Password reset successfully for: ${email}`);
     console.log(`   New password: ${newPassword}`);
     
     process.exit(0);
   } catch (error) {
-    console.error(`❌ Error resetting password:`, error);
+    console.error(` Error resetting password:`, error);
     process.exit(1);
   }
 };

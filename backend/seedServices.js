@@ -88,16 +88,16 @@ const seedServices = async () => {
       const existingService = await Service.findOne({ name: service.name });
       if (!existingService) {
         await Service.create(service);
-        console.log(`✅ Seeded service: ${service.name}`);
+        console.log(` Seeded service: ${service.name}`);
       } else {
-        console.log(`⏭️  Service already exists: ${service.name}`);
+        console.log(`⏭ Service already exists: ${service.name}`);
       }
     }
 
-    console.log("✅ Services seeding completed!");
+    console.log(" Services seeding completed!");
     process.exit(0);
   } catch (error) {
-    console.error("❌ Error seeding services:", error);
+    console.error(" Error seeding services:", error);
     process.exit(1);
   }
 };

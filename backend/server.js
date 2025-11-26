@@ -14,6 +14,8 @@ import billRoutes from "./src/routes/billRoutes.js";
 import reviewRoutes from "./src/routes/reviewRoutes.js";
 import notificationRoutes from "./src/routes/notificationRoutes.js";
 import hospitalRoutes from "./src/routes/hospitalRoutes.js";
+import healthRoutes from "./src/routes/healthRoutes.js";
+import walletRoutes from "./src/routes/walletRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -73,8 +75,14 @@ app.use("/api/notifications", notificationRoutes);
 // Hospital routes (for hospital management and search)
 app.use("/api/hospitals", hospitalRoutes);
 
-// Health check
-app.get("/api/health", (req, res) => {
+// Health routes (for health tips, scores, and activities)
+app.use("/api/health", healthRoutes);
+
+// Wallet routes (for wallet balance, top-up, and payments)
+app.use("/api/wallet", walletRoutes);
+
+// Health check (keep existing endpoint for server health)
+app.get("/api/health-check", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
@@ -98,11 +106,11 @@ let PORT = parseInt(process.env.PORT) || 4000;
 function startServer(port) {
   // Listen on 0.0.0.0 to allow connections from emulator (10.0.2.2) and network
   const server = app.listen(port, '0.0.0.0', () => {
-    console.log(`🚀 Server running on port ${port}`);
-    console.log(`📍 API URL: http://localhost:${port}/api`);
-    console.log(`📍 Android Emulator URL: http://10.0.2.2:${port}/api`);
-    console.log(`🌐 Health check: http://localhost:${port}/api/health`);
-    console.log(`✅ Server is accessible from Android emulator`);
+    console.log(`Server running on port ${port}`);
+    console.log(`API URL: http://localhost:${port}/api`);
+    console.log(`Android Emulator URL: http://10.0.2.2:${port}/api`);
+    console.log(`Health check: http://localhost:${port}/api/health`);
+    console.log(`Server is accessible from Android emulator`);
   });
 
   server.on("error", (err) => {

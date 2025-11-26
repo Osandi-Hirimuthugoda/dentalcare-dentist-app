@@ -13,10 +13,10 @@ const checkAndFixAllDoctors = async () => {
     
     // Get all doctors
     const doctors = await Doctor.find();
-    console.log(`📋 Found ${doctors.length} doctors\n`);
+    console.log(`Found ${doctors.length} doctors\n`);
     
     if (doctors.length === 0) {
-      console.log("❌ No doctors found in database");
+      console.log("No doctors found in database");
       process.exit(0);
     }
     
@@ -24,7 +24,7 @@ const checkAndFixAllDoctors = async () => {
     let resetCount = 0;
     let skipCount = 0;
     
-    console.log("🔧 Resetting ALL doctors' passwords to ensure they can login...\n");
+    console.log("Resetting ALL doctors' passwords to ensure they can login...\n");
     
     for (const doctor of doctors) {
       try {
@@ -38,23 +38,23 @@ const checkAndFixAllDoctors = async () => {
           { $set: { password: hashedPassword } }
         );
         
-        console.log(`  ✅ Password reset for: ${doctor.email}`);
+        console.log(`Password reset for: ${doctor.email}`);
         resetCount++;
       } catch (error) {
-        console.error(`  ❌ Error for ${doctor.email}:`, error.message);
+        console.error(`Error for ${doctor.email}:`, error.message);
       }
     }
     
-    console.log(`\n📊 Summary:`);
-    console.log(`   ✅ Successfully reset: ${resetCount} doctors`);
-    console.log(`   ⏭️  Skipped: ${skipCount} doctors`);
-    console.log(`\n🔐 ALL passwords have been reset to: ${defaultPassword}`);
-    console.log(`   ⚠️  Please ask all doctors to login with password: ${defaultPassword}`);
-    console.log(`   ⚠️  They should change their passwords after login!`);
+    console.log(`\nSummary:`);
+    console.log(`Successfully reset: ${resetCount} doctors`);
+    console.log(`Skipped: ${skipCount} doctors`);
+    console.log(`\n ALL passwords have been reset to: ${defaultPassword}`);
+    console.log(`Please ask all doctors to login with password: ${defaultPassword}`);
+    console.log(`They should change their passwords after login!`);
     
     process.exit(0);
   } catch (error) {
-    console.error(`❌ Error:`, error);
+    console.error(`Error:`, error);
     process.exit(1);
   }
 };

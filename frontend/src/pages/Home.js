@@ -1,10 +1,12 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import Footer from "../components/Footer";
 
 const Home = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-blue-100 flex flex-col items-center justify-center text-center px-6">
+    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-blue-100 flex flex-col">
+      <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
       <motion.h1
         initial={{ opacity: 0, y: -30 }}
         animate={{ opacity: 1, y: 0 }}
@@ -50,6 +52,8 @@ const Home = () => {
           Register
         </Link>
       </motion.div>
+      </div>
+      <Footer />
     </div>
   );
 };

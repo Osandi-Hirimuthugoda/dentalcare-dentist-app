@@ -6,7 +6,7 @@ export const getAllServices = async (req, res) => {
     const services = await Service.find({ isActive: true }).sort({ name: 1 });
     res.status(200).json(services);
   } catch (error) {
-    console.error("❌ Error fetching services:", error);
+    console.error(" Error fetching services:", error);
     res.status(500).json({ message: "Error fetching services", error });
   }
 };
@@ -32,7 +32,7 @@ export const getServicesByCategory = async (req, res) => {
       allServices: services
     });
   } catch (error) {
-    console.error("❌ Error fetching categorized services:", error);
+    console.error(" Error fetching categorized services:", error);
     res.status(500).json({ message: "Error fetching categorized services", error });
   }
 };
@@ -56,7 +56,7 @@ export const createService = async (req, res) => {
     if (error.code === 11000) {
       return res.status(400).json({ message: "Service already exists" });
     }
-    console.error("❌ Error creating service:", error);
+    console.error(" Error creating service:", error);
     res.status(500).json({ message: "Error creating service", error });
   }
 };
@@ -82,7 +82,7 @@ export const updateService = async (req, res) => {
     await service.save();
     res.status(200).json({ message: "Service updated successfully", service });
   } catch (error) {
-    console.error("❌ Error updating service:", error);
+    console.error(" Error updating service:", error);
     res.status(500).json({ message: "Error updating service", error });
   }
 };
@@ -101,7 +101,7 @@ export const deleteService = async (req, res) => {
     await service.save();
     res.status(200).json({ message: "Service deleted successfully" });
   } catch (error) {
-    console.error("❌ Error deleting service:", error);
+    console.error(" Error deleting service:", error);
     res.status(500).json({ message: "Error deleting service", error });
   }
 };

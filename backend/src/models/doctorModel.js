@@ -35,9 +35,9 @@ doctorSchema.pre("save", async function (next) {
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
-    console.log(`🔐 Password hashed for: ${this.email || 'doctor'}`);
+    console.log(` Password hashed for: ${this.email || 'doctor'}`);
   } catch (error) {
-    console.error(`❌ Error hashing password:`, error);
+    console.error(` Error hashing password:`, error);
     return next(error);
   }
   next();

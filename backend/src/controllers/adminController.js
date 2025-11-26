@@ -4,7 +4,7 @@ import Patient from "../models/Patient.js";
 import Appointment from "../models/Appointment.js";
 import bcrypt from "bcryptjs";
 
-// 🔐 Admin Login
+// Admin Login
 export const adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -35,7 +35,7 @@ export const adminLogin = async (req, res) => {
   }
 };
 
-// 📊 Get Admin Dashboard Statistics
+// Get Admin Dashboard Statistics
 export const getDashboardStats = async (req, res) => {
   try {
     // Get total doctors
@@ -93,12 +93,12 @@ export const getDashboardStats = async (req, res) => {
       recentDoctors,
     });
   } catch (error) {
-    console.error("❌ Error fetching dashboard stats:", error);
+    console.error(" Error fetching dashboard stats:", error);
     res.status(500).json({ message: "Error fetching dashboard statistics", error: error.message });
   }
 };
 
-// 📋 Get All Doctors (for admin)
+//  Get All Doctors (for admin)
 export const getAllDoctors = async (req, res) => {
   try {
     const doctors = await Doctor.find()
@@ -106,12 +106,12 @@ export const getAllDoctors = async (req, res) => {
       .sort({ createdAt: -1 });
     res.status(200).json(doctors);
   } catch (error) {
-    console.error("❌ Error fetching doctors:", error);
+    console.error(" Error fetching doctors:", error);
     res.status(500).json({ message: "Error fetching doctors", error: error.message });
   }
 };
 
-// ➕ Register Doctor (Admin only)
+//  Register Doctor (Admin only)
 export const registerDoctor = async (req, res) => {
   try {
     const {
@@ -149,7 +149,7 @@ export const registerDoctor = async (req, res) => {
     }
 
     // Create doctor (password will be hashed automatically by the model's pre-save hook)
-    console.log(`🔧 Creating doctor with email: ${normalizedEmail}`);
+    console.log(` Creating doctor with email: ${normalizedEmail}`);
     console.log(`   Password provided: ${password ? 'Yes (length: ' + password.length + ')' : 'No'}`);
     console.log(`   Password value: "${password}"`);
     
@@ -171,14 +171,14 @@ export const registerDoctor = async (req, res) => {
 
     // Verify password was hashed (should start with $2)
     const isPasswordHashed = doctor.password && doctor.password.startsWith('$2');
-    console.log(`   Password hashed: ${isPasswordHashed ? 'Yes ✅' : 'No ❌'}`);
+    console.log(`   Password hashed: ${isPasswordHashed ? 'Yes ' : 'No '}`);
     
     // Test password match to ensure it works
     if (isPasswordHashed) {
       const testMatch = await bcrypt.compare(trimmedPassword, doctor.password);
-      console.log(`   Password verification test: ${testMatch ? 'PASSED ✅' : 'FAILED ❌'}`);
+      console.log(`   Password verification test: ${testMatch ? 'PASSED ' : 'FAILED '}`);
       if (!testMatch) {
-        console.error(`   ⚠️  WARNING: Password was hashed but verification failed!`);
+        console.error(`     WARNING: Password was hashed but verification failed!`);
       }
     }
 
@@ -197,8 +197,8 @@ export const registerDoctor = async (req, res) => {
       createdAt: doctor.createdAt,
     };
 
-    console.log(`✅ Doctor registered successfully by admin: ${doctor.email}`);
-    console.log(`   🔐 Doctor can now login with:`);
+    console.log(` Doctor registered successfully by admin: ${doctor.email}`);
+    console.log(`    Doctor can now login with:`);
     console.log(`      Email: ${normalizedEmail}`);
     console.log(`      Password: ${trimmedPassword} (the exact password entered during registration)`);
 
@@ -212,7 +212,7 @@ export const registerDoctor = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("❌ Error registering doctor:", error);
+    console.error(" Error registering doctor:", error);
     
     // Handle duplicate key error
     if (error.code === 11000) {
@@ -234,7 +234,7 @@ export const registerDoctor = async (req, res) => {
   }
 };
 
-// 🗑️ Delete Doctor (Admin only)
+//  Delete Doctor (Admin only)
 export const deleteDoctor = async (req, res) => {
   try {
     const { doctorId } = req.params;
@@ -259,12 +259,12 @@ export const deleteDoctor = async (req, res) => {
 
     res.status(200).json({ message: "Doctor deleted successfully" });
   } catch (error) {
-    console.error("❌ Error deleting doctor:", error);
+    console.error(" Error deleting doctor:", error);
     res.status(500).json({ message: "Error deleting doctor", error: error.message });
   }
 };
 
-// ✏️ Update Doctor (Admin only)
+//  Update Doctor (Admin only)
 export const updateDoctor = async (req, res) => {
   try {
     const { doctorId } = req.params;
@@ -300,12 +300,12 @@ export const updateDoctor = async (req, res) => {
 
     res.status(200).json({ message: "Doctor updated successfully", doctor });
   } catch (error) {
-    console.error("❌ Error updating doctor:", error);
+    console.error(" Error updating doctor:", error);
     res.status(500).json({ message: "Error updating doctor", error: error.message });
   }
 };
 
-// 📊 Get System Activity
+//  Get System Activity
 export const getSystemActivity = async (req, res) => {
   try {
     // Get recent doctor registrations (last 10)
@@ -363,12 +363,12 @@ export const getSystemActivity = async (req, res) => {
       doctorsBySpecialization,
     });
   } catch (error) {
-    console.error("❌ Error fetching system activity:", error);
+    console.error(" Error fetching system activity:", error);
     res.status(500).json({ message: "Error fetching system activity", error: error.message });
   }
 };
 
-// 📋 Get All Patients (Admin)
+//  Get All Patients (Admin)
 export const getAllPatients = async (req, res) => {
   try {
     const patients = await Patient.find()
@@ -376,12 +376,12 @@ export const getAllPatients = async (req, res) => {
       .sort({ createdAt: -1 });
     res.status(200).json(patients);
   } catch (error) {
-    console.error("❌ Error fetching patients:", error);
+    console.error(" Error fetching patients:", error);
     res.status(500).json({ message: "Error fetching patients", error: error.message });
   }
 };
 
-// 📋 Get All Appointments (Admin)
+//  Get All Appointments (Admin)
 export const getAllAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.find()
@@ -390,7 +390,7 @@ export const getAllAppointments = async (req, res) => {
       .sort({ createdAt: -1 });
     res.status(200).json(appointments);
   } catch (error) {
-    console.error("❌ Error fetching appointments:", error);
+    console.error(" Error fetching appointments:", error);
     res.status(500).json({ message: "Error fetching appointments", error: error.message });
   }
 };

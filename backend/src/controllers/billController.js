@@ -47,7 +47,7 @@ const getServiceCost = (serviceName) => {
   return 3000; // Default cost
 };
 
-// 📋 Get all bills for a patient
+// Get all bills for a patient
 export const getPatientBills = async (req, res) => {
   try {
     const user = getUserFromToken(req);
@@ -116,7 +116,7 @@ export const getPatientBills = async (req, res) => {
   }
 };
 
-// 📋 Get a single bill by ID
+// Get a single bill by ID
 export const getBillById = async (req, res) => {
   try {
     const user = getUserFromToken(req);
@@ -138,12 +138,12 @@ export const getBillById = async (req, res) => {
     
     res.status(200).json(bill);
   } catch (err) {
-    console.error("❌ Error fetching bill:", err);
+    console.error(" Error fetching bill:", err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// 📝 Create a bill from an appointment
+// Create a bill from an appointment
 export const createBillFromAppointment = async (req, res) => {
   try {
     const user = getUserFromToken(req);
@@ -223,16 +223,16 @@ export const createBillFromAppointment = async (req, res) => {
     await bill.populate("doctor", "fullName specialization");
     await bill.populate("appointment", "startTime status notes");
     
-    console.log(`✅ Bill created: ${bill.billNumber} for appointment ${appointmentId}`);
+    console.log(`Bill created: ${bill.billNumber} for appointment ${appointmentId}`);
     
     res.status(201).json(bill);
   } catch (err) {
-    console.error("❌ Error creating bill:", err);
+    console.error("Error creating bill:", err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// 💰 Process payment
+// Process payment
 export const processPayment = async (req, res) => {
   try {
     const user = getUserFromToken(req);
@@ -293,7 +293,7 @@ export const processPayment = async (req, res) => {
     bill.paidDate = new Date();
     await bill.save();
     
-    console.log(`✅ Payment processed: ${payment.transactionId} for bill ${bill.billNumber}`);
+    console.log(`Payment processed: ${payment.transactionId} for bill ${bill.billNumber}`);
     
     res.status(201).json({
       success: true,
@@ -302,12 +302,12 @@ export const processPayment = async (req, res) => {
       message: "Payment processed successfully"
     });
   } catch (err) {
-    console.error("❌ Error processing payment:", err);
+    console.error("Error processing payment:", err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// 📊 Get payment history for a patient
+// Get payment history for a patient
 export const getPatientPayments = async (req, res) => {
   try {
     const user = getUserFromToken(req);
@@ -321,12 +321,12 @@ export const getPatientPayments = async (req, res) => {
     
     res.status(200).json(payments);
   } catch (err) {
-    console.error("❌ Error fetching payments:", err);
+    console.error("Error fetching payments:", err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// 📝 Auto-generate bills for completed appointments
+// Auto-generate bills for completed appointments
 export const generateBillsForCompletedAppointments = async (req, res) => {
   try {
     // Find all completed appointments without bills
@@ -387,19 +387,19 @@ export const generateBillsForCompletedAppointments = async (req, res) => {
       billsCreated.push(bill);
     }
     
-    console.log(`✅ Generated ${billsCreated.length} bills for completed appointments`);
+    console.log(`Generated ${billsCreated.length} bills for completed appointments`);
     
     res.status(200).json({
       message: `Generated ${billsCreated.length} bills`,
       bills: billsCreated
     });
   } catch (err) {
-    console.error("❌ Error generating bills:", err);
+    console.error("Error generating bills:", err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// 👨‍⚕️ Get all bills for a doctor (for doctor dashboard)
+// Get all bills for a doctor (for doctor dashboard)
 export const getDoctorBills = async (req, res) => {
   try {
     const user = getUserFromToken(req);
@@ -416,12 +416,12 @@ export const getDoctorBills = async (req, res) => {
     
     res.status(200).json(bills);
   } catch (err) {
-    console.error("❌ Error fetching doctor bills:", err);
+    console.error("Error fetching doctor bills:", err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// 👨‍⚕️ Get payment statistics for a doctor
+// Get payment statistics for a doctor
 export const getDoctorPaymentStats = async (req, res) => {
   try {
     const user = getUserFromToken(req);
@@ -474,12 +474,12 @@ export const getDoctorPaymentStats = async (req, res) => {
       recentPayments: payments.slice(0, 10) // Last 10 payments
     });
   } catch (err) {
-    console.error("❌ Error fetching payment stats:", err);
+    console.error("Error fetching payment stats:", err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// 👨‍⚕️ Get payments for a doctor's bills
+// Get payments for a doctor's bills
 export const getDoctorPayments = async (req, res) => {
   try {
     const user = getUserFromToken(req);
@@ -501,7 +501,7 @@ export const getDoctorPayments = async (req, res) => {
     
     res.status(200).json(payments);
   } catch (err) {
-    console.error("❌ Error fetching doctor payments:", err);
+    console.error("Error fetching doctor payments:", err);
     res.status(500).json({ message: err.message });
   }
 };

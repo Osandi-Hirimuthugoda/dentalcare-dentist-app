@@ -21,6 +21,8 @@ import AdminAppointments from "./pages/AdminAppointments";
 import AdminActivity from "./pages/AdminActivity";
 import AdminPatients from "./pages/AdminPatients";
 import AdminHospitals from "./pages/AdminHospitals";
+import Health from "./pages/Health";
+import MyBills from "./pages/MyBills";
 import NotFound from "./pages/NotFound";
 
 // Protected Route Component for Admin
@@ -41,6 +43,8 @@ const App = () => {
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<Home />} />
+        <Route path="/health" element={<Health />} />
+        <Route path="/my-bills" element={<MyBills />} />
         <Route path="/doctor-login" element={<DoctorLogin />} />
         <Route path="/doctor-register" element={<DoctorRegister />} />
         <Route path="/admin-login" element={<AdminLogin />} />

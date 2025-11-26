@@ -22,7 +22,7 @@ const getUserFromToken = (req) => {
   }
 };
 
-// 📨 Get messages for a doctor (conversations with patients AND other doctors)
+// Get messages for a doctor (conversations with patients AND other doctors)
 export const getDoctorMessages = async (req, res) => {
   try {
     const { doctorId } = req.params;
@@ -154,17 +154,17 @@ export const getDoctorMessages = async (req, res) => {
   }
 };
 
-// 📨 Get messages for a patient (conversations with doctors)
+// Get messages for a patient (conversations with doctors)
 export const getPatientMessages = async (req, res) => {
   try {
     const user = getUserFromToken(req);
     if (!user || user.role !== "patient") {
-      console.log("❌ getPatientMessages: Unauthorized - user:", user);
+      console.log("getPatientMessages: Unauthorized - user:", user);
       return res.status(401).json({ message: "Unauthorized" });
     }
     
     const patientId = user.id;
-    console.log("📥 getPatientMessages: Fetching messages for patient:", patientId);
+    console.log("getPatientMessages: Fetching messages for patient:", patientId);
     console.log("   Patient ID type:", typeof patientId);
 
     // Convert patientId to ObjectId for proper querying
@@ -174,7 +174,7 @@ export const getPatientMessages = async (req, res) => {
         ? new mongoose.Types.ObjectId(patientId) 
         : patientId;
     } catch (e) {
-      console.log("⚠️ Error converting patientId to ObjectId:", e);
+      console.log("Error converting patientId to ObjectId:", e);
       patientObjectId = patientId;
     }
 
@@ -188,7 +188,7 @@ export const getPatientMessages = async (req, res) => {
       .populate("receiver", "name email fullName")
       .sort({ createdAt: -1 });
 
-    console.log(`📊 Found ${messages.length} messages for patient ${patientId}`);
+    console.log(`Found ${messages.length} messages for patient ${patientId}`);
     
     // Log sample messages for debugging
     if (messages.length > 0) {
@@ -217,7 +217,7 @@ export const getPatientMessages = async (req, res) => {
         doctorEmail = msg.receiver?.email || "";
       } else {
         // Skip messages that don't match doctor-patient pattern
-        console.log("⚠️ Skipping message with unexpected pattern:", {
+        console.log("Skipping message with unexpected pattern:", {
           senderModel: msg.senderModel,
           receiverModel: msg.receiverModel
         });
@@ -225,7 +225,7 @@ export const getPatientMessages = async (req, res) => {
       }
 
       if (!doctorId) {
-        console.log("⚠️ No doctorId found for message:", msg._id);
+        console.log("No doctorId found for message:", msg._id);
         return;
       }
 
@@ -258,7 +258,7 @@ export const getPatientMessages = async (req, res) => {
       (a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime)
     );
 
-    console.log(`✅ Returning ${conversationsList.length} conversations for patient`);
+    console.log(`Returning ${conversationsList.length} conversations for patient`);
     console.log("   Conversations:", conversationsList.map(c => ({
       doctorId: c.doctorId,
       doctorName: c.doctorName,
@@ -268,17 +268,17 @@ export const getPatientMessages = async (req, res) => {
 
     res.status(200).json(conversationsList);
   } catch (error) {
-    console.error("❌ Error fetching patient messages:", error);
+    console.error("Error fetching patient messages:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
-// 💬 Send a message
+// Send a message
 export const sendMessage = async (req, res) => {
   try {
     const { senderId, senderType, receiverId, receiverType, message, patientId, appointmentId, isAnnouncement, announcementType } = req.body;
 
-    console.log("📤 Send message request:", {
+    console.log("Send message request:", {
       senderId,
       senderType,
       receiverId,
@@ -333,7 +333,7 @@ export const sendMessage = async (req, res) => {
       return res.status(400).json({ message: "Receiver ID and type are required for regular messages" });
     }
 
-    console.log("💬 Creating regular message:", {
+    console.log("Creating regular message:", {
       senderId,
       senderType,
       receiverId,
@@ -371,7 +371,7 @@ export const sendMessage = async (req, res) => {
     });
 
     await newMessage.save();
-    console.log("✅ Message saved:", {
+    console.log("Message saved:", {
       messageId: newMessage._id,
       sender: newMessage.senderModel,
       receiver: newMessage.receiverModel,
@@ -382,7 +382,7 @@ export const sendMessage = async (req, res) => {
     await newMessage.populate("sender", "name email fullName");
     await newMessage.populate("receiver", "name email fullName");
 
-    console.log("📨 Message populated and ready to send");
+    console.log("Message populated and ready to send");
 
     res.status(201).json(newMessage);
   } catch (error) {
@@ -391,7 +391,7 @@ export const sendMessage = async (req, res) => {
   }
 };
 
-// ✅ Mark message as read
+// Mark message as read
 export const markAsRead = async (req, res) => {
   try {
     const { messageId } = req.params;
@@ -413,7 +413,7 @@ export const markAsRead = async (req, res) => {
   }
 };
 
-// 📋 Get conversation between doctor and patient, or doctor and doctor
+// Get conversation between doctor and patient, or doctor and doctor
 export const getConversation = async (req, res) => {
   try {
     const { doctorId, patientId, otherDoctorId } = req.params;
@@ -451,17 +451,17 @@ export const getConversation = async (req, res) => {
   }
 };
 
-// 📢 Get announcements for a patient
+// Get announcements for a patient
 export const getPatientAnnouncements = async (req, res) => {
   try {
     const user = getUserFromToken(req);
     if (!user || user.role !== "patient") {
-      console.log("❌ getPatientAnnouncements: Unauthorized - user:", user);
+      console.log("getPatientAnnouncements: Unauthorized - user:", user);
       return res.status(401).json({ message: "Unauthorized" });
     }
     
     const patientId = user.id;
-    console.log("📢 getPatientAnnouncements: Fetching announcements for patient:", patientId);
+    console.log("getPatientAnnouncements: Fetching announcements for patient:", patientId);
 
     const announcements = await Message.find({
       receiver: patientId,
@@ -471,11 +471,11 @@ export const getPatientAnnouncements = async (req, res) => {
       .populate("sender", "fullName email specialization")
       .sort({ createdAt: -1 });
 
-    console.log(`✅ Found ${announcements.length} announcements for patient ${patientId}`);
+    console.log(`Found ${announcements.length} announcements for patient ${patientId}`);
 
     res.status(200).json(announcements);
   } catch (error) {
-    console.error("❌ Error fetching announcements:", error);
+    console.error("Error fetching announcements:", error);
     res.status(500).json({ message: error.message });
   }
 };

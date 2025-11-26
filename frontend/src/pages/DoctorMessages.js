@@ -232,7 +232,7 @@ const DoctorMessages = () => {
                 gap: "0.5rem",
               }}
             >
-              📢 Send Announcement
+              Send Announcement
             </button>
           )}
         </div>

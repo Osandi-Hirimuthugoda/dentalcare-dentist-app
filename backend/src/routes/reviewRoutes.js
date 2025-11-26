@@ -17,28 +17,28 @@ const authenticatePatient = async (req, res, next) => {
     const authHeader = req.headers.authorization;
     
     if (!authHeader) {
-      console.log("❌ Review auth: No authorization header");
+      console.log(" Review auth: No authorization header");
       return res.status(401).json({ message: "Authentication required" });
     }
 
     if (!authHeader.startsWith("Bearer ")) {
-      console.log("❌ Review auth: Invalid authorization header format");
+      console.log(" Review auth: Invalid authorization header format");
       return res.status(401).json({ message: "Invalid authorization header format" });
     }
 
     const token = authHeader.split(" ")[1]; // Use same method as appointmentController
     if (!token) {
-      console.log("❌ Review auth: No token found in Authorization header");
+      console.log(" Review auth: No token found in Authorization header");
       return res.status(401).json({ message: "Token is required" });
     }
     
-    console.log("🔍 Review auth - Verifying token...");
+    console.log(" Review auth - Verifying token...");
     console.log("   Token length:", token.length);
     console.log("   Token preview:", token.substring(0, 30) + "...");
     
     const decoded = jwt.verify(token, JWT_SECRET);
     
-    console.log("✅ Review auth - Token verified successfully");
+    console.log(" Review auth - Token verified successfully");
     console.log("   Decoded:", {
       id: decoded.id,
       role: decoded.role,
@@ -47,7 +47,7 @@ const authenticatePatient = async (req, res, next) => {
     
     // Check role - if role exists and is not "patient", reject
     if (decoded.role && decoded.role !== "patient") {
-      console.log("❌ Review auth: Role is not patient:", decoded.role);
+      console.log(" Review auth: Role is not patient:", decoded.role);
       return res.status(403).json({ message: "Patient access required" });
     }
 
@@ -60,7 +60,7 @@ const authenticatePatient = async (req, res, next) => {
     
     next();
   } catch (error) {
-    console.error("❌ Review auth error:", error.name, error.message);
+    console.error(" Review auth error:", error.name, error.message);
     
     if (error.name === "TokenExpiredError") {
       return res.status(401).json({ 

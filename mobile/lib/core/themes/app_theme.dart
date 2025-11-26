@@ -15,12 +15,10 @@ class AppTheme {
         secondary: AppColors.secondary,
         secondaryContainer: AppColors.secondaryLight,
         surface: AppColors.cardBackground,
-        background: AppColors.scaffoldBackground,
         error: AppColors.error,
         onPrimary: AppColors.white,
         onSecondary: AppColors.white,
         onSurface: AppColors.textPrimary,
-        onBackground: AppColors.textPrimary,
         onError: AppColors.white,
       ),
       appBarTheme: const AppBarTheme(
@@ -110,12 +108,10 @@ class AppTheme {
         secondary: AppColors.secondaryLight,
         secondaryContainer: AppColors.secondary,
         surface: AppColors.grey800,
-        background: AppColors.grey900,
         error: AppColors.error,
         onPrimary: AppColors.white,
         onSecondary: AppColors.white,
         onSurface: AppColors.grey100,
-        onBackground: AppColors.grey100,
         onError: AppColors.white,
       ),
       appBarTheme: const AppBarTheme(
@@ -205,12 +201,10 @@ class AppTheme {
         secondary: const Color(0xFFA67C52), // Warm tan
         secondaryContainer: const Color(0xFFD4A574), // Light tan
         surface: const Color(0xFFFFF8E1), // Warm cream
-        background: const Color(0xFFFFF8E1), // Warm cream
         error: const Color(0xFFC96A5F), // Muted red
         onPrimary: AppColors.white,
         onSecondary: AppColors.white,
         onSurface: const Color(0xFF5D4037), // Dark brown
-        onBackground: const Color(0xFF5D4037), // Dark brown
         onError: AppColors.white,
       ),
       appBarTheme: const AppBarTheme(

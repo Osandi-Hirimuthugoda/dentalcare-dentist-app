@@ -1,6 +1,6 @@
 import Hospital, { SRI_LANKAN_DISTRICTS } from "../models/Hospital.js";
 
-// 🏥 Get All Hospitals (Admin)
+// Get All Hospitals (Admin)
 export const getAllHospitals = async (req, res) => {
   try {
     const { district, search, isActive } = req.query;
@@ -46,7 +46,7 @@ export const getAllHospitals = async (req, res) => {
   }
 };
 
-// 🔍 Search Hospitals (Public - for users)
+//  Search Hospitals (Public - for users)
 export const searchHospitals = async (req, res) => {
   try {
     const { query, district } = req.query;
@@ -88,7 +88,7 @@ export const searchHospitals = async (req, res) => {
   }
 };
 
-// 🏥 Get Hospital by ID
+// Get Hospital by ID
 export const getHospitalById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -108,7 +108,7 @@ export const getHospitalById = async (req, res) => {
       hospital,
     });
   } catch (error) {
-    console.error("❌ Error fetching hospital:", error);
+    console.error("Error fetching hospital:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching hospital",
@@ -117,7 +117,7 @@ export const getHospitalById = async (req, res) => {
   }
 };
 
-// ➕ Create Hospital (Admin only)
+// Create Hospital (Admin only)
 export const createHospital = async (req, res) => {
   try {
     const {
@@ -176,7 +176,7 @@ export const createHospital = async (req, res) => {
       lastUpdated: new Date(),
     });
     
-    console.log(`✅ Hospital created: ${hospital.name} in ${hospital.district}`);
+    console.log(`Hospital created: ${hospital.name} in ${hospital.district}`);
     
     res.status(201).json({
       success: true,
@@ -184,7 +184,7 @@ export const createHospital = async (req, res) => {
       hospital,
     });
   } catch (error) {
-    console.error("❌ Error creating hospital:", error);
+    console.error("Error creating hospital:", error);
     
     if (error.name === "ValidationError") {
       const messages = Object.values(error.errors).map((err) => err.message);
@@ -278,7 +278,7 @@ export const updateHospital = async (req, res) => {
       { new: true, runValidators: true }
     ).populate("updatedBy", "email");
     
-    console.log(`✅ Hospital updated: ${updatedHospital.name}`);
+    console.log(`Hospital updated: ${updatedHospital.name}`);
     
     res.status(200).json({
       success: true,
@@ -286,7 +286,7 @@ export const updateHospital = async (req, res) => {
       hospital: updatedHospital,
     });
   } catch (error) {
-    console.error("❌ Error updating hospital:", error);
+    console.error("Error updating hospital:", error);
     
     if (error.name === "ValidationError") {
       const messages = Object.values(error.errors).map((err) => err.message);
@@ -304,7 +304,7 @@ export const updateHospital = async (req, res) => {
   }
 };
 
-// 🗑️ Delete Hospital (Admin only)
+// Delete Hospital (Admin only)
 export const deleteHospital = async (req, res) => {
   try {
     const { id } = req.params;
@@ -320,14 +320,14 @@ export const deleteHospital = async (req, res) => {
     
     await Hospital.findByIdAndDelete(id);
     
-    console.log(`✅ Hospital deleted: ${hospital.name}`);
+    console.log(`Hospital deleted: ${hospital.name}`);
     
     res.status(200).json({
       success: true,
       message: "Hospital deleted successfully",
     });
   } catch (error) {
-    console.error("❌ Error deleting hospital:", error);
+    console.error(" Error deleting hospital:", error);
     res.status(500).json({
       success: false,
       message: "Error deleting hospital",
@@ -336,7 +336,7 @@ export const deleteHospital = async (req, res) => {
   }
 };
 
-// 📊 Get Hospitals by District
+// Get Hospitals by District
 export const getHospitalsByDistrict = async (req, res) => {
   try {
     const { district } = req.params;
@@ -361,7 +361,7 @@ export const getHospitalsByDistrict = async (req, res) => {
       hospitals,
     });
   } catch (error) {
-    console.error("❌ Error fetching hospitals by district:", error);
+    console.error("Error fetching hospitals by district:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching hospitals by district",
@@ -370,7 +370,7 @@ export const getHospitalsByDistrict = async (req, res) => {
   }
 };
 
-// 📋 Get All Districts with Hospital Counts
+// Get All Districts with Hospital Counts
 export const getDistrictsWithCounts = async (req, res) => {
   try {
     const districts = await Hospital.aggregate([
@@ -393,7 +393,7 @@ export const getDistrictsWithCounts = async (req, res) => {
       districts,
     });
   } catch (error) {
-    console.error("❌ Error fetching districts:", error);
+    console.error(" Error fetching districts:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching districts",
@@ -401,4 +401,5 @@ export const getDistrictsWithCounts = async (req, res) => {
     });
   }
 };
+
 

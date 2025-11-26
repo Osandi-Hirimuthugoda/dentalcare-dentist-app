@@ -98,3 +98,4 @@ hospitalSchema.index({ isActive: 1 });
 const Hospital = mongoose.model("Hospital", hospitalSchema);
 export default Hospital;
 
+

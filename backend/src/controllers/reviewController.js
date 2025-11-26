@@ -7,21 +7,21 @@ export const createReview = async (req, res) => {
   try {
     const { doctorId, appointmentId, rating, comment } = req.body;
     
-    console.log("📝 Create review - Request body:", { doctorId, appointmentId, rating });
-    console.log("📝 Create review - User from token:", req.user);
+    console.log(" Create review - Request body:", { doctorId, appointmentId, rating });
+    console.log(" Create review - User from token:", req.user);
     
     // Get patient ID from JWT token
     const patientId = req.user?.id || req.user?._id;
     
     if (!patientId) {
-      console.log("❌ Create review: No patient ID in token");
+      console.log(" Create review: No patient ID in token");
       return res.status(401).json({ 
         message: "Patient authentication required",
         user: req.user 
       });
     }
     
-    console.log("✅ Create review - Patient ID:", patientId);
+    console.log(" Create review - Patient ID:", patientId);
 
     // Validate rating
     if (!rating || rating < 1 || rating > 5) {
@@ -87,7 +87,7 @@ export const createReview = async (req, res) => {
     // Recalculate doctor's average rating
     await updateDoctorRating(doctorId);
 
-    console.log("✅ Review created successfully:", {
+    console.log(" Review created successfully:", {
       reviewId: review._id,
       doctorId: doctorId,
       patientId: patientId,
@@ -100,7 +100,7 @@ export const createReview = async (req, res) => {
       review,
     });
   } catch (error) {
-    console.error("❌ Error creating review:", error);
+    console.error(" Error creating review:", error);
     res.status(500).json({
       message: "Error creating review",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -128,7 +128,7 @@ export const getDoctorReviews = async (req, res) => {
       hasMore: totalReviews > parseInt(skip) + reviews.length,
     });
   } catch (error) {
-    console.error("❌ Error fetching doctor reviews:", error);
+    console.error(" Error fetching doctor reviews:", error);
     res.status(500).json({
       message: "Error fetching reviews",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -150,7 +150,7 @@ export const getPatientReviews = async (req, res) => {
 
     res.status(200).json({ reviews });
   } catch (error) {
-    console.error("❌ Error fetching patient reviews:", error);
+    console.error(" Error fetching patient reviews:", error);
     res.status(500).json({
       message: "Error fetching reviews",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -180,7 +180,7 @@ export const updateDoctorRating = async (doctorId) => {
       totalReviews,
     });
   } catch (error) {
-    console.error("❌ Error updating doctor rating:", error);
+    console.error(" Error updating doctor rating:", error);
   }
 };
 
@@ -211,7 +211,7 @@ export const deleteReview = async (req, res) => {
 
     res.status(200).json({ message: "Review deleted successfully" });
   } catch (error) {
-    console.error("❌ Error deleting review:", error);
+    console.error(" Error deleting review:", error);
     res.status(500).json({
       message: "Error deleting review",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
