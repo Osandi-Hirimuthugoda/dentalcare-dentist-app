@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/constants/route_names.dart';
 import 'package:flutter_application_1/core/themes/colors.dart';
 import 'package:flutter_application_1/core/themes/text_styles.dart';
-import 'package:flutter_application_1/features/widgets/bill_item.dart';
-import 'package:flutter_application_1/features/widgets/payment_summary.dart';
+import 'package:flutter_application_1/features/bills/widgets/bill_item.dart';
+import 'package:flutter_application_1/features/bills/widgets/payment_summary.dart';
 import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
 import 'package:flutter_application_1/injection_container.dart';
 
