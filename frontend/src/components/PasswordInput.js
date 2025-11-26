@@ -46,7 +46,7 @@ export default function PasswordInput({
           padding: "0.25rem",
           transition: "color 0.2s",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = "#3b82f6")}
+        onMouseEnter={(e) => (e.currentTarget.style.color = "#00897B")}
         onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}
       >
         {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}

@@ -109,8 +109,8 @@
 
 .search-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #00897B; /* Teal - matching mobile app */
+  box-shadow: 0 0 0 3px rgba(0, 137, 123, 0.1);
 }
 
 .filter-group {
@@ -132,8 +132,8 @@
 
 .filter-select:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #00897B; /* Teal - matching mobile app */
+  box-shadow: 0 0 0 3px rgba(0, 137, 123, 0.1);
 }
 
 /* Reviews List */
@@ -263,7 +263,7 @@
   width: 48px;
   height: 48px;
   border: 4px solid #e5e7eb;
-  border-top-color: #3b82f6;
+  border-top-color: #00897B; /* Teal - matching mobile app */
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
@@ -282,7 +282,7 @@
 
 .retry-button {
   padding: 0.75rem 1.5rem;
-  background: #3b82f6;
+  background: #00897B; /* Teal - matching mobile app */
   color: white;
   border: none;
   border-radius: 8px;
@@ -293,7 +293,7 @@
 }
 
 .retry-button:hover {
-  background: #2563eb;
+  background: #00695C; /* Dark teal - matching mobile app */
   transform: translateY(-2px);
 }
 

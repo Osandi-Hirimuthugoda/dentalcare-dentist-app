@@ -20,7 +20,7 @@
   padding: 0 2rem 2.5rem; /* Padding for the header/logo area */
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1e3a8a; /* Dark blue */
+  color: #00695C; /* Teal dark - matching mobile app */
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -50,16 +50,16 @@
 }
 
 .navLink:hover {
-  background-color: #f3f6fc; /* Light blue background on hover */
-  color: #3b82f6; /* Blue text on hover */
-  border-left-color: #a5d3f4; /* Lighter blue border on hover */
+  background-color: #E0F2F1; /* Light teal background on hover - matching mobile app */
+  color: #00897B; /* Teal text on hover - matching mobile app */
+  border-left-color: #4DB6AC; /* Lighter teal border on hover */
 }
 
 .navLink.active {
-  background-color: #e0f2fe; /* Light blue background for active item */
-  color: #2563eb; /* Strong blue for active text */
+  background-color: #B2DFDB; /* Light teal background for active item - matching mobile app */
+  color: #00695C; /* Dark teal for active text - matching mobile app */
   font-weight: 600;
-  border-left-color: #2563eb; /* Solid blue active indicator */
+  border-left-color: #00897B; /* Solid teal active indicator - matching mobile app */
 }
 
 .navIcon {
@@ -118,19 +118,19 @@
   }
   .navLink:hover, .navLink.active {
     border-left-color: transparent;
-    border-bottom-color: #2563eb;
+    border-bottom-color: #00897B; /* Teal - matching mobile app */
   }
   .sidebarHeader, .sidebarFooter {
     display: none; /* Hide header/footer on mobile, or redesign */
   }
   .active {
-  background-color: #0891b2; /* Teal highlight */
+  background-color: #00897B; /* Teal highlight - matching mobile app */
   color: white;
   font-weight: 600;
   border-radius: 10px;
 }
 .navLink:hover {
-  background-color: #cffafe;
+  background-color: #B2DFDB; /* Light teal - matching mobile app */
 }
 
 }

@@ -39,7 +39,7 @@ const StatCard = ({ title, count, icon: IconComponent, iconClass, onClick, linkT
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
         <p className={statCardStyles.statCount}>{count}</p>
         {(linkTo || onClick) && (
-          <ArrowRight size={20} style={{ color: "#3b82f6", marginBottom: "0.5rem" }} />
+          <ArrowRight size={20} style={{ color: "#00897B", marginBottom: "0.5rem" }} />
         )}
       </div>
     </motion.div>

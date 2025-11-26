@@ -4,6 +4,7 @@ import 'package:flutter_application_1/injection_container.dart' as di;
 import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
 import 'package:flutter_application_1/injection_container.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_application_1/core/themes/colors.dart';
 
 class WelcomeSection extends StatefulWidget {
   const WelcomeSection({super.key});
@@ -126,11 +127,25 @@ class _WelcomeSectionState extends State<WelcomeSection> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.teal[700],
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primary,
+            AppColors.primaryDark,
+          ],
+        ),
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(30),
           bottomRight: Radius.circular(30),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

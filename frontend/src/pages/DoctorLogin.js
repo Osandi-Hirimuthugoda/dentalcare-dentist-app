@@ -39,9 +39,11 @@ export default function DoctorLogin() {
         // Use the new login-card class for the form's container
         className="login-card"
       >
-        <h2 className="login-title">
-          Doctor Login
-        </h2>
+        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+          <h2 className="login-title">
+            Doctor Login
+          </h2>
+        </div>
 
         <form onSubmit={handleLogin} className="login-form">
           <input

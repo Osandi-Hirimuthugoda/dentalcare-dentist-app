@@ -10,10 +10,51 @@
 .dashboardWrapper {
   display: flex;
   min-height: 100vh;
-  /* Matching the subtle blue gradient from the image background */
-  background: linear-gradient(135deg, #e0f2fe 0%, #e3f2fd 50%, #bbdefb 100%);
-  font-family: 'Inter', sans-serif; /* Modern, clean font */
-  color: #333; /* Default text color */
+  /* Beautiful teal gradient matching mobile app */
+  background: linear-gradient(135deg, #E0F2F1 0%, #B2DFDB 30%, #FFFFFF 60%, #E0F2F1 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  font-family: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #333;
+  position: relative;
+  overflow-x: hidden;
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Decorative elements */
+.dashboardWrapper::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(0, 137, 123, 0.1) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.dashboardWrapper::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  left: -5%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(0, 105, 92, 0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
 }
 
 /* --- Main Content Area --- */
@@ -24,6 +65,8 @@
   display: flex;
   flex-direction: column;
   gap: 3rem; /* Increased space between major sections */
+  position: relative;
+  z-index: 1;
 }
 
 /* --- Header Section --- */
@@ -44,9 +87,13 @@
 .mainTitle {
   font-size: 3rem; /* Larger, bolder title */
   font-weight: 800; /* Extra bold */
-  color: #1e3a8a; /* Dark blue */
+  background: linear-gradient(135deg, #00695C 0%, #00897B 50%, #4DB6AC 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   letter-spacing: -0.05em; /* Tighter tracking */
   line-height: 1.1; /* Tighter line height */
+  text-shadow: 0 2px 10px rgba(0, 137, 123, 0.1);
 }
 
 .statsGridLabel {
@@ -64,7 +111,7 @@
 
 .welcomeMessage span {
   font-weight: 700;
-  color: #3b82f6; /* Brighter blue for the name */
+  color: #00897B; /* Teal for the name - matching mobile app */
 }
 
 /* --- Stats Cards Grid --- */
@@ -88,20 +135,30 @@
 
 /* --- Upcoming Appointments Section --- */
 .upcomingAppointmentsSection {
-  background-color: white;
-  border-radius: 1.25rem; /* Consistent border-radius with cards */
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.04); /* Matching card shadow */
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+  backdrop-filter: blur(10px);
+  border-radius: 1.5rem; /* More rounded */
+  box-shadow: 0 20px 40px rgba(0, 137, 123, 0.1), 0 8px 16px rgba(0, 0, 0, 0.05);
   padding: 2.5rem; /* Generous padding */
-  border: 1px solid #e5e7eb; /* Subtle border */
+  border: 1px solid rgba(0, 137, 123, 0.1); /* Subtle teal border */
   display: flex;
   flex-direction: column;
   gap: 1.5rem; /* Space between title and list */
+  transition: all 0.3s ease;
+}
+
+.upcomingAppointmentsSection:hover {
+  box-shadow: 0 25px 50px rgba(0, 137, 123, 0.15), 0 10px 20px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
 }
 
 .upcomingAppointmentsTitle {
   font-size: 1.875rem; /* text-3xl, larger and bolder */
   font-weight: 700;
-  color: #2d3748; /* Darker gray for the title */
+  background: linear-gradient(135deg, #00695C 0%, #00897B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-bottom: 0; /* Gap handles spacing */
 }
 
@@ -115,12 +172,24 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 0; /* Vertical padding for each item */
-  border-bottom: 1px solid #edf2f7; /* Subtle separator */
+  padding: 1rem;
+  margin: 0.5rem 0;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, rgba(224, 242, 241, 0.2) 0%, rgba(255, 255, 255, 0.8) 100%);
+  border: 1px solid rgba(0, 137, 123, 0.1);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.appointmentItem:hover {
+  background: linear-gradient(135deg, rgba(178, 223, 219, 0.3) 0%, rgba(255, 255, 255, 0.9) 100%);
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(0, 137, 123, 0.1);
+  border-color: rgba(0, 137, 123, 0.2);
 }
 
 .appointmentItem:last-child {
-  border-bottom: none; /* No border for the last item */
+  margin-bottom: 0;
 }
 
 .patientInfo {
@@ -132,13 +201,13 @@
 .patientAvatar {
   width: 2.5rem;
   height: 2.5rem;
-  background-color: #e0f2fe; /* Light blue background for avatar placeholder */
+  background-color: #B2DFDB; /* Light teal background for avatar placeholder - matching mobile app */
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.2rem;
-  color: #3b82f6;
+  color: #00897B; /* Teal - matching mobile app */
   font-weight: 600;
 }
 /* You can replace the text in patientAvatar with an actual img tag for user avatars */
@@ -208,13 +277,20 @@
 
 /* --- Monthly Statistics Section --- */
 .monthlyStatsSection {
-  background-color: white;
-  border-radius: 1.25rem;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.04);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+  backdrop-filter: blur(10px);
+  border-radius: 1.5rem;
+  box-shadow: 0 20px 40px rgba(0, 137, 123, 0.1), 0 8px 16px rgba(0, 0, 0, 0.05);
   padding: 2.5rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid rgba(0, 137, 123, 0.1);
   display: flex;
   flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+.monthlyStatsSection:hover {
+  box-shadow: 0 25px 50px rgba(0, 137, 123, 0.15), 0 10px 20px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
 }
 
 .monthlyStatsList {
@@ -228,15 +304,18 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  background-color: #f9fafb;
+  background: linear-gradient(135deg, rgba(224, 242, 241, 0.3) 0%, rgba(255, 255, 255, 0.8) 100%);
   border-radius: 0.75rem;
-  border: 1px solid #e5e7eb;
-  transition: all 0.2s;
+  border: 1px solid rgba(0, 137, 123, 0.1);
+  transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .monthlyStatItem:hover {
-  background-color: #f3f4f6;
-  transform: translateX(4px);
+  background: linear-gradient(135deg, rgba(178, 223, 219, 0.4) 0%, rgba(255, 255, 255, 0.9) 100%);
+  transform: translateX(6px);
+  box-shadow: 0 4px 12px rgba(0, 137, 123, 0.15);
+  border-color: rgba(0, 137, 123, 0.2);
 }
 
 .monthlyStatItem span:first-child {
@@ -248,19 +327,26 @@
 .monthlyStatValue {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1e3a8a;
+  color: #00695C; /* Dark teal - matching mobile app */
 }
 
 /* --- Recent Messages Section --- */
 .recentMessagesSection {
-  background-color: white;
-  border-radius: 1.25rem;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.04);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+  backdrop-filter: blur(10px);
+  border-radius: 1.5rem;
+  box-shadow: 0 20px 40px rgba(0, 137, 123, 0.1), 0 8px 16px rgba(0, 0, 0, 0.05);
   padding: 2.5rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid rgba(0, 137, 123, 0.1);
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.recentMessagesSection:hover {
+  box-shadow: 0 25px 50px rgba(0, 137, 123, 0.15), 0 10px 20px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
 }
 
 .messagesList {
@@ -272,14 +358,17 @@
 .messageItem {
   padding: 1rem;
   border-radius: 0.75rem;
-  border: 1px solid #e5e7eb;
-  background-color: #f9fafb;
-  transition: all 0.2s;
+  border: 1px solid rgba(0, 137, 123, 0.1);
+  background: linear-gradient(135deg, rgba(224, 242, 241, 0.2) 0%, rgba(255, 255, 255, 0.8) 100%);
+  transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .messageItem:hover {
-  background-color: #f3f4f6;
-  border-color: #d1d5db;
+  background: linear-gradient(135deg, rgba(178, 223, 219, 0.3) 0%, rgba(255, 255, 255, 0.9) 100%);
+  border-color: rgba(0, 137, 123, 0.3);
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(0, 137, 123, 0.1);
 }
 
 .messageHeader {
@@ -292,7 +381,10 @@
 .sectionTitle {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #2d3748;
+  background: linear-gradient(135deg, #00695C 0%, #00897B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   display: flex;
   align-items: center;
   margin: 0;

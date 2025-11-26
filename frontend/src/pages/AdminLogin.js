@@ -39,15 +39,15 @@ export default function AdminLogin() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", marginBottom: "1rem" }}>
-          <Shield size={32} style={{ color: "#1a73e8" }} />
-          <h1 className="login-title">Admin Login</h1>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", marginBottom: "2rem" }}>
+          <Shield size={32} style={{ color: "#00897B" }} />
+          <h1 className="login-title" style={{ marginBottom: 0 }}>Admin Login</h1>
         </div>
 
         <form onSubmit={handleLogin} className="login-form">
           <input
             type="text"
-            placeholder="Username"
+            placeholder="Email Address"
             className="login-input"
             value={username}
             onChange={(e) => setUsername(e.target.value)}

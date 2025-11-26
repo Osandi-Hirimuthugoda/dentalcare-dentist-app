@@ -5,6 +5,86 @@ import 'package:flutter_application_1/injection_container.dart' as di;
 import 'package:flutter_application_1/domain/repositories/auth_repository.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+class _InteractiveActionCard extends StatefulWidget {
+  final Map<String, dynamic> action;
+  final VoidCallback onTap;
+
+  const _InteractiveActionCard({
+    required this.action,
+    required this.onTap,
+  });
+
+  @override
+  State<_InteractiveActionCard> createState() => _InteractiveActionCardState();
+}
+
+class _InteractiveActionCardState extends State<_InteractiveActionCard> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeInOut,
+        transform: Matrix4.identity()..scale(_isPressed ? 0.95 : 1.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withValues(alpha: _isPressed ? 0.05 : 0.1),
+              blurRadius: _isPressed ? 5 : 10,
+              offset: Offset(0, _isPressed ? 1 : 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: (widget.action['color'] as Color).withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                widget.action['icon'],
+                color: widget.action['color'],
+                size: 24,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              widget.action['title'],
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              widget.action['subtitle'],
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class QuickActionsGrid extends StatelessWidget {
   const QuickActionsGrid({super.key});
 
@@ -216,7 +296,8 @@ class QuickActionsGrid extends StatelessWidget {
                   handler = _handleAITeethScan;
               }
               
-              return GestureDetector(
+              return _InteractiveActionCard(
+                action: action,
                 onTap: () async {
                   try {
                     await handler(context);
@@ -224,54 +305,6 @@ class QuickActionsGrid extends StatelessWidget {
                     debugPrint('Error in button handler: $error');
                   }
                 },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withValues(alpha: 0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: (action['color'] as Color).withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          action['icon'],
-                          color: action['color'],
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        action['title'],
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        action['subtitle'],
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               );
             },
           ),
