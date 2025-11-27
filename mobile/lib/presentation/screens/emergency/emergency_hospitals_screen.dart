@@ -376,7 +376,7 @@ class _EmergencyHospitalsScreenState extends State<EmergencyHospitalsScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       filled: true,
-                      fillColor: Colors.grey[100],
+                      fillColor: AppColors.grey100,
                     ),
                     onSubmitted: (value) {
                       if (value.trim().isNotEmpty) {
@@ -450,20 +450,20 @@ class _EmergencyHospitalsScreenState extends State<EmergencyHospitalsScreen> {
                                 Icon(
                                   Icons.search_off,
                                   size: 64,
-                                  color: Colors.grey[400],
+                                  color: AppColors.grey400,
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
                                   'No hospitals found',
                                   style: TextStyles.bodyLarge.copyWith(
-                                    color: Colors.grey[600],
+                                    color: AppColors.grey600,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
                                   'Try searching for a location (e.g., Colombo, Kandy)',
                                   style: TextStyles.bodySmall.copyWith(
-                                    color: Colors.grey[500],
+                                    color: AppColors.grey500,
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
@@ -524,18 +524,18 @@ class _EmergencyHospitalsScreenState extends State<EmergencyHospitalsScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.green.withValues(alpha: 0.2),
+                                color: AppColors.success.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.access_time, size: 14, color: Colors.green[700]),
+                                  Icon(Icons.access_time, size: 14, color: AppColors.success),
                                   const SizedBox(width: 4),
                                   Text(
                                     '24/7',
                                     style: TextStyles.bodyXSmall.copyWith(
-                                      color: Colors.green[700],
+                                      color: AppColors.success,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -644,7 +644,7 @@ class _EmergencyHospitalsScreenState extends State<EmergencyHospitalsScreen> {
       children: [
         // Placeholder for Google Maps
         Container(
-          color: Colors.grey[200],
+          color: AppColors.grey200,
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -652,20 +652,20 @@ class _EmergencyHospitalsScreenState extends State<EmergencyHospitalsScreen> {
                 Icon(
                   Icons.map,
                   size: 64,
-                  color: Colors.grey[400],
+                  color: AppColors.grey400,
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'Map View',
                   style: TextStyles.heading4.copyWith(
-                    color: Colors.grey[600],
+                    color: AppColors.grey600,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   '${_filteredHospitals.length} hospitals found',
                   style: TextStyles.bodyMedium.copyWith(
-                    color: Colors.grey[500],
+                    color: AppColors.grey500,
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -688,9 +688,9 @@ class _EmergencyHospitalsScreenState extends State<EmergencyHospitalsScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'Note: Full map integration requires Google Maps API key',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                  style: TextStyle(fontSize: 12, color: AppColors.grey500),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -706,11 +706,11 @@ class _EmergencyHospitalsScreenState extends State<EmergencyHospitalsScreen> {
             child: Container(
               height: 150,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.white,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
+                    color: AppColors.black.withValues(alpha: 0.1),
                     blurRadius: 10,
                     offset: const Offset(0, -2),
                   ),

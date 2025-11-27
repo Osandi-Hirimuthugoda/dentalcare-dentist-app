@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/constants/route_names.dart';
 import 'package:flutter_application_1/core/utils/helpers.dart';
+import 'package:flutter_application_1/core/utils/theme_notifier.dart';
 import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
 import 'package:flutter_application_1/injection_container.dart' as di;
 import 'package:flutter_application_1/presentation/widgets/home/appointments_section.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_application_1/presentation/widgets/home/health_tips_caro
 import 'package:flutter_application_1/presentation/widgets/home/quick_actions_grid.dart';
 import 'package:flutter_application_1/presentation/widgets/home/welcome_section.dart';
 import 'package:flutter_application_1/core/themes/colors.dart';
+import 'package:flutter_application_1/presentation/screens/home/profile/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -147,11 +149,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBottomNavigationBar(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.3),
+            color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.1),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -160,9 +164,9 @@ class _HomeScreenState extends State<HomeScreen> {
       child: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: Colors.teal[700],
-        unselectedItemColor: Colors.grey[600],
+        backgroundColor: theme.colorScheme.surface,
+        selectedItemColor: theme.colorScheme.primary,
+        unselectedItemColor: theme.colorScheme.onSurface.withValues(alpha: 0.6),
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
         onTap: (index) => _onItemTapped(index, context),
         items: const [
@@ -187,37 +191,221 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showThemePicker() {
+    final themeNotifier = ThemeNotifier();
+    final isDark = themeNotifier.isDarkMode;
+    final isEyeComfort = themeNotifier.isEyeComfortMode;
+    
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Choose Theme',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _buildThemeOption(
+              context,
+              'Light Mode',
+              'Default light theme',
+              Icons.light_mode,
+              false,
+              false,
+              isDark == false && isEyeComfort == false,
+            ),
+            const SizedBox(height: 12),
+            _buildThemeOption(
+              context,
+              'Dark Mode',
+              'Dark theme for low light',
+              Icons.dark_mode,
+              true,
+              false,
+              isDark == true,
+            ),
+            const SizedBox(height: 12),
+            _buildThemeOption(
+              context,
+              'Eye Comfort Mode',
+              'Warm colors for reduced eye strain',
+              Icons.visibility,
+              false,
+              true,
+              isEyeComfort == true,
+            ),
+            const SizedBox(height: 20),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SettingsScreen(),
+                  ),
+                );
+              },
+              child: const Text('More Settings'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThemeOption(
+    BuildContext context,
+    String title,
+    String subtitle,
+    IconData icon,
+    bool isDark,
+    bool isEyeComfort,
+    bool isSelected,
+  ) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: () async {
+        final themeNotifier = ThemeNotifier();
+        if (isDark) {
+          await themeNotifier.toggleTheme(true);
+        } else if (isEyeComfort) {
+          await themeNotifier.toggleEyeComfortMode(true);
+        } else {
+          await themeNotifier.toggleTheme(false);
+          await themeNotifier.toggleEyeComfortMode(false);
+        }
+        if (context.mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$title enabled'),
+              duration: const Duration(seconds: 1),
+            ),
+          );
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? theme.colorScheme.primary.withValues(alpha: 0.1)
+              : theme.colorScheme.surface,
+          border: Border.all(
+            color: isSelected
+                ? theme.colorScheme.primary
+                : theme.colorScheme.outline.withValues(alpha: 0.2),
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurface,
+              size: 28,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle,
+                color: theme.colorScheme.primary,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.health_and_safety,
-              color: Colors.white,
+              color: theme.colorScheme.onPrimary,
               size: 28,
             ),
             const SizedBox(width: 12),
-            const Text(
+            Text(
               "DentalCare+",
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: theme.colorScheme.onPrimary,
               ),
             ),
           ],
         ),
-        backgroundColor: Colors.teal[700],
+        backgroundColor: theme.colorScheme.primary,
         elevation: 0,
         actions: [
+          // Theme Picker Button
+          IconButton(
+            icon: Icon(
+              theme.brightness == Brightness.dark
+                  ? Icons.dark_mode
+                  : Icons.light_mode,
+              color: theme.colorScheme.onPrimary,
+            ),
+            tooltip: 'Change Theme',
+            onPressed: _showThemePicker,
+          ),
           // Notification Icon with Badge
           Stack(
             children: [
               IconButton(
-                icon: const Icon(Icons.notifications_none, color: Colors.white),
+                icon: Icon(
+                  Icons.notifications_none,
+                  color: theme.colorScheme.onPrimary,
+                ),
                 tooltip: 'Notifications',
                 onPressed: () async {
                   try {
@@ -239,7 +427,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
-                      color: Colors.red,
+                      color: AppColors.error,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     constraints: const BoxConstraints(
@@ -250,8 +438,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       _unreadNotificationCount > 9 
                           ? '9+' 
                           : _unreadNotificationCount.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: theme.colorScheme.onError,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
@@ -262,7 +450,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
+            icon: Icon(
+              Icons.logout,
+              color: theme.colorScheme.onPrimary,
+            ),
             onPressed: () {
               Navigator.pushReplacementNamed(context, RouteNames.login);
             },
@@ -305,6 +496,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildStatsSection() {
+    final theme = Theme.of(context);
     if (_isLoadingStats) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -314,7 +506,7 @@ class _HomeScreenState extends State<HomeScreen> {
               height: 100,
               margin: EdgeInsets.only(right: index == 0 ? 10 : 0),
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: theme.colorScheme.surface.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(15),
               ),
             ),
@@ -362,16 +554,19 @@ class _HomeScreenState extends State<HomeScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withValues(alpha: 0.1),
+              color: theme.brightness == Brightness.dark
+                  ? Colors.black.withValues(alpha: 0.3)
+                  : Colors.grey.withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -402,7 +597,7 @@ class _HomeScreenState extends State<HomeScreen> {
               title,
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey[600],
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 fontWeight: FontWeight.w500,
               ),
             ),

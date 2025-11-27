@@ -368,3 +368,86 @@ export const verifyEmail = async (req, res) => {
     });
   }
 };
+
+// Change password (for mobile app)
+export const changePassword = async (req, res) => {
+  try {
+    // Extract user from token
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ message: "No authorization header" });
+    }
+    
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+    
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+    
+    if (decoded.role !== "patient") {
+      return res.status(403).json({ message: "Access denied. Patient account required." });
+    }
+    
+    const { currentPassword, newPassword } = req.body;
+    
+    // Validate required fields
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ 
+        message: "Please provide both current password and new password" 
+      });
+    }
+    
+    // Validate new password length
+    if (newPassword.length < 8) {
+      return res.status(400).json({ 
+        message: "New password must be at least 8 characters long" 
+      });
+    }
+    
+    // Find patient by ID
+    const patient = await Patient.findById(decoded.id);
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+    
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, patient.passwordHash);
+    if (!isCurrentPasswordValid) {
+      return res.status(401).json({ 
+        message: "Current password is incorrect" 
+      });
+    }
+    
+    // Check if new password is same as current password
+    const isSamePassword = await bcrypt.compare(newPassword, patient.passwordHash);
+    if (isSamePassword) {
+      return res.status(400).json({ 
+        message: "New password must be different from current password" 
+      });
+    }
+    
+    // Hash new password
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    
+    // Update password
+    patient.passwordHash = newPasswordHash;
+    await patient.save();
+    
+    console.log(`Password changed for patient: ${patient.email}`);
+    
+    res.json({
+      message: "Password changed successfully"
+    });
+  } catch (error) {
+    console.error("Error changing password:", error.message);
+    res.status(500).json({ 
+      message: "Failed to change password. Please try again later." 
+    });
+  }
+};

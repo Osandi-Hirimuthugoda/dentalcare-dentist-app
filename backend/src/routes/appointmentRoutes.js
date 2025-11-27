@@ -4,6 +4,7 @@ import {
   getAppointmentsByDoctor,
   getAppointmentsByPatient,
   getPatientTreatments,
+  getRecentActivities,
   createAppointment,
   updateAppointment,
   deleteAppointment,
@@ -20,6 +21,9 @@ router.get("/patient", getAppointmentsByPatient);
 
 // Get patient treatments (for My Treatments page - requires auth token)
 router.get("/patient/treatments", getPatientTreatments);
+
+// Get recent activities (for Health screen - requires auth token)
+router.get("/patient/recent-activities", getRecentActivities);
 
 // Get appointments by doctor ID (for web app - doctors viewing their appointments)
 router.get("/doctor/:doctorId", getAppointmentsByDoctor);

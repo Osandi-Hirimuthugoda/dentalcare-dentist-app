@@ -2,10 +2,54 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/themes/colors.dart';
 import 'package:flutter_application_1/core/themes/text_styles.dart';
 import 'package:flutter_application_1/core/constants/route_names.dart';
+import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
+import 'package:flutter_application_1/injection_container.dart' as di;
 import 'package:flutter_application_1/presentation/widgets/common/bottom_navigation_bar_widget.dart';
 
-class HealthScreen extends StatelessWidget {
+class HealthScreen extends StatefulWidget {
   const HealthScreen({super.key});
+
+  @override
+  State<HealthScreen> createState() => _HealthScreenState();
+}
+
+class _HealthScreenState extends State<HealthScreen> {
+  late final DentalRemoteDataSource _dentalDataSource;
+  List<dynamic> _recentActivities = [];
+  bool _isLoadingActivities = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _dentalDataSource = di.getIt<DentalRemoteDataSource>();
+    _loadRecentActivities();
+  }
+
+  Future<void> _loadRecentActivities() async {
+    setState(() {
+      _isLoadingActivities = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final activities = await _dentalDataSource.getRecentActivities();
+      if (mounted) {
+        setState(() {
+          _recentActivities = activities;
+          _isLoadingActivities = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading recent activities: $e');
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load recent activities';
+          _isLoadingActivities = false;
+        });
+      }
+    }
+  }
 
   void _showSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -30,17 +74,20 @@ class HealthScreen extends StatelessWidget {
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.white,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildHealthScore(),
-          const SizedBox(height: 24),
-          _buildHealthTips(),
-          const SizedBox(height: 24),
-          _buildRecentActivities(),
-          const SizedBox(height: 24),
-          _buildEmergencySection(context),
-        ],
+      body: RefreshIndicator(
+        onRefresh: _loadRecentActivities,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _buildHealthScore(),
+            const SizedBox(height: 24),
+            _buildHealthTips(),
+            const SizedBox(height: 24),
+            _buildRecentActivities(),
+            const SizedBox(height: 24),
+            _buildEmergencySection(context),
+          ],
+        ),
       ),
       bottomNavigationBar: BottomNavigationBarWidget(
         currentIndex: 2, // Health tab
@@ -138,14 +185,78 @@ class HealthScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Recent Activities',
-              style: TextStyles.heading4.copyWith(color: AppColors.textPrimary),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Recent Activities',
+                  style: TextStyles.heading4.copyWith(color: AppColors.textPrimary),
+                ),
+                if (_isLoadingActivities)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+              ],
             ),
             const SizedBox(height: 16),
-            _buildActivityItem('Last Checkup', 'Dec 15, 2023', 'Dr. Kamal Fernando'),
-            _buildActivityItem('Teeth Cleaning', 'Nov 20, 2023', 'Dr. Sameera Perera'),
-            _buildActivityItem('X-Ray Scan', 'Oct 10, 2023', 'Dental Care Center'),
+            if (_isLoadingActivities && _recentActivities.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (_errorMessage != null)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    children: [
+                      Icon(Icons.error_outline, color: AppColors.error, size: 48),
+                      const SizedBox(height: 8),
+                      Text(
+                        _errorMessage!,
+                        style: TextStyles.bodySmall.copyWith(color: AppColors.error),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: _loadRecentActivities,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (_recentActivities.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    children: [
+                      Icon(Icons.history, color: AppColors.grey400, size: 48),
+                      const SizedBox(height: 8),
+                      Text(
+                        'No recent activities',
+                        style: TextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ..._recentActivities.map((activity) {
+                final title = activity['title']?.toString() ?? 'Dental Visit';
+                final date = activity['date']?.toString() ?? '';
+                final description = activity['description']?.toString() ?? 
+                    (activity['doctor'] != null && activity['doctor']['name'] != null
+                        ? activity['doctor']['name'].toString()
+                        : 'Dental Care Center');
+                return _buildActivityItem(title, date, description);
+              }).toList(),
           ],
         ),
       ),

@@ -3,6 +3,8 @@ import 'package:flutter_application_1/core/constants/route_names.dart';
 import 'package:flutter_application_1/core/themes/colors.dart';
 import 'package:flutter_application_1/core/themes/text_styles.dart';
 import 'package:flutter_application_1/core/utils/theme_notifier.dart';
+import 'package:flutter_application_1/data/data_sources/remote/auth_remote_data_source.dart';
+import 'package:flutter_application_1/injection_container.dart' as di;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -15,6 +17,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final ThemeNotifier _themeNotifier = ThemeNotifier();
+  late final AuthRemoteDataSource _authDataSource;
   bool _isDarkMode = false;
   bool _isEyeComfortMode = false;
   bool _notificationsEnabled = true;
@@ -22,10 +25,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _healthTips = true;
   bool _promotionalOffers = false;
   String _language = 'English';
+  bool _isChangingPassword = false;
 
   @override
   void initState() {
     super.initState();
+    _authDataSource = di.getIt<AuthRemoteDataSource>();
     _loadSettings();
     _themeNotifier.addListener(_onThemeChanged);
   }
@@ -432,9 +437,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Password must be at least 8 characters long',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                  style: TextStyle(fontSize: 12, color: AppColors.grey500),
                 ),
               ],
             ),
@@ -445,7 +450,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: _isChangingPassword ? null : () async {
                 if (oldPasswordController.text.isEmpty ||
                     newPasswordController.text.isEmpty ||
                     confirmPasswordController.text.isEmpty) {
@@ -460,14 +465,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _showSnackBar('New passwords do not match');
                   return;
                 }
-                // Password change will be implemented when backend API is ready
-                Navigator.pop(context);
-                _showSnackBar('Password change request submitted. Please check your email for confirmation.');
+                
+                setState(() {
+                  _isChangingPassword = true;
+                });
+                
+                try {
+                  await _authDataSource.changePassword(
+                    oldPasswordController.text,
+                    newPasswordController.text,
+                  );
+                  
+                  if (mounted) {
+                    Navigator.pop(context);
+                    _showSnackBar('Password changed successfully');
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    String errorMessage = 'Failed to change password';
+                    if (e.toString().contains('Current password is incorrect')) {
+                      errorMessage = 'Current password is incorrect';
+                    } else if (e.toString().contains('Network')) {
+                      errorMessage = 'Network error. Please check your connection.';
+                    } else if (e.toString().contains('New password must be different')) {
+                      errorMessage = 'New password must be different from current password';
+                    }
+                    _showSnackBar(errorMessage);
+                  }
+                } finally {
+                  if (mounted) {
+                    setState(() {
+                      _isChangingPassword = false;
+                    });
+                  }
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
+                disabledBackgroundColor: AppColors.grey400,
               ),
-              child: const Text('Change Password'),
+              child: _isChangingPassword
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
+                      ),
+                    )
+                  : const Text('Change Password'),
             ),
           ],
         ),

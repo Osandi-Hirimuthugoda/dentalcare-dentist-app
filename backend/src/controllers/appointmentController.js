@@ -199,6 +199,84 @@ export const getAppointmentsByDoctor = async (req, res) => {
   }
 };
 
+// 📊 Get recent activities for health screen (for mobile app)
+export const getRecentActivities = async (req, res) => {
+  try {
+    const user = getUserFromToken(req);
+    if (!user || user.role !== "patient") {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    // Get recent appointments (last 10, sorted by date descending)
+    const appointments = await Appointment.find({ patient: user.id })
+      .populate("doctor", "fullName specialization")
+      .sort({ startTime: -1 })
+      .limit(10);
+    
+    // Format activities from appointments
+    const activities = appointments.map((appt) => {
+      const appointmentDate = new Date(appt.startTime);
+      const formattedDate = appointmentDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+      
+      // Determine activity type and title from appointment notes or status
+      let activityTitle = 'Dental Checkup';
+      let activityType = 'checkup';
+      
+      if (appt.notes) {
+        const notesLower = appt.notes.toLowerCase();
+        if (notesLower.includes('cleaning') || notesLower.includes('scaling')) {
+          activityTitle = 'Teeth Cleaning';
+          activityType = 'cleaning';
+        } else if (notesLower.includes('x-ray') || notesLower.includes('xray')) {
+          activityTitle = 'X-Ray Scan';
+          activityType = 'scan';
+        } else if (notesLower.includes('filling')) {
+          activityTitle = 'Cavity Filling';
+          activityType = 'treatment';
+        } else if (notesLower.includes('extraction')) {
+          activityTitle = 'Tooth Extraction';
+          activityType = 'treatment';
+        } else if (notesLower.includes('root canal') || notesLower.includes('rct')) {
+          activityTitle = 'Root Canal Treatment';
+          activityType = 'treatment';
+        } else {
+          // Extract service name from notes if it's in format "Service Name: description"
+          const parts = appt.notes.split(':');
+          if (parts.length > 0 && parts[0].trim().length > 0) {
+            activityTitle = parts[0].trim();
+          }
+        }
+      }
+      
+      // Get doctor name or default
+      const doctorName = appt.doctor ? appt.doctor.fullName : 'Dental Care Center';
+      
+      return {
+        id: appt._id.toString(),
+        title: activityTitle,
+        date: formattedDate,
+        description: doctorName,
+        type: activityType,
+        status: appt.status,
+        startTime: appt.startTime,
+        doctor: appt.doctor ? {
+          name: appt.doctor.fullName,
+          specialization: appt.doctor.specialization
+        } : null
+      };
+    });
+    
+    res.status(200).json(activities);
+  } catch (err) {
+    console.error("❌ Error fetching recent activities:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // ➕ Create appointment
 export const createAppointment = async (req, res) => {
   try {

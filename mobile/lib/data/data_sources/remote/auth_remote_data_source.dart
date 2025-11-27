@@ -14,6 +14,7 @@ abstract class AuthRemoteDataSource {
   Future<Map<String, dynamic>> register(UserModel user, String password); // Returns user and token
   Future<Map<String, dynamic>> getCurrentUser(); // Get current logged in user profile
   Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> profileData); // Update user profile
+  Future<void> changePassword(String currentPassword, String newPassword); // Change password
   Future<void> forgotPassword(String email);
   Future<void> verifyEmail(String email, String otp);
   Future<void> logout();
@@ -321,6 +322,52 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       rethrow;
     } catch (e) {
       debugPrint('Update profile error: $e');
+      throw NetworkException('Network error occurred: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<void> changePassword(String currentPassword, String newPassword) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.put(
+        Uri.parse('${AppConstants.baseUrl}/auth/change-password'),
+        body: jsonEncode({
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+        }),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        // Password changed successfully
+        return;
+      } else if (response.statusCode == 401) {
+        try {
+          final errorData = jsonDecode(response.body);
+          throw InvalidCredentialsException(
+            errorData['message'] ?? 'Current password is incorrect'
+          );
+        } catch (_) {
+          throw InvalidCredentialsException('Current password is incorrect');
+        }
+      } else {
+        try {
+          final errorData = jsonDecode(response.body);
+          throw ServerException(
+            errorData['message'] ?? 'Failed to change password',
+            response.statusCode,
+          );
+        } catch (_) {
+          throw ServerException('Failed to change password', response.statusCode);
+        }
+      }
+    } on ServerException {
+      rethrow;
+    } on InvalidCredentialsException {
+      rethrow;
+    } catch (e) {
+      debugPrint('Change password error: $e');
       throw NetworkException('Network error occurred: ${e.toString()}');
     }
   }

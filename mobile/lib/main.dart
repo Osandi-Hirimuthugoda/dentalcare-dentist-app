@@ -98,7 +98,7 @@ class _DentalCareAppState extends State<DentalCareApp> {
       title: 'Dental Care+',
       theme: _getCurrentTheme(),
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
       initialRoute: RouteNames.splash,
       routes: {
         RouteNames.splash: (context) => const SplashScreen(),

@@ -36,8 +36,8 @@ class AuthException extends AppException {
 }
 
 class InvalidCredentialsException extends AuthException {
-  const InvalidCredentialsException([StackTrace? stackTrace])
-      : super('Invalid email or password', stackTrace);
+  const InvalidCredentialsException([String? message, StackTrace? stackTrace])
+      : super(message ?? 'Invalid email or password', stackTrace);
 }
 
 class UserNotFoundException extends AuthException {

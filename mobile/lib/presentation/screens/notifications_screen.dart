@@ -112,7 +112,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Failed to mark all as read. Please try again.'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -129,7 +129,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Failed to delete notification. Please try again.'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -151,46 +151,46 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.blue.withValues(alpha: 0.1),
+            color: AppColors.info.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.calendar_today, size: 20, color: Colors.blue),
+          child: Icon(Icons.calendar_today, size: 20, color: AppColors.info),
         );
       case NotificationType.reminder:
         return Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.orange.withValues(alpha: 0.1),
+            color: AppColors.warning.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.notifications, size: 20, color: Colors.orange),
+          child: Icon(Icons.notifications, size: 20, color: AppColors.warning),
         );
       case NotificationType.emergency:
         return Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.red.withValues(alpha: 0.1),
+            color: AppColors.error.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.warning, size: 20, color: Colors.red),
+          child: Icon(Icons.warning, size: 20, color: AppColors.error),
         );
       case NotificationType.promotion:
         return Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.green.withValues(alpha: 0.1),
+            color: AppColors.success.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.local_offer, size: 20, color: Colors.green),
+          child: Icon(Icons.local_offer, size: 20, color: AppColors.success),
         );
       default:
         return Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.grey.withValues(alpha: 0.1),
+            color: AppColors.grey500.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.info, size: 20, color: Colors.grey),
+          child: Icon(Icons.info, size: 20, color: AppColors.grey500),
         );
     }
   }
@@ -200,8 +200,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notifications'),
-        backgroundColor: Colors.teal[700],
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.white,
         actions: [
           if (_unreadCount > 0)
             IconButton(
@@ -221,7 +221,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       Icon(
                         Icons.error_outline,
                         size: 64,
-                        color: Colors.red.withValues(alpha: 0.5),
+                        color: AppColors.error.withValues(alpha: 0.5),
                       ),
                       const SizedBox(height: 16),
                       Text(
@@ -258,15 +258,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       key: Key(notification.id),
       direction: DismissDirection.endToStart,
       background: Container(
-        color: Colors.red,
+        color: AppColors.error,
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
-        child: const Icon(Icons.delete, color: Colors.white),
+        child: const Icon(Icons.delete, color: AppColors.white),
       ),
       onDismissed: (direction) => _deleteNotification(notification.id),
       child: Card(
         margin: const EdgeInsets.only(bottom: 12),
-        color: notification.isRead ? Colors.white : Colors.blue.withValues(alpha: 0.05),
+        color: notification.isRead ? AppColors.white : AppColors.info.withValues(alpha: 0.05),
         child: ListTile(
           leading: _buildNotificationIcon(notification.type),
           title: Text(
@@ -294,7 +294,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   width: 8,
                   height: 8,
                   decoration: const BoxDecoration(
-                    color: Colors.blue,
+                    color: AppColors.info,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -316,7 +316,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           Icon(
             Icons.notifications_off,
             size: 80,
-            color: Colors.grey.withValues(alpha: 0.5),
+            color: AppColors.grey500.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(

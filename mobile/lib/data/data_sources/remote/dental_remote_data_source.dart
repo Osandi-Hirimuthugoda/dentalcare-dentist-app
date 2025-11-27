@@ -38,6 +38,7 @@ abstract class DentalRemoteDataSource {
   Future<Map<String, dynamic>> payBillWithWallet(String billId); // Pay bill using wallet
   Future<Map<String, dynamic>> payAppointmentWithWallet(String appointmentId, double amount); // Pay appointment using wallet
   Future<List<dynamic>> getWalletTransactions(); // Get wallet transaction history
+  Future<List<dynamic>> getRecentActivities(); // Get recent activities for health screen
 }
 
 class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
@@ -215,6 +216,35 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
         rethrow;
       }
       throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getRecentActivities() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.get(
+        Uri.parse('${AppConstants.baseUrl}/appointments/patient/recent-activities'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data is List ? data : [];
+      } else if (response.statusCode == 401) {
+        throw InvalidCredentialsException();
+      } else {
+        throw ServerException('Failed to fetch recent activities', response.statusCode);
+      }
+    } on ServerException {
+      rethrow;
+    } on InvalidCredentialsException {
+      rethrow;
+    } catch (e) {
+      if (e is ServerException || e is InvalidCredentialsException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred: ${e.toString()}');
     }
   }
 
