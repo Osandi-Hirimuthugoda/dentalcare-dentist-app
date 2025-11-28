@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/themes/colors.dart';
 import 'package:flutter_application_1/core/themes/text_styles.dart';
+import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
+import 'package:flutter_application_1/injection_container.dart' as di;
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
@@ -14,41 +16,18 @@ class TeethScanScreen extends StatefulWidget {
 class _TeethScanScreenState extends State<TeethScanScreen> {
   File? _selectedImage;
   bool _isProcessing = false;
-  bool _showQuestionnaire = false;
   bool _showResults = false;
-  int _currentQuestion = 0;
   final ImagePicker _picker = ImagePicker();
+  late final DentalRemoteDataSource _dentalDataSource;
   
-  Map<String, dynamic> _userResponses = {};
   Map<String, dynamic> _analysisResults = {};
+  String? _errorMessage;
 
-  final List<Map<String, dynamic>> _questions = [
-    {
-      'id': 'pain_level',
-      'question': 'Do you experience tooth pain?',
-      'options': ['No pain', 'Mild pain', 'Moderate pain', 'Severe pain']
-    },
-    {
-      'id': 'bleeding_gums',
-      'question': 'Do your gums bleed when brushing?',
-      'options': ['Never', 'Occasionally', 'Frequently', 'Always']
-    },
-    {
-      'id': 'sensitivity',
-      'question': 'Do you have tooth sensitivity?',
-      'options': ['No sensitivity', 'To cold only', 'To hot only', 'To both hot and cold']
-    },
-    {
-      'id': 'bad_breath',
-      'question': 'Do you experience bad breath?',
-      'options': ['Never', 'Occasionally', 'Frequently', 'Always']
-    },
-    {
-      'id': 'swelling',
-      'question': 'Any swelling in gums or face?',
-      'options': ['No swelling', 'Mild swelling', 'Moderate swelling', 'Severe swelling']
-    }
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _dentalDataSource = di.getIt<DentalRemoteDataSource>();
+  }
 
   Future<void> _pickImageFromCamera() async {
     final XFile? image = await _picker.pickImage(
@@ -80,7 +59,7 @@ class _TeethScanScreenState extends State<TeethScanScreen> {
     }
   }
 
-  void _startProcessing() {
+  Future<void> _startProcessing() async {
     if (_selectedImage == null) {
       _showSnackBar('Please select an image first');
       return;
@@ -88,168 +67,149 @@ class _TeethScanScreenState extends State<TeethScanScreen> {
 
     setState(() {
       _isProcessing = true;
+      _showResults = false;
+      _errorMessage = null;
     });
 
-    // Simulate processing delay
-    Future.delayed(const Duration(seconds: 2), () {
-      setState(() {
-        _isProcessing = false;
-        _showQuestionnaire = true;
-      });
-    });
-  }
-
-  void _selectAnswer(String answer) {
-    setState(() {
-      _userResponses[_questions[_currentQuestion]['id']] = answer;
-    });
-
-    // Move to next question or show results
-    if (_currentQuestion < _questions.length - 1) {
-      setState(() {
-        _currentQuestion++;
-      });
-    } else {
-      _generateResults();
-    }
-  }
-
-  void _generateResults() {
-    setState(() {
-      _showQuestionnaire = false;
-      _isProcessing = true;
-    });
-
-    // Simulate AI model processing with user responses
-    Future.delayed(const Duration(seconds: 3), () {
-      final results = _analyzeWithAI(_userResponses);
-      setState(() {
-        _analysisResults = results;
-        _isProcessing = false;
-        _showResults = true;
-      });
-    });
-  }
-
-  Map<String, dynamic> _analyzeWithAI(Map<String, dynamic> responses) {
-    // Mock AI analysis based on user responses
-    List<Map<String, dynamic>> detectedIssues = [];
-    
-    // Analyze based on responses
-    if (responses['pain_level'] == 'Severe pain') {
-      detectedIssues.add({
-        'disease': 'Advanced Tooth Decay',
-        'confidence': '92%',
-        'severity': 'High',
-        'description': 'Deep cavity requiring immediate attention',
-        'recommendation': 'Urgent dental filling or root canal treatment'
-      });
-    }
-    
-    if (responses['bleeding_gums'] == 'Frequently' || responses['bleeding_gums'] == 'Always') {
-      detectedIssues.add({
-        'disease': 'Gingivitis/Periodontitis',
-        'confidence': '88%',
-        'severity': 'Moderate-High',
-        'description': 'Gum inflammation and potential bone loss',
-        'recommendation': 'Professional cleaning and improved oral hygiene'
-      });
-    }
-    
-    if (responses['sensitivity'] == 'To both hot and cold') {
-      detectedIssues.add({
-        'disease': 'Tooth Sensitivity',
-        'confidence': '85%',
-        'severity': 'Moderate',
-        'description': 'Exposed dentin causing sensitivity',
-        'recommendation': 'Use sensitivity toothpaste and avoid acidic foods'
-      });
-    }
-    
-    if (responses['bad_breath'] == 'Frequently' || responses['bad_breath'] == 'Always') {
-      detectedIssues.add({
-        'disease': 'Halitosis with Possible Infection',
-        'confidence': '78%',
-        'severity': 'Moderate',
-        'description': 'Chronic bad breath indicating possible infection',
-        'recommendation': 'Dental checkup and improved oral care routine'
-      });
-    }
-
-    // Default result if no specific issues detected
-    if (detectedIssues.isEmpty) {
-      detectedIssues.add({
-        'disease': 'Good Oral Health',
-        'confidence': '95%',
-        'severity': 'Low',
-        'description': 'No major issues detected based on your responses',
-        'recommendation': 'Continue regular dental checkups and maintain good oral hygiene'
-      });
-    }
-
-    return {
-      'issues': detectedIssues,
-      'overall_health_score': _calculateHealthScore(detectedIssues),
-      'recommended_doctors': _getRecommendedDoctors(detectedIssues),
-      'user_responses': responses,
-    };
-  }
-
-  int _calculateHealthScore(List<Map<String, dynamic>> issues) {
-    int baseScore = 100;
-    for (var issue in issues) {
-      if (issue['severity'] == 'High') baseScore -= 30;
-      if (issue['severity'] == 'Moderate-High') baseScore -= 25;
-      if (issue['severity'] == 'Moderate') baseScore -= 15;
-      if (issue['severity'] == 'Low') baseScore -= 5;
-    }
-    return baseScore.clamp(0, 100);
-  }
-
-  List<String> _getRecommendedDoctors(List<Map<String, dynamic>> issues) {
-    Set<String> specialists = {};
-    
-    for (var issue in issues) {
-      if (issue['disease'].contains('Tooth Decay')) {
-        specialists.add('General Dentist');
-        specialists.add('Restorative Dentist');
+    try {
+      // Upload image to backend and get CNN model results
+      final result = await _dentalDataSource.uploadTeethScan(_selectedImage!.path);
+      
+      debugPrint('📥 Received result from backend: ${result.keys}');
+      debugPrint('📥 Analysis data: ${result['analysis']?.keys}');
+      
+      if (mounted) {
+        final analysis = result['analysis'] ?? {};
+        final detectedConditions = analysis['detectedConditions'] as List<dynamic>? ?? [];
+        
+        debugPrint('📊 Detected conditions count: ${detectedConditions.length}');
+        if (detectedConditions.isNotEmpty) {
+          final firstCondition = detectedConditions[0] as Map<String, dynamic>;
+          debugPrint('📊 First condition class: ${firstCondition['modelClassName']}');
+          debugPrint('📊 First condition name: ${firstCondition['name']}');
+        }
+        
+        setState(() {
+          _analysisResults = analysis;
+          _isProcessing = false;
+          _showResults = true;
+        });
       }
-      if (issue['disease'].contains('Gingivitis') || issue['disease'].contains('Periodontitis')) {
-        specialists.add('Periodontist');
-      }
-      if (issue['disease'].contains('Sensitivity')) {
-        specialists.add('General Dentist');
-      }
-      if (issue['disease'].contains('Infection')) {
-        specialists.add('Endodontist');
-        specialists.add('General Dentist');
+    } catch (e) {
+      debugPrint('❌ Error processing teeth scan: $e');
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+          _errorMessage = e.toString().contains('Network') 
+              ? 'Network error. Please check your connection.'
+              : 'Failed to process image. Please try again.';
+        });
+        _showSnackBar(_errorMessage ?? 'Failed to process image');
       }
     }
-    
-    if (specialists.isEmpty) {
-      return ['General Dentist'];
-    }
-    
-    return specialists.toList();
   }
 
   void _showDoctorRecommendation() {
+    final hasOralCancer = _analysisResults['hasOralCancer'] ?? false;
+    final conditions = _analysisResults['detectedConditions'] as List<dynamic>? ?? [];
+    
+    List<String> recommendedSpecialists = [];
+    
+    // If cancer detected, suggest oncologists/specialists
+    if (hasOralCancer) {
+      recommendedSpecialists.add('Oral Oncologist (URGENT)');
+      recommendedSpecialists.add('Oral Surgeon');
+      recommendedSpecialists.add('Oncologist');
+    } else {
+      // For normal diseases (calculus, gingivitis, ulcers, olp), suggest normal dentists
+      conditions.forEach((condition) {
+        final conditionMap = condition as Map<String, dynamic>;
+        final modelClassName = conditionMap['modelClassName']?.toString() ?? '';
+        
+        // Check for the 5 diseases from the model
+        if (modelClassName == 'calculus' || modelClassName == 'gingivitis' || 
+            modelClassName == 'ulcers' || modelClassName == 'olp') {
+          
+          // Map diseases to appropriate dentists
+          if (modelClassName == 'gingivitis') {
+            if (!recommendedSpecialists.contains('Periodontist')) {
+              recommendedSpecialists.add('Periodontist');
+            }
+          }
+          if (modelClassName == 'calculus') {
+            if (!recommendedSpecialists.contains('General Dentist')) {
+              recommendedSpecialists.add('General Dentist');
+            }
+          }
+          if (modelClassName == 'ulcers' || modelClassName == 'olp') {
+            if (!recommendedSpecialists.contains('Oral Medicine Specialist')) {
+              recommendedSpecialists.add('Oral Medicine Specialist');
+            }
+          }
+        }
+      });
+      
+      // If no specific specialist found, add general dentist
+      if (recommendedSpecialists.isEmpty) {
+        recommendedSpecialists.add('General Dentist');
+      }
+    }
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Recommended Specialists'),
+        title: Row(
+          children: [
+            Icon(
+              hasOralCancer ? Icons.emergency : Icons.medical_services,
+              color: hasOralCancer ? AppColors.error : AppColors.primary,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                hasOralCancer ? 'Urgent: See Specialist' : 'Recommended Specialists',
+                style: TextStyles.heading4,
+              ),
+            ),
+          ],
+        ),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView(
             shrinkWrap: true,
             children: [
-              const Text('Based on your analysis, we recommend consulting:'),
+              if (hasOralCancer)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 15),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Oral cancer detected. Immediate consultation required!',
+                    style: TextStyles.bodyMedium.copyWith(
+                      color: AppColors.error,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              const Text('Based on AI analysis, we recommend consulting:'),
               const SizedBox(height: 15),
-              ..._analysisResults['recommended_doctors'].map<Widget>((specialist) => 
+              ...recommendedSpecialists.map<Widget>((specialist) => 
                 ListTile(
-                  leading: const Icon(Icons.medical_services, color: Colors.teal),
-                  title: Text(specialist),
-                  subtitle: Text('Specialized in $specialist treatments'),
+                  leading: Icon(
+                    Icons.medical_services,
+                    color: specialist.contains('URGENT') ? AppColors.error : AppColors.primary,
+                  ),
+                  title: Text(
+                    specialist,
+                    style: TextStyle(
+                      fontWeight: specialist.contains('URGENT') ? FontWeight.bold : FontWeight.normal,
+                      color: specialist.contains('URGENT') ? AppColors.error : AppColors.textPrimary,
+                    ),
+                  ),
+                  subtitle: Text('Specialized in ${specialist.replaceAll(' (URGENT)', '')} treatments'),
                 )
               ).toList(),
               const SizedBox(height: 10),
@@ -267,7 +227,10 @@ class _TeethScanScreenState extends State<TeethScanScreen> {
               Navigator.pop(context);
               Navigator.pushNamed(context, '/book-appointment');
             },
-            child: const Text('Book Appointment'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: hasOralCancer ? AppColors.error : AppColors.primary,
+            ),
+            child: Text(hasOralCancer ? 'Book Urgent Appointment' : 'Book Appointment'),
           ),
         ],
       ),
@@ -278,11 +241,9 @@ class _TeethScanScreenState extends State<TeethScanScreen> {
     setState(() {
       _selectedImage = null;
       _isProcessing = false;
-      _showQuestionnaire = false;
       _showResults = false;
-      _currentQuestion = 0;
-      _userResponses = {};
       _analysisResults = {};
+      _errorMessage = null;
     });
   }
 
@@ -303,7 +264,7 @@ class _TeethScanScreenState extends State<TeethScanScreen> {
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.white,
         actions: [
-          if (_showResults || _showQuestionnaire)
+          if (_showResults || _isProcessing)
             IconButton(
               icon: const Icon(Icons.refresh),
               onPressed: _resetScan,
@@ -320,15 +281,49 @@ class _TeethScanScreenState extends State<TeethScanScreen> {
       return _buildProcessingScreen();
     }
     
-    if (_showQuestionnaire) {
-      return _buildQuestionnaire();
-    }
-    
     if (_showResults) {
       return _buildResultsScreen();
     }
     
+    if (_errorMessage != null) {
+      return _buildErrorScreen();
+    }
+    
     return _buildImageSelectionScreen();
+  }
+  
+  Widget _buildErrorScreen() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, color: AppColors.error, size: 64),
+            const SizedBox(height: 16),
+            Text(
+              'Processing Failed',
+              style: TextStyles.heading4.copyWith(color: AppColors.error),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage ?? 'Unknown error occurred',
+              style: TextStyles.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _resetScan,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
+              ),
+              child: const Text('Try Again'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildImageSelectionScreen() {
@@ -354,91 +349,28 @@ class _TeethScanScreenState extends State<TeethScanScreen> {
           const CircularProgressIndicator(),
           const SizedBox(height: 20),
           Text(
-            _showQuestionnaire ? 'Analyzing Your Responses...' : 'Processing Your Image...',
+            'Processing Your Image with AI...',
             style: TextStyles.heading4,
           ),
           const SizedBox(height: 10),
           Text(
-            _showQuestionnaire 
-                ? 'Our AI model is analyzing your symptoms'
-                : 'Preparing diagnostic questions based on your scan',
+            'Our CNN model is analyzing your image for oral cancer and diseases',
             style: TextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuestionnaire() {
-    final currentQ = _questions[_currentQuestion];
-    
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          LinearProgressIndicator(
-            value: (_currentQuestion + 1) / _questions.length,
-            backgroundColor: AppColors.grey300,
-            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-          ),
           const SizedBox(height: 20),
-          Text(
-            'Question ${_currentQuestion + 1} of ${_questions.length}',
-            style: TextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            currentQ['question'],
-            style: TextStyles.heading4,
-          ),
-          const SizedBox(height: 30),
-          ...(currentQ['options'] as List<String>).map((option) => 
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: ElevatedButton(
-                onPressed: () => _selectAnswer(option),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.white,
-                  foregroundColor: AppColors.textPrimary,
-                  elevation: 2,
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      _userResponses[currentQ['id']] == option 
-                          ? Icons.radio_button_checked 
-                          : Icons.radio_button_off,
-                      color: _userResponses[currentQ['id']] == option 
-                          ? AppColors.primary 
-                          : AppColors.grey400,
-                    ),
-                    const SizedBox(width: 15),
-                    Expanded(
-                      child: Text(
-                        option,
-                        style: TextStyles.bodyMedium,
-                      ),
-                    ),
-                  ],
-                ),
+          if (_selectedImage != null)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 40),
+              height: 150,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.grey300),
               ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          if (_currentQuestion > 0)
-            OutlinedButton(
-              onPressed: () {
-                setState(() {
-                  _currentQuestion--;
-                });
-              },
-              child: const Text('Previous Question'),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.file(_selectedImage!, fit: BoxFit.cover),
+              ),
             ),
         ],
       ),
@@ -462,50 +394,140 @@ class _TeethScanScreenState extends State<TeethScanScreen> {
   }
 
   Widget _buildHealthScore() {
+    final conditions = _analysisResults['detectedConditions'] as List<dynamic>? ?? [];
+    final hasOralCancer = _analysisResults['hasOralCancer'] ?? false;
+    
+    if (conditions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
+    final conditionMap = conditions[0] as Map<String, dynamic>;
+    
+    // Get the model's detected class name - THIS IS FROM THE 5 CLASSES
+    final detectedClassName = conditionMap['modelClassName']?.toString() ?? '';
+    
+    debugPrint('🔍 Detected class name from model: $detectedClassName');
+    
+    // Verify it's one of the 5 classes
+    final validClasses = ['calculus', 'cancers', 'gingivitis', 'ulcers', 'olp'];
+    if (detectedClassName.isNotEmpty && !validClasses.contains(detectedClassName.toLowerCase())) {
+      debugPrint('⚠️  Warning: Detected class "$detectedClassName" is not in valid classes: $validClasses');
+    }
+    
+    // Get disease name from class name if name is not available
+    final diseaseName = conditionMap['name']?.toString() ?? 
+                       (detectedClassName.isNotEmpty 
+                           ? _getDiseaseNameFromClass(detectedClassName) 
+                           : 'Unknown Disease');
+    final isCancer = hasOralCancer || detectedClassName.toLowerCase() == 'cancers';
+    
+    debugPrint('📋 Disease name: $diseaseName');
+    debugPrint('📋 Is cancer: $isCancer');
+    
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            Text(
-              'Your Dental Health Score',
-              style: TextStyles.heading4,
-            ),
-            const SizedBox(height: 16),
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: 120,
-                  height: 120,
-                  child: CircularProgressIndicator(
-                    value: _analysisResults['overall_health_score'] / 100,
-                    strokeWidth: 8,
-                    backgroundColor: AppColors.grey300,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      _analysisResults['overall_health_score'] >= 80 ? Colors.green :
-                      _analysisResults['overall_health_score'] >= 60 ? Colors.orange : Colors.red
+            // Show detected disease name prominently
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: isCancer 
+                    ? AppColors.error.withValues(alpha: 0.1)
+                    : AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isCancer ? AppColors.error : AppColors.primary,
+                  width: 2,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    isCancer ? Icons.warning : Icons.medical_services,
+                    color: isCancer ? AppColors.error : AppColors.primary,
+                    size: 48,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Detected Disease:',
+                    style: TextStyles.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
                     ),
                   ),
-                ),
-                Column(
-                  children: [
+                  const SizedBox(height: 8),
+                  Text(
+                    diseaseName,
+                    style: TextStyles.heading3.copyWith(
+                      color: isCancer ? AppColors.error : AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  // Show the model's detected class name (one of 5 classes)
+                  if (detectedClassName.isNotEmpty)
                     Text(
-                      '${_analysisResults['overall_health_score']}%',
-                      style: TextStyles.heading2.copyWith(
-                        color: _analysisResults['overall_health_score'] >= 80 ? Colors.green :
-                              _analysisResults['overall_health_score'] >= 60 ? Colors.orange : Colors.red
+                      'Model Detected Class: ${_getClassDisplayName(detectedClassName)}',
+                      style: TextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
+                  if (detectedClassName.isEmpty)
                     Text(
-                      _analysisResults['overall_health_score'] >= 80 ? 'Excellent' :
-                      _analysisResults['overall_health_score'] >= 60 ? 'Good' : 'Needs Attention',
-                      style: TextStyles.bodySmall,
+                      'Class: Unknown',
+                      style: TextStyles.bodySmall.copyWith(
+                        color: AppColors.error,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // Cancer warning
+            if (isCancer) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.error, width: 2),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.emergency, color: AppColors.error, size: 24),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'URGENT: Immediate Medical Attention Required',
+                            style: TextStyles.bodyMedium.copyWith(
+                              color: AppColors.error,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Please consult an oral oncologist immediately for further evaluation and biopsy.',
+                      style: TextStyles.bodySmall.copyWith(
+                        color: AppColors.error,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ],
         ),
       ),
@@ -513,7 +535,11 @@ class _TeethScanScreenState extends State<TeethScanScreen> {
   }
 
   Widget _buildDetectedIssues() {
-    final issues = _analysisResults['issues'] as List<Map<String, dynamic>>;
+    final conditions = _analysisResults['detectedConditions'] as List<dynamic>? ?? [];
+    
+    if (conditions.isEmpty) {
+      return const SizedBox.shrink();
+    }
     
     return Card(
       child: Padding(
@@ -521,77 +547,158 @@ class _TeethScanScreenState extends State<TeethScanScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'AI Analysis Results',
-              style: TextStyles.heading4,
-            ),
-            const SizedBox(height: 15),
-            ...issues.map((issue) => 
-              Container(
+            const SizedBox(height: 10),
+            ...conditions.map((condition) {
+              final conditionMap = condition as Map<String, dynamic>;
+              final type = conditionMap['type']?.toString() ?? '';
+              final isCancer = type == 'oral_cancer';
+              final isDisease = type == 'oral_disease';
+              return Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: _getSeverityColor(issue['severity']).withValues(alpha: 0.1),
+                  color: _getSeverityColor(conditionMap['severity']?.toString() ?? 'Low').withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _getSeverityColor(issue['severity']).withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: isCancer 
+                        ? AppColors.error 
+                        : _getSeverityColor(conditionMap['severity']?.toString() ?? 'Low').withValues(alpha: 0.3),
+                    width: isCancer ? 2 : 1,
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
+                        // Type badge
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: _getSeverityColor(issue['severity']),
+                            color: isCancer 
+                                ? AppColors.error 
+                                : isDisease 
+                                    ? AppColors.warning 
+                                    : AppColors.success,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            issue['severity'],
-                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                            isCancer ? 'CANCER' : isDisease ? 'DISEASE' : 'HEALTHY',
+                            style: const TextStyle(
+                              color: AppColors.white, 
+                              fontSize: 11, 
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                        const Spacer(),
-                        Text(
-                          'Confidence: ${issue['confidence']}',
-                          style: TextStyles.caption.copyWith(fontWeight: FontWeight.bold),
+                        const SizedBox(width: 8),
+                        // Severity badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _getSeverityColor(conditionMap['severity']?.toString() ?? 'Low'),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            conditionMap['severity']?.toString() ?? 'Low',
+                            style: const TextStyle(
+                              color: AppColors.white, 
+                              fontSize: 11, 
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     Text(
-                      issue['disease'],
-                      style: TextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
+                      conditionMap['name']?.toString() ?? 
+                      (conditionMap['modelClassName'] != null 
+                          ? _getDiseaseNameFromClass(conditionMap['modelClassName']?.toString() ?? '')
+                          : 'Unknown Condition'),
+                      style: TextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: isCancer ? AppColors.error : AppColors.textPrimary,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      issue['description'],
+                      conditionMap['description']?.toString() ?? '',
                       style: TextStyles.bodySmall,
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      '💡 Recommendation: ${issue['recommendation']}',
-                      style: TextStyles.bodySmall.copyWith(fontWeight: FontWeight.w500),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.info.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.lightbulb_outline,
+                            color: AppColors.info,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              conditionMap['recommendation']?.toString() ?? 'Consult a dental professional.',
+                      style: TextStyles.bodySmall.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.info,
+                      ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                    if (isCancer) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.emergency, color: AppColors.error, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'URGENT: Please consult an oral oncologist immediately for biopsy and further evaluation.',
+                                style: TextStyles.bodySmall.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.error,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
-              ),
-            ),
+              );
+            }).toList(),
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.1),
+                color: AppColors.info.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.info, color: Colors.blue, size: 20),
+                  Icon(Icons.info_outline, color: AppColors.info, size: 20),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'This analysis is based on AI assessment. Please consult a dental professional for accurate diagnosis.',
-                      style: TextStyles.caption.copyWith(color: Colors.blue),
+                      'This analysis is based on CNN AI model assessment. Please consult a dental professional for accurate diagnosis and treatment.',
+                      style: TextStyles.caption.copyWith(color: AppColors.info),
                     ),
                   ),
                 ],
@@ -605,11 +712,54 @@ class _TeethScanScreenState extends State<TeethScanScreen> {
 
   Color _getSeverityColor(String severity) {
     switch (severity) {
-      case 'High': return Colors.red;
-      case 'Moderate-High': return Colors.orange;
-      case 'Moderate': return Colors.amber;
-      case 'Low': return Colors.green;
-      default: return Colors.grey;
+      case 'High': 
+      case 'Critical': 
+        return AppColors.error;
+      case 'Moderate-High': 
+        return AppColors.warning;
+      case 'Moderate': 
+        return AppColors.warning;
+      case 'Low-Moderate':
+      case 'Low': 
+        return AppColors.success;
+      default: 
+        return AppColors.grey500;
+    }
+  }
+
+  String _getClassDisplayName(String className) {
+    // Map model class names to user-friendly display names for the 5 classes
+    switch (className.toLowerCase()) {
+      case 'calculus':
+        return 'Calculus';
+      case 'cancers':
+        return 'Cancers';
+      case 'gingivitis':
+        return 'Gingivitis';
+      case 'ulcers':
+        return 'Ulcers';
+      case 'olp':
+        return 'OLP (Oral Lichen Planus)';
+      default:
+        return className.isNotEmpty ? className.toUpperCase() : 'Unknown';
+    }
+  }
+  
+  String _getDiseaseNameFromClass(String className) {
+    // Map class names to disease names for the 5 classes
+    switch (className.toLowerCase()) {
+      case 'calculus':
+        return 'Dental Calculus (Tartar)';
+      case 'cancers':
+        return 'Oral Cancer';
+      case 'gingivitis':
+        return 'Gingivitis';
+      case 'ulcers':
+        return 'Oral Ulcers';
+      case 'olp':
+        return 'Oral Lichen Planus (OLP)';
+      default:
+        return className.isNotEmpty ? className : 'Unknown Disease';
     }
   }
 

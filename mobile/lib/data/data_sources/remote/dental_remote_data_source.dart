@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_application_1/core/constants/app_constants.dart';
 import 'package:flutter_application_1/core/errors/exceptions.dart';
 import 'package:flutter_application_1/data/data_sources/local/shared_prefs.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 // import 'package:dental_care/core/constants/app_constants.dart';
 // import 'package:dental_care/core/errors/exceptions.dart';
 
@@ -251,21 +253,76 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
   @override
   Future<dynamic> uploadTeethScan(String imagePath) async {
     try {
-      // This would typically involve file upload logic
-      // For now, we'll simulate the response
-      final response = await client.post(
-        Uri.parse('${AppConstants.baseUrl}/ai-scan'),
-        body: jsonEncode({'image_path': imagePath}),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw ServerException('Failed to upload teeth scan', response.statusCode);
+      final headers = await _getHeaders();
+      // Remove Content-Type from headers as multipart will set it
+      headers.remove('Content-Type');
+      
+      final file = File(imagePath);
+      if (!await file.exists()) {
+        throw ServerException('Image file not found', 404);
       }
+      
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${AppConstants.baseUrl}/ai-scan/teeth-scan'),
+      );
+      
+      // Add headers (except Content-Type)
+      request.headers.addAll(headers);
+      
+      // Add image file
+      final fileStream = file.openRead();
+      final fileLength = await file.length();
+      final multipartFile = http.MultipartFile(
+        'image',
+        fileStream,
+        fileLength,
+        filename: imagePath.split('/').last,
+        contentType: MediaType('image', 'jpeg'), // Adjust based on actual image type
+      );
+      
+      request.files.add(multipartFile);
+      
+      debugPrint('📤 Uploading teeth scan image: $imagePath');
+      
+      final streamedResponse = await client.send(request).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw NetworkException('Upload timeout. Please check your connection.');
+        },
+      );
+      
+      final response = await http.Response.fromStream(streamedResponse);
+      
+      debugPrint('📥 Teeth scan response: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        debugPrint('✅ Teeth scan processed successfully');
+        return data;
+      } else if (response.statusCode == 401) {
+        throw InvalidCredentialsException();
+      } else {
+        try {
+          final errorData = jsonDecode(response.body);
+          throw ServerException(
+            errorData['message'] ?? 'Failed to process teeth scan',
+            response.statusCode,
+          );
+        } catch (_) {
+          throw ServerException('Failed to process teeth scan', response.statusCode);
+        }
+      }
+    } on ServerException {
+      rethrow;
+    } on InvalidCredentialsException {
+      rethrow;
     } catch (e) {
-      throw NetworkException('Network error occurred');
+      debugPrint('❌ Error uploading teeth scan: $e');
+      if (e is NetworkException || e is ServerException || e is InvalidCredentialsException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred: ${e.toString()}');
     }
   }
 

@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment variables
+.env
+.env.local
+
+# Uploads
+uploads/
+*.log
+
+# Model files (too large for git)
+models/oral_cancer_model/*.h5
+models/oral_cancer_model/*.pb
+models/oral_cancer_model/*.pth
+models/oral_cancer_model/*.pt
+models/oral_cancer_model/*.onnx
+models/oral_cancer_model/*.tflite
+models/oral_cancer_model/*.savedmodel
+models/oral_cancer_model/weights/
+models/oral_cancer_model/checkpoints/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+
+
