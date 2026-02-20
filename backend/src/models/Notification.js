@@ -1,37 +1,55 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const notificationSchema = new mongoose.Schema({
-  patient: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: "Patient", 
-    required: true 
+  recipient: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+    refPath: 'recipientModel'
   },
-  doctor: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: "Doctor" 
+  recipientModel: {
+    type: String,
+    required: true,
+    enum: ['Doctor', 'Patient', 'Admin']
   },
-  appointment: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: "Appointment" 
+  sender: {
+    type: mongoose.Schema.Types.ObjectId,
+    refPath: 'senderModel'
   },
-  title: { 
-    type: String, 
-    required: true 
+  senderModel: {
+    type: String,
+    enum: ['Doctor', 'Patient', 'Admin', 'System']
   },
-  message: { 
-    type: String, 
-    required: true 
+  type: {
+    type: String,
+    required: true,
+    enum: ['appointment', 'message', 'payment', 'reminder', 'system', 'review', 'scan']
   },
-  type: { 
-    type: String, 
-    enum: ["appointment", "reminder", "general", "emergency", "promotion"], 
-    default: "general" 
+  title: {
+    type: String,
+    required: true
   },
-  isRead: { 
-    type: Boolean, 
-    default: false 
+  message: {
+    type: String,
+    required: true
   },
-}, { timestamps: true });
+  data: {
+    type: mongoose.Schema.Types.Mixed
+  },
+  read: {
+    type: Boolean,
+    default: false
+  },
+  readAt: {
+    type: Date
+  },
+  actionUrl: {
+    type: String
+  }
+}, {
+  timestamps: true
+});
 
-export default mongoose.model("Notification", notificationSchema);
+// Index for faster queries
+notificationSchema.index({ recipient: 1, read: 1, createdAt: -1 });
 
+export default mongoose.model('Notification', notificationSchema);

@@ -74,6 +74,17 @@ const hospitalSchema = new mongoose.Schema(
       type: String,
       trim: true,
     }],
+    location: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point'
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        default: [79.8612, 6.9271] // Default to Colombo
+      }
+    },
     isActive: {
       type: Boolean,
       default: true,
@@ -94,6 +105,7 @@ const hospitalSchema = new mongoose.Schema(
 hospitalSchema.index({ name: "text", district: "text", address: "text", city: "text" });
 hospitalSchema.index({ district: 1 });
 hospitalSchema.index({ isActive: 1 });
+hospitalSchema.index({ location: "2dsphere" }); // Geospatial index for location queries
 
 const Hospital = mongoose.model("Hospital", hospitalSchema);
 export default Hospital;

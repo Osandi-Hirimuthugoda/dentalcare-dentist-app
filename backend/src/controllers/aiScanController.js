@@ -12,6 +12,9 @@ const __dirname = dirname(__filename);
 
 const JWT_SECRET = process.env.JWT_SECRET || "dentalcare_secret_key_change_in_production";
 
+// Flask API Configuration
+const FLASK_API_URL = process.env.FLASK_API_URL || 'http://localhost:5000';
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -31,14 +34,31 @@ export const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
+    // Log file details for debugging
+    console.log('📁 File upload attempt:', {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      fieldname: file.fieldname,
+      extension: path.extname(file.originalname)
+    });
     
-    if (mimetype && extname) {
+    // Very lenient file type checking - accept if EITHER extension OR mimetype suggests it's an image
+    const allowedExtensions = /\.(jpeg|jpg|png|gif|bmp|webp)$/i;
+    const isImageMimeType = /^image\//i.test(file.mimetype);
+    
+    const extname = allowedExtensions.test(path.extname(file.originalname));
+    
+    // Accept if extension matches OR mimetype starts with "image/"
+    if (extname || isImageMimeType) {
+      console.log('✅ File accepted:', file.originalname, '- Extension:', extname, 'MIME:', isImageMimeType);
       return cb(null, true);
     } else {
-      cb(new Error('Only image files (jpeg, jpg, png) are allowed'));
+      console.error('❌ File rejected:', {
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        extension: path.extname(file.originalname)
+      });
+      cb(new Error(`Only image files are allowed. Received MIME: ${file.mimetype || 'unknown'}, Extension: ${path.extname(file.originalname)}`));
     }
   }
 });
@@ -63,167 +83,16 @@ const getUserFromToken = (req) => {
   }
 };
 
-// Simulate CNN model processing for oral cancer and diseases detection
-const simulateCNNProcessing = (imagePath) => {
-  // In a real implementation, this would call a trained CNN model
-  // For now, we simulate the model's output based on image analysis
-  
-  // Simulate processing delay (CNN models take time to process)
-  const processingTime = Math.random() * 2000 + 1000; // 1-3 seconds
-  
-  // Simulate detection results
-  // In production, this would be the actual CNN model output
-  const hasOralCancer = Math.random() < 0.15; // 15% chance of detecting oral cancer
-  const hasOralDiseases = Math.random() < 0.40; // 40% chance of detecting oral diseases
-  
-  const detectedConditions = [];
-  const confidenceScores = {};
-  
-  // Oral Cancer Detection
-  if (hasOralCancer) {
-    const cancerTypes = [
-      'Squamous Cell Carcinoma',
-      'Oral Leukoplakia (Pre-cancerous)',
-      'Erythroplakia (Pre-cancerous)'
-    ];
-    const cancerType = cancerTypes[Math.floor(Math.random() * cancerTypes.length)];
-    const confidence = (Math.random() * 20 + 75).toFixed(1); // 75-95% confidence
-    
-    detectedConditions.push({
-      type: 'oral_cancer',
-      name: cancerType,
-      severity: 'High',
-      confidence: `${confidence}%`,
-      description: 'Potential oral cancer detected. Immediate medical attention required.',
-      recommendation: 'Please consult an oral oncologist immediately for further evaluation and biopsy.',
-      urgency: 'Critical'
-    });
-    
-    confidenceScores.oralCancer = parseFloat(confidence);
-  } else {
-    confidenceScores.oralCancer = (Math.random() * 10 + 85).toFixed(1); // 85-95% confidence for no cancer
-  }
-  
-  // Oral Diseases Detection
-  if (hasOralDiseases) {
-    const diseases = [
-      {
-        name: 'Gingivitis',
-        severity: 'Moderate',
-        confidence: (Math.random() * 15 + 80).toFixed(1),
-        description: 'Gum inflammation detected. Early stage periodontal disease.',
-        recommendation: 'Professional dental cleaning and improved oral hygiene routine.'
-      },
-      {
-        name: 'Periodontitis',
-        severity: 'Moderate-High',
-        confidence: (Math.random() * 15 + 75).toFixed(1),
-        description: 'Advanced gum disease with potential bone loss.',
-        recommendation: 'Immediate periodontal treatment required. Consult a periodontist.'
-      },
-      {
-        name: 'Tooth Decay (Cavities)',
-        severity: 'Moderate',
-        confidence: (Math.random() * 15 + 80).toFixed(1),
-        description: 'Multiple cavities detected in teeth.',
-        recommendation: 'Dental fillings or root canal treatment may be needed.'
-      },
-      {
-        name: 'Oral Thrush (Candidiasis)',
-        severity: 'Moderate',
-        confidence: (Math.random() * 15 + 75).toFixed(1),
-        description: 'Fungal infection detected in oral cavity.',
-        recommendation: 'Antifungal medication and improved oral hygiene.'
-      },
-      {
-        name: 'Oral Ulcers',
-        severity: 'Low-Moderate',
-        confidence: (Math.random() * 15 + 70).toFixed(1),
-        description: 'Multiple ulcers detected in oral cavity.',
-        recommendation: 'May require medication. Consult dentist if persistent.'
-      }
-    ];
-    
-    // Select 1-3 diseases randomly
-    const numDiseases = Math.floor(Math.random() * 3) + 1;
-    const selectedDiseases = [];
-    const usedIndices = new Set();
-    
-    for (let i = 0; i < numDiseases && i < diseases.length; i++) {
-      let index;
-      do {
-        index = Math.floor(Math.random() * diseases.length);
-      } while (usedIndices.has(index));
-      usedIndices.add(index);
-      selectedDiseases.push(diseases[index]);
-    }
-    
-    selectedDiseases.forEach(disease => {
-      detectedConditions.push({
-        type: 'oral_disease',
-        name: disease.name,
-        severity: disease.severity,
-        confidence: `${disease.confidence}%`,
-        description: disease.description,
-        recommendation: disease.recommendation,
-        urgency: disease.severity.includes('High') ? 'High' : 'Moderate'
-      });
-    });
-    
-    confidenceScores.oralDiseases = parseFloat(selectedDiseases[0].confidence);
-  } else {
-    // No diseases detected
-    detectedConditions.push({
-      type: 'healthy',
-      name: 'Good Oral Health',
-      severity: 'Low',
-      confidence: '92%',
-      description: 'No significant oral diseases detected. Maintain good oral hygiene.',
-      recommendation: 'Continue regular dental checkups every 6 months.',
-      urgency: 'Low'
-    });
-    
-    confidenceScores.oralDiseases = 92.0;
-  }
-  
-  // Calculate overall health score
-  let healthScore = 100;
-  detectedConditions.forEach(condition => {
-    if (condition.severity === 'High' || condition.urgency === 'Critical') {
-      healthScore -= 40;
-    } else if (condition.severity === 'Moderate-High') {
-      healthScore -= 30;
-    } else if (condition.severity === 'Moderate') {
-      healthScore -= 20;
-    } else if (condition.severity === 'Low-Moderate') {
-      healthScore -= 10;
-    }
-  });
-  healthScore = Math.max(0, healthScore);
-  
-  return {
-    detectedConditions,
-    confidenceScores,
-    healthScore: Math.round(healthScore),
-    hasOralCancer,
-    hasOralDiseases: hasOralDiseases && !hasOralCancer, // Don't count cancer as disease
-    processingTime: Math.round(processingTime),
-    modelVersion: 'CNN-v1.0',
-    timestamp: new Date().toISOString()
-  };
-};
-
-// Check if Python service is available
-const checkPythonService = async () => {
-  const pythonServiceUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:5000';
+// Check if Flask API service is available
+const checkFlaskService = async () => {
   try {
-    const url = new URL(`${pythonServiceUrl}/health`);
+    const url = new URL(`${FLASK_API_URL}/health`);
     const options = {
       hostname: url.hostname,
       port: url.port || 5000,
       path: url.pathname,
       method: 'GET',
-      timeout: 5000  // Increased timeout
+      timeout: 5000
     };
     
     return new Promise((resolve) => {
@@ -232,30 +101,30 @@ const checkPythonService = async () => {
         res.on('data', (chunk) => { data += chunk; });
         res.on('end', () => {
           try {
+            console.log('🔍 Flask API health check response:', data);
             const json = JSON.parse(data);
-            const isAvailable = json.model_loaded === true;
+            const isAvailable = json.model_exists === true;
             if (isAvailable) {
-              console.log('✅ Python service is available and model is loaded');
+              console.log('✅ Flask API service is available and model is loaded');
             } else {
-              console.log('⚠️  Python service is available but model is not loaded');
-              console.log(`   Model path: ${json.model_path || 'Not specified'}`);
+              console.log('⚠️  Flask API service is available but model is not loaded');
             }
             resolve(isAvailable);
           } catch (error) {
-            console.log(`⚠️  Failed to parse Python service health check: ${error.message}`);
+            console.log(`⚠️  Failed to parse Flask API health check: ${error.message}`);
             resolve(false);
           }
         });
       });
       
       req.on('error', (error) => {
-        console.log(`❌ Python service connection error: ${error.message}`);
-        console.log(`   Make sure Python service is running on ${pythonServiceUrl}`);
+        console.log(`❌ Flask API service connection error: ${error.message}`);
+        console.log(`   Make sure Flask API is running on ${FLASK_API_URL}`);
         resolve(false);
       });
       
       req.on('timeout', () => {
-        console.log(`⏱️  Python service health check timeout`);
+        console.log(`⏱️  Flask API service health check timeout`);
         req.destroy();
         resolve(false);
       });
@@ -263,17 +132,15 @@ const checkPythonService = async () => {
       req.end();
     });
   } catch (error) {
-    console.log(`❌ Error checking Python service: ${error.message}`);
+    console.log(`❌ Error checking Flask API service: ${error.message}`);
     return false;
   }
 };
 
-// Call Python service for model prediction
-const callPythonService = async (imagePath) => {
-  const pythonServiceUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:5000';
-  
+// Call Flask API for model prediction
+const callFlaskAPI = async (imagePath) => {
   try {
-    console.log(`📤 Sending image to Python service: ${pythonServiceUrl}/predict`);
+    console.log(`📤 Sending image to Flask API: ${FLASK_API_URL}/predict`);
     console.log(`   Image path: ${imagePath}`);
     
     // Check if image file exists
@@ -283,16 +150,16 @@ const callPythonService = async (imagePath) => {
     
     // Create form data with image file
     const formData = new FormData();
-    formData.append('image', fs.createReadStream(imagePath));
+    formData.append('file', fs.createReadStream(imagePath));
     
-    const url = new URL(`${pythonServiceUrl}/predict`);
+    const url = new URL(`${FLASK_API_URL}/predict`);
     const options = {
       hostname: url.hostname,
       port: url.port || 5000,
       path: url.pathname,
       method: 'POST',
       headers: formData.getHeaders(),
-      timeout: 60000  // Increased timeout for model inference
+      timeout: 60000  // 60 seconds timeout for model inference
     };
     
     return new Promise((resolve, reject) => {
@@ -302,40 +169,101 @@ const callPythonService = async (imagePath) => {
         res.on('end', () => {
           try {
             if (res.statusCode !== 200) {
-              console.error(`❌ Python service returned status ${res.statusCode}`);
+              console.error(`❌ Flask API returned status ${res.statusCode}`);
               console.error(`   Response: ${data.substring(0, 200)}`);
-              reject(new Error(`Python service error: ${res.statusCode} - ${data.substring(0, 100)}`));
+              reject(new Error(`Flask API error: ${res.statusCode} - ${data.substring(0, 100)}`));
               return;
             }
             
             const result = JSON.parse(data);
             
-            console.log('📥 Python service response received');
-            console.log(`   Success: ${result.success}`);
-            console.log(`   Has analysis: ${!!result.analysis}`);
+            console.log('📥 Flask API response received');
+            console.log(`   Full response:`, JSON.stringify(result, null, 2));
             
-            if (result.success && result.analysis) {
-              const analysis = result.analysis;
-              console.log('✅ Received valid response from Python service');
-              console.log(`   Analysis keys: ${Object.keys(analysis).join(', ')}`);
-              
-              // Verify detectedConditions exists
-              if (analysis.detectedConditions && analysis.detectedConditions.length > 0) {
-                const topCondition = analysis.detectedConditions[0];
-                console.log(`   ✅ Detected class from model: ${topCondition.modelClassName || 'Missing!'}`);
-                console.log(`   ✅ Disease name: ${topCondition.name || 'Missing!'}`);
-              } else {
-                console.log(`   ⚠️  WARNING: No detectedConditions in analysis!`);
-                console.log(`   Analysis keys: ${Object.keys(analysis).join(', ')}`);
-              }
-              
-              resolve(analysis);
-            } else {
-              console.error(`❌ Invalid response from Python service:`, result);
-              reject(new Error(result.error || 'Invalid response from Python service'));
+            // Extract prediction - handle different possible response formats
+            let predictedClass = result.prediction || result.predicted_class || null;
+            let diseaseName = result.disease_name || null;
+            let confidence = result.confidence || 0;
+            let allProbabilities = result.all_probabilities || {};
+            
+            // If prediction is missing, try to get from other fields
+            if (!predictedClass && result.predicted_class) {
+              predictedClass = result.predicted_class;
             }
+            
+            // Validate predicted class is one of the 5 trained classes
+            const validClasses = ['calculus', 'cancers', 'gingivitis', 'ulcers', 'olp'];
+            if (predictedClass && !validClasses.includes(predictedClass)) {
+              console.warn(`⚠️  Predicted class '${predictedClass}' is not in valid classes: ${validClasses}`);
+              // Try to normalize the class name
+              predictedClass = predictedClass.toLowerCase();
+              if (!validClasses.includes(predictedClass)) {
+                console.error(`❌ Invalid predicted class: ${predictedClass}`);
+                predictedClass = null;
+              }
+            }
+            
+            if (!predictedClass) {
+              throw new Error('Flask API did not return a valid predicted class');
+            }
+            
+            console.log(`   ✅ Extracted Prediction: ${predictedClass}`);
+            console.log(`   ✅ Disease Name: ${diseaseName}`);
+            console.log(`   ✅ Confidence: ${confidence}%`);
+            
+            // Get disease name if not provided
+            if (!diseaseName) {
+              diseaseName = getDiseaseName(predictedClass);
+            }
+            
+            // Map to expected format for mobile app
+            const detectedConditions = [{
+              type: predictedClass === 'cancers' ? 'oral_cancer' : 'oral_disease',
+              name: diseaseName,
+              modelClassName: predictedClass,
+              severity: predictedClass === 'cancers' ? 'High' : getSeverityFromConfidence(confidence),
+              description: `${diseaseName} detected by AI model with ${confidence}% confidence.`,
+              recommendation: getRecommendation(predictedClass),
+              urgency: predictedClass === 'cancers' ? 'Critical' : 'Moderate',
+              confidence: `${confidence}%`
+            }];
+            
+            // Add other conditions with lower probabilities if significant
+            Object.entries(allProbabilities).forEach(([className, prob]) => {
+              if (className !== predictedClass && prob > 10) { // Show if > 10% confidence
+                detectedConditions.push({
+                  type: className === 'cancers' ? 'oral_cancer' : 'oral_disease',
+                  name: getDiseaseName(className),
+                  modelClassName: className,
+                  severity: 'Low',
+                  description: `${getDiseaseName(className)} - ${prob}% confidence.`,
+                  recommendation: 'Consult a dental professional for evaluation.',
+                  urgency: 'Low',
+                  confidence: `${prob}%`
+                });
+              }
+            });
+            
+            const analysis = {
+              detectedConditions: detectedConditions,
+              confidenceScores: {
+                [predictedClass]: confidence
+              },
+              healthScore: calculateHealthScore(predictedClass, confidence),
+              hasOralCancer: predictedClass === 'cancers',
+              hasOralDiseases: predictedClass !== 'cancers',
+              modelVersion: 'EfficientNet-B3-Flask',
+              timestamp: new Date().toISOString()
+            };
+            
+            console.log('✅ Converted Flask API response to analysis format');
+            console.log(`   ✅ Detected class from model: ${predictedClass}`);
+            console.log(`   ✅ Disease name: ${diseaseName}`);
+            console.log(`   ✅ Confidence: ${confidence}%`);
+            
+            resolve(analysis);
           } catch (error) {
-            console.error(`❌ Failed to parse Python service response: ${error.message}`);
+            console.error(`❌ Failed to parse Flask API response: ${error.message}`);
             console.error(`   Response data: ${data.substring(0, 500)}`);
             reject(new Error(`Failed to parse response: ${error.message}`));
           }
@@ -356,40 +284,98 @@ const callPythonService = async (imagePath) => {
       formData.pipe(req);
     });
   } catch (error) {
-    console.error('❌ Error calling Python service:', error.message);
+    console.error('❌ Error calling Flask API:', error.message);
     throw error;
   }
 };
 
+// Helper functions
+function getDiseaseName(className) {
+  const diseaseNames = {
+    'calculus': 'Dental Calculus (Tartar)',
+    'cancers': 'Oral Cancer',
+    'gingivitis': 'Gingivitis',
+    'ulcers': 'Oral Ulcers',
+    'olp': 'Oral Lichen Planus (OLP)'
+  };
+  return diseaseNames[className] || className;
+}
+
+function getSeverityFromConfidence(confidence) {
+  if (confidence >= 80) return 'High';
+  if (confidence >= 60) return 'Moderate';
+  return 'Low';
+}
+
+function getRecommendation(className) {
+  const recommendations = {
+    'calculus': 'Professional dental cleaning recommended. Maintain good oral hygiene.',
+    'cancers': 'URGENT: Please consult an oral oncologist immediately for further evaluation and biopsy.',
+    'gingivitis': 'Professional dental cleaning and improved oral hygiene routine recommended.',
+    'ulcers': 'Consult a dental professional for proper diagnosis and treatment.',
+    'olp': 'Consult an oral medicine specialist for proper diagnosis and treatment.'
+  };
+  return recommendations[className] || 'Consult a dental professional for proper diagnosis and treatment.';
+}
+
+function calculateHealthScore(className, confidence) {
+  if (className === 'cancers') return 40;
+  if (className === 'gingivitis') return 75;
+  if (className === 'ulcers') return 70;
+  if (className === 'olp') return 65;
+  if (className === 'calculus') return 80;
+  return 85;
+}
+
 // Process teeth scan image with AI/CNN model
 export const processTeethScan = async (req, res) => {
+  console.log("🚀 AI Scan endpoint hit!");
+  console.log("   Method:", req.method);
+  console.log("   Path:", req.path);
+  console.log("   Has file:", !!req.file);
+  console.log("   File details:", req.file ? {
+    fieldname: req.file.fieldname,
+    originalname: req.file.originalname,
+    mimetype: req.file.mimetype,
+    size: req.file.size,
+    path: req.file.path
+  } : "No file");
+  
   try {
-    // Verify authentication
+    // Verify authentication (optional when ALLOW_DB_FAILURE is true)
     const user = getUserFromToken(req);
-    if (!user || user.role !== "patient") {
+    const allowWithoutAuth = process.env.ALLOW_DB_FAILURE === 'true';
+    
+    console.log("   User:", user ? user.id : "anonymous");
+    console.log("   Allow without auth:", allowWithoutAuth);
+    
+    if (!allowWithoutAuth && (!user || user.role !== "patient")) {
+      console.log("   ❌ Authentication failed");
       return res.status(401).json({ message: "Unauthorized. Patient authentication required." });
     }
     
     if (!req.file) {
+      console.log("   ❌ No file provided");
       return res.status(400).json({ message: "No image file provided" });
     }
     
     const imagePath = req.file.path;
+    const userId = user?.id || 'anonymous';
     
-    console.log(`🔬 Processing teeth scan image: ${imagePath} for patient: ${user.id}`);
+    console.log(`🔬 Processing teeth scan image: ${imagePath} for user: ${userId}`);
     
     let analysisResults;
     let usingRealModel = false;
     
-    // Try to use Python service with real model
+    // Try to use Flask API with real model
     try {
-      console.log('🔍 Checking Python service availability...');
-      const pythonServiceAvailable = await checkPythonService();
+      console.log('🔍 Checking Flask API service availability...');
+      const flaskServiceAvailable = await checkFlaskService();
       
-      if (pythonServiceAvailable) {
-        console.log('✅ Python service available! Calling trained CNN model...');
+      if (flaskServiceAvailable) {
+        console.log('✅ Flask API service available! Calling trained model...');
         try {
-          analysisResults = await callPythonService(imagePath);
+          analysisResults = await callFlaskAPI(imagePath);
           usingRealModel = true;
           
           console.log('\n✅ Successfully processed image with trained model');
@@ -412,39 +398,31 @@ export const processTeethScan = async (req, res) => {
             } else {
               console.log(`   ⚠️  Warning: '${detectedClass}' is not in expected classes: ${validClasses}`);
             }
-          } else {
-            console.log('   ⚠️  WARNING: No detected conditions in model output!');
-            console.log('   This should not happen. Model should always detect a class.');
           }
         } catch (callError) {
-          console.error('❌ Error calling Python service:', callError.message);
+          console.error('❌ Error calling Flask API:', callError.message);
           console.error('   Stack:', callError.stack);
           console.log('⚠️  Falling back to simulation mode');
-          // Simulate processing delay
+          // Fall back to simulation
           await new Promise(resolve => setTimeout(resolve, 1500));
-          analysisResults = simulateCNNProcessing(imagePath);
+          analysisResults = getMockAnalysis();
         }
       } else {
         // Fall back to simulation
-        console.log('⚠️  Python service not available, using simulation mode');
+        console.log('⚠️  Flask API service not available, using simulation mode');
         console.log('   To use real trained model:');
-        console.log('   1. Make sure model file exists: backend/models/oral_cancer_model/best_model_masked.pth');
-        console.log('   2. Install Python dependencies: pip install -r backend/python-service/requirements.txt');
-        console.log('   3. Start Python service: cd backend && START_PYTHON_SERVICE.bat');
-        console.log('   4. Or manually: cd backend/python-service && python app.py');
+        console.log('   1. Make sure Flask API is running: cd backend/models && python flask_api.py');
+        console.log('   2. Flask API should run on: http://localhost:5000');
+        console.log('   3. Set FLASK_API_URL in .env if using different port');
         
-        // Simulate processing delay
         await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Get simulated CNN model results
-        analysisResults = simulateCNNProcessing(imagePath);
+        analysisResults = getMockAnalysis();
       }
     } catch (error) {
-      // If Python service fails, fall back to simulation
-      console.error('❌ Python service error, falling back to simulation:', error.message);
-      console.error('   Stack:', error.stack);
+      // If Flask API fails, fall back to simulation
+      console.error('❌ Flask API error, falling back to simulation:', error.message);
       await new Promise(resolve => setTimeout(resolve, 1500));
-      analysisResults = simulateCNNProcessing(imagePath);
+      analysisResults = getMockAnalysis();
     }
     
     // Add timestamp if not present
@@ -452,56 +430,25 @@ export const processTeethScan = async (req, res) => {
       analysisResults.timestamp = new Date().toISOString();
     }
     
-    // Clean up uploaded file after processing (optional - you might want to keep it)
-    // fs.unlinkSync(imagePath);
-    
-    console.log(`\n✅ AI Scan completed for patient ${user.id}`);
+    console.log(`\n✅ AI Scan completed for user ${userId}`);
     console.log('📊 Final Results Summary:');
     console.log(`   - Using Real Model: ${usingRealModel ? 'YES ✅' : 'NO ⚠️ (Simulation)'}`);
     console.log(`   - Has Oral Cancer: ${analysisResults.hasOralCancer || false}`);
     console.log(`   - Has Oral Diseases: ${analysisResults.hasOralDiseases || false}`);
     console.log(`   - Health Score: ${analysisResults.healthScore || 'N/A'}`);
     console.log(`   - Detected Conditions: ${analysisResults.detectedConditions?.length || 0}`);
-    console.log(`   - Model Version: ${analysisResults.modelVersion || 'Unknown'}`);
     
     if (analysisResults.detectedConditions && analysisResults.detectedConditions.length > 0) {
       const topCondition = analysisResults.detectedConditions[0];
       console.log(`\n🎯 Model Detection Result:`);
       console.log(`   - Detected Class: ${topCondition.modelClassName || 'Unknown'}`);
       console.log(`   - Disease Name: ${topCondition.name || 'Unknown'}`);
-      console.log(`   - This will be sent to mobile app`);
-    } else {
-      console.log(`\n⚠️  WARNING: No detected conditions in results!`);
-      console.log(`   Results keys: ${Object.keys(analysisResults).join(', ')}`);
-    }
-    
-    if (usingRealModel) {
-      console.log(`\n🎯 Using trained CNN model: ${analysisResults.modelVersion || 'EfficientNet-B3'}`);
-      console.log(`   Model output is being used (not simulation)`);
-    } else {
-      console.log(`\n⚠️  Using simulation mode - real model not available`);
-      console.log(`   To use real model:`);
-      console.log(`   1. Make sure model file exists: backend/models/oral_cancer_model/best_model_masked.pth`);
-      console.log(`   2. Start Python service: cd backend && START_PYTHON_SERVICE.bat`);
-    }
-    
-    // Verify analysisResults contains detectedConditions before sending
-    if (!analysisResults.detectedConditions || analysisResults.detectedConditions.length === 0) {
-      console.log('⚠️  WARNING: analysisResults missing detectedConditions!');
-      console.log('   Analysis results keys:', Object.keys(analysisResults));
-      console.log('   This should not happen. Check Python service response.');
-    } else {
-      const topCondition = analysisResults.detectedConditions[0];
-      console.log(`\n📤 Sending response to mobile app:`);
-      console.log(`   ✅ Detected Class: ${topCondition.modelClassName || 'Missing!'}`);
-      console.log(`   ✅ Disease Name: ${topCondition.name || 'Missing!'}`);
-      console.log(`   ✅ Total Conditions: ${analysisResults.detectedConditions.length}`);
     }
     
     const response = {
       success: true,
       message: "Image processed successfully",
-      analysis: analysisResults,  // Contains detectedConditions with modelClassName
+      analysis: analysisResults,
       imageUrl: `/uploads/teeth-scans/${req.file.filename}`,
       usingRealModel: usingRealModel
     };
@@ -510,23 +457,56 @@ export const processTeethScan = async (req, res) => {
     if (analysisResults.detectedConditions && analysisResults.detectedConditions.length > 0) {
       response.detectedClass = analysisResults.detectedConditions[0].modelClassName;
       response.diseaseName = analysisResults.detectedConditions[0].name;
-      console.log(`   ✅ Added to response: detectedClass=${response.detectedClass}, diseaseName=${response.diseaseName}`);
     }
     
     res.status(200).json(response);
     
   } catch (error) {
     console.error("❌ Error processing teeth scan:", error);
+    console.error("   Error stack:", error.stack);
     
     // Clean up file if error occurred
     if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (unlinkError) {
+        console.error("   Failed to delete file:", unlinkError.message);
+      }
     }
     
-    res.status(500).json({ 
+    // Provide detailed error in development
+    const errorResponse = {
       message: "Failed to process image. Please try again.",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined
-    });
+    };
+    
+    if (process.env.NODE_ENV === "development" || process.env.ALLOW_DB_FAILURE === 'true') {
+      errorResponse.error = error.message;
+      errorResponse.details = "Check backend console logs for more information";
+    }
+    
+    res.status(500).json(errorResponse);
   }
 };
+
+// Mock analysis for fallback (when Flask API is not available)
+function getMockAnalysis() {
+  return {
+    detectedConditions: [{
+      type: 'oral_disease',
+      name: 'Dental Analysis',
+      modelClassName: 'unknown',
+      severity: 'Moderate',
+      description: 'AI analysis feature is currently being set up. Please consult a dental professional for accurate diagnosis.',
+      recommendation: 'This is a frontend-only demonstration. Backend AI processing will be available soon.',
+      urgency: 'Moderate',
+      confidence: '0%'
+    }],
+    confidenceScores: {},
+    healthScore: 80,
+    hasOralCancer: false,
+    hasOralDiseases: true,
+    modelVersion: 'Simulation-Mode',
+    timestamp: new Date().toISOString()
+  };
+}
 

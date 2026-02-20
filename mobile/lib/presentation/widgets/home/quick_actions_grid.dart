@@ -204,6 +204,16 @@ class QuickActionsGrid extends StatelessWidget {
     await Helpers.navigateIfAuthenticated(context, RouteNames.findDentists);
   }
 
+  Future<void> _handleNearbyHospitals(BuildContext context) async {
+    // Check authentication before navigating
+    await Helpers.navigateIfAuthenticated(context, RouteNames.nearbyHospitals);
+  }
+
+  Future<void> _handleNearbyDoctors(BuildContext context) async {
+    // Check authentication before navigating
+    await Helpers.navigateIfAuthenticated(context, RouteNames.nearbyDoctors);
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<Map<String, dynamic>> quickActions = [
@@ -220,10 +230,16 @@ class QuickActionsGrid extends StatelessWidget {
         'subtitle': 'Schedule visit',
       },
       {
-        'icon': Icons.emergency,
-        'title': 'Emergency Help',
+        'icon': Icons.map,
+        'title': 'Nearby Hospitals',
         'color': Colors.red,
-        'subtitle': 'Urgent care',
+        'subtitle': 'Find hospitals',
+      },
+      {
+        'icon': Icons.location_on,
+        'title': 'Nearby Doctors',
+        'color': Colors.teal,
+        'subtitle': 'Find doctors',
       },
       {
         'icon': Icons.medical_services,
@@ -236,12 +252,6 @@ class QuickActionsGrid extends StatelessWidget {
         'title': 'My Bills',
         'color': Colors.purple,
         'subtitle': 'Payment history',
-      },
-      {
-        'icon': Icons.local_hospital,
-        'title': 'Find Dentists',
-        'color': Colors.teal,
-        'subtitle': 'Nearby clinics',
       },
     ];
 
@@ -281,16 +291,16 @@ class QuickActionsGrid extends StatelessWidget {
                   handler = _handleBookAppointment;
                   break;
                 case 2:
-                  handler = _handleEmergencyHelp;
+                  handler = _handleNearbyHospitals;
                   break;
                 case 3:
-                  handler = _handleMyTreatments;
+                  handler = _handleNearbyDoctors;
                   break;
                 case 4:
-                  handler = _handleMyBills;
+                  handler = _handleMyTreatments;
                   break;
                 case 5:
-                  handler = _handleFindDentists;
+                  handler = _handleMyBills;
                   break;
                 default:
                   handler = _handleAITeethScan;

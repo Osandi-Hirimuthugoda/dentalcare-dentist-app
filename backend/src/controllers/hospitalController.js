@@ -402,4 +402,91 @@ export const getDistrictsWithCounts = async (req, res) => {
   }
 };
 
+// Get Nearby Hospitals (Location-based search)
+export const getNearbyHospitals = async (req, res) => {
+  try {
+    const { latitude, longitude, maxDistance = 10000 } = req.query; // maxDistance in meters (default 10km)
+    
+    if (!latitude || !longitude) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide latitude and longitude",
+      });
+    }
+    
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+    
+    if (isNaN(lat) || isNaN(lng)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid latitude or longitude",
+      });
+    }
+    
+    const hospitals = await Hospital.find({
+      isActive: true,
+      location: {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [lng, lat] // [longitude, latitude]
+          },
+          $maxDistance: parseInt(maxDistance)
+        }
+      }
+    })
+    .select("-updatedBy -__v")
+    .limit(20);
+    
+    // Calculate distance for each hospital
+    const hospitalsWithDistance = hospitals.map(hospital => {
+      const distance = calculateDistance(
+        lat, lng,
+        hospital.location.coordinates[1], hospital.location.coordinates[0]
+      );
+      
+      return {
+        ...hospital.toObject(),
+        distance: Math.round(distance * 100) / 100, // Round to 2 decimal places
+        distanceUnit: "km"
+      };
+    });
+    
+    res.status(200).json({
+      success: true,
+      count: hospitalsWithDistance.length,
+      userLocation: { latitude: lat, longitude: lng },
+      hospitals: hospitalsWithDistance,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching nearby hospitals:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching nearby hospitals",
+      error: error.message,
+    });
+  }
+};
+
+// Helper function to calculate distance between two coordinates (Haversine formula)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Radius of Earth in kilometers
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+  
+  return distance;
+}
+
+function toRad(degrees) {
+  return degrees * (Math.PI / 180);
+}
 

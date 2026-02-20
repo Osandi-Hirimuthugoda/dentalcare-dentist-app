@@ -1,29 +1,43 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import Home from "./pages/Home";
-import DoctorLogin from "./pages/DoctorLogin";
-import DoctorRegister from "./pages/DoctorRegister";
-import DoctorDashboard from "./pages/DoctorDashboard";
-import Patients from "./pages/Patients";
-import DoctorMessages from "./pages/DoctorMessages";
-import DoctorAppointments from "./pages/DoctorAppointments";
-import DoctorReports from "./pages/DoctorReports";
-import DoctorProfile from "./pages/DoctorProfile";
-import DoctorSettings from "./pages/DoctorSettings";
-import DoctorAvailability from "./pages/DoctorAvailability";
-import DoctorServices from "./pages/DoctorServices";
-import DoctorReviews from "./pages/DoctorReviews";
-import AdminLogin from "./pages/AdminLogin";
-import AdminDashboard from "./pages/AdminDashboard";
-import AdminRegisterDoctor from "./pages/AdminRegisterDoctor";
-import AdminDoctors from "./pages/AdminDoctors";
-import AdminAppointments from "./pages/AdminAppointments";
-import AdminActivity from "./pages/AdminActivity";
-import AdminPatients from "./pages/AdminPatients";
-import AdminHospitals from "./pages/AdminHospitals";
-import Health from "./pages/Health";
-import MyBills from "./pages/MyBills";
-import NotFound from "./pages/NotFound";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { NotificationProvider } from "./contexts/NotificationContext";
+
+// Public Pages
+import Home from "./pages/public/Home";
+import NotFound from "./pages/public/NotFound";
+
+// Doctor Pages
+import DoctorLogin from "./pages/doctor/DoctorLogin";
+import DoctorRegister from "./pages/doctor/DoctorRegister";
+import DoctorDashboard from "./pages/doctor/DoctorDashboard";
+import DoctorMessages from "./pages/doctor/DoctorMessages";
+import DoctorAppointments from "./pages/doctor/DoctorAppointments";
+import DoctorReports from "./pages/doctor/DoctorReports";
+import DoctorProfile from "./pages/doctor/DoctorProfile";
+import DoctorSettings from "./pages/doctor/DoctorSettings";
+import DoctorAvailability from "./pages/doctor/DoctorAvailability";
+import DoctorServices from "./pages/doctor/DoctorServices";
+import DoctorReviews from "./pages/doctor/DoctorReviews";
+import DoctorScanQA from "./pages/doctor/DoctorScanQA";
+
+// Admin Pages
+import AdminLogin from "./pages/admin/AdminLogin";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminRegisterDoctor from "./pages/admin/AdminRegisterDoctor";
+import AdminDoctors from "./pages/admin/AdminDoctors";
+import AdminAppointments from "./pages/admin/AdminAppointments";
+import AdminActivity from "./pages/admin/AdminActivity";
+import AdminPatients from "./pages/admin/AdminPatients";
+import AdminHospitals from "./pages/admin/AdminHospitals";
+
+// Patient Pages
+import Patients from "./pages/patient/Patients";
+import NearbyHospitals from "./pages/patient/NearbyHospitals";
+import NearbyDoctors from "./pages/patient/NearbyDoctors";
+import Health from "./pages/patient/Health";
+import MyBills from "./pages/patient/MyBills";
 
 // Protected Route Component for Admin
 const AdminProtectedRoute = ({ children }) => {
@@ -39,12 +53,27 @@ const DoctorProtectedRoute = ({ children }) => {
 
 const App = () => {
   return (
-    <Router>
-      <Routes>
+    <NotificationProvider>
+      <Router>
+        <ToastContainer
+          position="top-right"
+          autoClose={5000}
+          hideProgressBar={false}
+          newestOnTop={true}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+        />
+        <Routes>
         {/* Public routes */}
         <Route path="/" element={<Home />} />
         <Route path="/health" element={<Health />} />
         <Route path="/my-bills" element={<MyBills />} />
+        <Route path="/nearby-hospitals" element={<NearbyHospitals />} />
+        <Route path="/nearby-doctors" element={<NearbyDoctors />} />
         <Route path="/doctor-login" element={<DoctorLogin />} />
         <Route path="/doctor-register" element={<DoctorRegister />} />
         <Route path="/admin-login" element={<AdminLogin />} />
@@ -111,6 +140,14 @@ const App = () => {
           element={
             <DoctorProtectedRoute>
               <DoctorAvailability />
+            </DoctorProtectedRoute>
+          }
+        />
+        <Route
+          path="/doctor/scan-qa"
+          element={
+            <DoctorProtectedRoute>
+              <DoctorScanQA />
             </DoctorProtectedRoute>
           }
         />
@@ -192,7 +229,8 @@ const App = () => {
         {/* 404 Fallback */}
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </Router>
+      </Router>
+    </NotificationProvider>
   );
 };
 

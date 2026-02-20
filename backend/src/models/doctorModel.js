@@ -15,9 +15,25 @@ const doctorSchema = mongoose.Schema(
     services: [{ type: String }], // Services/categories doctor offers
     averageRating: { type: Number, default: 0 }, // Calculated from reviews
     totalReviews: { type: Number, default: 0 }, // Total number of reviews
+    location: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point'
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        default: [79.8612, 6.9271] // Default to Colombo
+      }
+    },
+    address: { type: String },
+    city: { type: String },
   },
   { timestamps: true }
 );
+
+// Geospatial index for location queries
+doctorSchema.index({ location: "2dsphere" });
 
 // Hash password before saving
 doctorSchema.pre("save", async function (next) {

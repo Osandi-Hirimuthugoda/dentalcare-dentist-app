@@ -1,6 +1,8 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
+import { createServer } from "http";
+import { Server } from "socket.io";
 import connectDB from "./src/config/db.js";
 import authRoutes from "./src/routes/authRoutes.js";
 import doctorRoutes from "./src/routes/doctorRoutes.js";
@@ -16,7 +18,8 @@ import notificationRoutes from "./src/routes/notificationRoutes.js";
 import hospitalRoutes from "./src/routes/hospitalRoutes.js";
 import healthRoutes from "./src/routes/healthRoutes.js";
 import walletRoutes from "./src/routes/walletRoutes.js";
-
+import aiScanRoutes from "./src/routes/aiScanRoutes.js";
+import scanQARoutes from "./src/routes/scanQARoutes.js";
 // Load environment variables
 dotenv.config();
 
@@ -25,6 +28,39 @@ connectDB();
 
 // Create Express app
 const app = express();
+
+// Create HTTP server
+const httpServer = createServer(app);
+
+// Initialize Socket.io
+const io = new Server(httpServer, {
+  cors: {
+    origin: ["http://localhost:3000", "http://10.0.2.2:3000"],
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
+
+// Socket.io connection handling
+io.on('connection', (socket) => {
+  console.log('✅ New client connected:', socket.id);
+  
+  // Join room based on user type and ID
+  socket.on('join', (data) => {
+    const { userId, userType } = data;
+    const room = `${userType}_${userId}`;
+    socket.join(room);
+    console.log(`👤 ${userType} ${userId} joined room: ${room}`);
+  });
+
+  // Handle disconnection
+  socket.on('disconnect', () => {
+    console.log('❌ Client disconnected:', socket.id);
+  });
+});
+
+// Make io available globally for notifications
+global.io = io;
 
 // Middleware
 app.use(cors()); 
@@ -81,6 +117,12 @@ app.use("/api/health", healthRoutes);
 // Wallet routes (for wallet balance, top-up, and payments)
 app.use("/api/wallet", walletRoutes);
 
+// AI Scan routes (for teeth scan image analysis)
+app.use("/api/ai-scan", aiScanRoutes);
+
+// Scan Q&A routes (for dentist-patient Q&A after scan processing)
+app.use("/api/scan-qa", scanQARoutes);
+
 // Health check (keep existing endpoint for server health)
 app.get("/api/health-check", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
@@ -88,11 +130,23 @@ app.get("/api/health-check", (req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error("Error:", err);
-  res.status(500).json({
+  console.error("❌ Unhandled error:", err);
+  console.error("   Error stack:", err.stack);
+  console.error("   Request path:", req.path);
+  console.error("   Request method:", req.method);
+  
+  const errorResponse = {
     message: "Internal server error",
-    error: process.env.NODE_ENV === "development" ? err.message : undefined
-  });
+  };
+  
+  // Include error details in development or when ALLOW_DB_FAILURE is set
+  if (process.env.NODE_ENV === "development" || process.env.ALLOW_DB_FAILURE === 'true') {
+    errorResponse.error = err.message;
+    errorResponse.stack = err.stack;
+    errorResponse.details = "Check backend console logs for more information";
+  }
+  
+  res.status(500).json(errorResponse);
 });
 
 // 404 handler
@@ -105,15 +159,16 @@ let PORT = parseInt(process.env.PORT) || 4000;
 
 function startServer(port) {
   // Listen on 0.0.0.0 to allow connections from emulator (10.0.2.2) and network
-  const server = app.listen(port, '0.0.0.0', () => {
-    console.log(`Server running on port ${port}`);
-    console.log(`API URL: http://localhost:${port}/api`);
-    console.log(`Android Emulator URL: http://10.0.2.2:${port}/api`);
-    console.log(`Health check: http://localhost:${port}/api/health`);
-    console.log(`Server is accessible from Android emulator`);
+  httpServer.listen(port, '0.0.0.0', () => {
+    console.log(`🚀 Server running on port ${port}`);
+    console.log(`📡 API URL: http://localhost:${port}/api`);
+    console.log(`📱 Android Emulator URL: http://10.0.2.2:${port}/api`);
+    console.log(`🔔 Socket.io enabled for real-time notifications`);
+    console.log(`💚 Health check: http://localhost:${port}/api/health`);
+    console.log(`✅ Server is accessible from Android emulator`);
   });
 
-  server.on("error", (err) => {
+  httpServer.on("error", (err) => {
     if (err.code === "EADDRINUSE") {
       console.log(`❗ Port ${port} already in use. Trying another port...`);
       startServer(port + 1); // Try next port

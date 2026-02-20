@@ -16,7 +16,6 @@ abstract class DentalRemoteDataSource {
   Future<List<dynamic>> getTreatments();
   Future<List<dynamic>> getServices(); // Get available services
   Future<Map<String, dynamic>> getDoctorAvailability(String doctorId); // Get doctor availability
-  Future<dynamic> uploadTeethScan(String imagePath);
   Future<List<dynamic>> getBills(); // Get all bills for patient
   Future<dynamic> processPayment(String billId, String paymentMethod, Map<String, dynamic>? cardDetails); // Process payment
   Future<dynamic> createBillFromAppointment(String appointmentId); // Create bill from appointment
@@ -41,6 +40,11 @@ abstract class DentalRemoteDataSource {
   Future<Map<String, dynamic>> payAppointmentWithWallet(String appointmentId, double amount); // Pay appointment using wallet
   Future<List<dynamic>> getWalletTransactions(); // Get wallet transaction history
   Future<List<dynamic>> getRecentActivities(); // Get recent activities for health screen
+  Future<Map<String, dynamic>> uploadTeethScan(String imagePath); // Upload and analyze teeth scan image
+  Future<Map<String, dynamic>> createScanQA(String imageUrl, Map<String, dynamic> analysisResults); // Create scan Q&A session
+  Future<Map<String, dynamic>> getScanQAForPatient(String scanId); // Get scan Q&A for patient
+  Future<Map<String, dynamic>> addAnswerToQuestion(String scanId, String questionId, String answer); // Add answer to question
+  Future<Map<String, dynamic>> markResultsShown(String scanId); // Mark results as shown
 }
 
 class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
@@ -244,82 +248,6 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
       rethrow;
     } catch (e) {
       if (e is ServerException || e is InvalidCredentialsException) {
-        rethrow;
-      }
-      throw NetworkException('Network error occurred: ${e.toString()}');
-    }
-  }
-
-  @override
-  Future<dynamic> uploadTeethScan(String imagePath) async {
-    try {
-      final headers = await _getHeaders();
-      // Remove Content-Type from headers as multipart will set it
-      headers.remove('Content-Type');
-      
-      final file = File(imagePath);
-      if (!await file.exists()) {
-        throw ServerException('Image file not found', 404);
-      }
-      
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('${AppConstants.baseUrl}/ai-scan/teeth-scan'),
-      );
-      
-      // Add headers (except Content-Type)
-      request.headers.addAll(headers);
-      
-      // Add image file
-      final fileStream = file.openRead();
-      final fileLength = await file.length();
-      final multipartFile = http.MultipartFile(
-        'image',
-        fileStream,
-        fileLength,
-        filename: imagePath.split('/').last,
-        contentType: MediaType('image', 'jpeg'), // Adjust based on actual image type
-      );
-      
-      request.files.add(multipartFile);
-      
-      debugPrint('📤 Uploading teeth scan image: $imagePath');
-      
-      final streamedResponse = await client.send(request).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          throw NetworkException('Upload timeout. Please check your connection.');
-        },
-      );
-      
-      final response = await http.Response.fromStream(streamedResponse);
-      
-      debugPrint('📥 Teeth scan response: ${response.statusCode}');
-      
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        debugPrint('✅ Teeth scan processed successfully');
-        return data;
-      } else if (response.statusCode == 401) {
-        throw InvalidCredentialsException();
-      } else {
-        try {
-          final errorData = jsonDecode(response.body);
-          throw ServerException(
-            errorData['message'] ?? 'Failed to process teeth scan',
-            response.statusCode,
-          );
-        } catch (_) {
-          throw ServerException('Failed to process teeth scan', response.statusCode);
-        }
-      }
-    } on ServerException {
-      rethrow;
-    } on InvalidCredentialsException {
-      rethrow;
-    } catch (e) {
-      debugPrint('❌ Error uploading teeth scan: $e');
-      if (e is NetworkException || e is ServerException || e is InvalidCredentialsException) {
         rethrow;
       }
       throw NetworkException('Network error occurred: ${e.toString()}');
@@ -1036,6 +964,188 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
       }
     } catch (e) {
       debugPrint(' Error fetching wallet transactions: $e');
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> uploadTeethScan(String imagePath) async {
+    try {
+      // Try to get token, but don't fail if not available (for testing without login)
+      final token = await localDataSource.getString(AppConstants.tokenKey);
+
+      // Create multipart request
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${AppConstants.baseUrl}/ai-scan/teeth-scan'),
+      );
+
+      // Add authorization header if token is available
+      if (token != null && token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer ${token.trim()}';
+      }
+
+      // Add image file
+      final imageFile = File(imagePath);
+      if (!await imageFile.exists()) {
+        throw ServerException('Image file not found', 400);
+      }
+
+      final fileStream = imageFile.openRead();
+      final fileLength = await imageFile.length();
+      
+      // Determine content type based on file extension
+      String contentType = 'image/jpeg'; // default
+      final extension = imagePath.toLowerCase().split('.').last;
+      if (extension == 'png') {
+        contentType = 'image/png';
+      } else if (extension == 'jpg' || extension == 'jpeg') {
+        contentType = 'image/jpeg';
+      } else if (extension == 'gif') {
+        contentType = 'image/gif';
+      }
+      
+      final multipartFile = http.MultipartFile(
+        'image',
+        fileStream,
+        fileLength,
+        filename: imagePath.split('/').last,
+        contentType: MediaType.parse(contentType),
+      );
+      request.files.add(multipartFile);
+
+      // Send request
+      final streamedResponse = await client.send(request);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data as Map<String, dynamic>;
+      } else {
+        String errorMessage = 'Failed to process teeth scan';
+        try {
+          final errorBody = jsonDecode(response.body);
+          errorMessage = errorBody['message'] ?? errorBody['error'] ?? errorMessage;
+          debugPrint('❌ AI Scan error details: ${errorBody}');
+        } catch (e) {
+          debugPrint('❌ Failed to parse error response: $e');
+          errorMessage = 'Server error (Status ${response.statusCode})';
+        }
+        throw ServerException(errorMessage, response.statusCode);
+      }
+    } catch (e) {
+      debugPrint('Error uploading teeth scan: $e');
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> createScanQA(String imageUrl, Map<String, dynamic> analysisResults) async {
+    try {
+      final headers = await _getHeaders();
+      final body = {
+        'imageUrl': imageUrl,
+        'analysisResults': analysisResults,
+      };
+      
+      final response = await client.post(
+        Uri.parse('${AppConstants.baseUrl}/scan-qa'),
+        body: jsonEncode(body),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        final errorBody = jsonDecode(response.body);
+        final errorMessage = errorBody['message'] ?? 'Failed to create scan Q&A';
+        throw ServerException(errorMessage, response.statusCode);
+      }
+    } catch (e) {
+      print(e);
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getScanQAForPatient(String scanId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.get(
+        Uri.parse('${AppConstants.baseUrl}/scan-qa/$scanId/patient'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        final errorBody = jsonDecode(response.body);
+        final errorMessage = errorBody['message'] ?? 'Failed to get scan Q&A';
+        throw ServerException(errorMessage, response.statusCode);
+      }
+    } catch (e) {
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> addAnswerToQuestion(String scanId, String questionId, String answer) async {
+    try {
+      final headers = await _getHeaders();
+      final body = {
+        'answer': answer,
+      };
+      
+      final response = await client.post(
+        Uri.parse('${AppConstants.baseUrl}/scan-qa/$scanId/question/$questionId/answer'),
+        body: jsonEncode(body),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        final errorBody = jsonDecode(response.body);
+        final errorMessage = errorBody['message'] ?? 'Failed to add answer';
+        throw ServerException(errorMessage, response.statusCode);
+      }
+    } catch (e) {
+      if (e is ServerException) {
+        rethrow;
+      }
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> markResultsShown(String scanId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.post(
+        Uri.parse('${AppConstants.baseUrl}/scan-qa/$scanId/mark-shown'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        final errorBody = jsonDecode(response.body);
+        final errorMessage = errorBody['message'] ?? 'Failed to mark results as shown';
+        throw ServerException(errorMessage, response.statusCode);
+      }
+    } catch (e) {
       if (e is ServerException) {
         rethrow;
       }

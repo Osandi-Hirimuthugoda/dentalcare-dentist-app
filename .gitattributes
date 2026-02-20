@@ -1,0 +1,16 @@
+# Git LFS tracking for large model files
+backend/models/oral_cancer_model/*.pth filter=lfs diff=lfs merge=lfs -text
+backend/models/oral_cancer_model/*.pt filter=lfs diff=lfs merge=lfs -text
+backend/models/oral_cancer_model/*.h5 filter=lfs diff=lfs merge=lfs -text
+backend/models/oral_cancer_model/*.pb filter=lfs diff=lfs merge=lfs -text
+backend/models/oral_cancer_model/*.onnx filter=lfs diff=lfs merge=lfs -text
+backend/models/oral_cancer_model/*.tflite filter=lfs diff=lfs merge=lfs -text
+backend/models/oral_cancer_model/*.savedmodel filter=lfs diff=lfs merge=lfs -text
+
+
+
+
+
+
+
+

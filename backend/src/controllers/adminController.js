@@ -3,6 +3,9 @@ import Doctor from "../models/doctorModel.js";
 import Patient from "../models/Patient.js";
 import Appointment from "../models/Appointment.js";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+
+const JWT_SECRET = process.env.JWT_SECRET || "dentalcare_secret_key_change_in_production";
 
 // Admin Login
 export const adminLogin = async (req, res) => {
@@ -21,12 +24,20 @@ export const adminLogin = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: admin._id, role: "admin", email: admin.email },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
     res.status(200).json({
       message: "Login successful",
       admin: {
         _id: admin._id,
         email: admin.email,
         role: "admin",
+        token: token,
       },
     });
   } catch (err) {

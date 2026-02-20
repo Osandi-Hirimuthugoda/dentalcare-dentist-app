@@ -12,13 +12,15 @@ import 'package:flutter_application_1/presentation/screens/auth/verify_email_pag
 import 'package:flutter_application_1/presentation/screens/dentists/find_dentists_screen.dart';
 import 'package:flutter_application_1/presentation/screens/hospitals/search_hospitals_screen.dart';
 import 'package:flutter_application_1/presentation/screens/hospitals/nearby_hospitals_map_screen.dart';
+import 'package:flutter_application_1/presentation/screens/dentists/nearby_hospitals_screen.dart';
+import 'package:flutter_application_1/presentation/screens/dentists/nearby_doctors_screen.dart';
 import 'package:flutter_application_1/presentation/screens/emergency/emergency_help_screen.dart';
 import 'package:flutter_application_1/presentation/screens/home/home_screen.dart';
 import 'package:flutter_application_1/presentation/screens/home/appointments/appointments_screen.dart';
 import 'package:flutter_application_1/presentation/screens/home/profile/profile_screen.dart';
 import 'package:flutter_application_1/presentation/screens/home/health/health_screen.dart';
 import 'package:flutter_application_1/presentation/screens/ai_teeth_scan/teeth_scan_screen.dart';
-import 'package:flutter_application_1/presentation/screens/notifications_screen.dart';
+import 'package:flutter_application_1/presentation/screens/home/notifications_screen.dart';
 import 'package:flutter_application_1/presentation/screens/onboarding/onboarding_screen.dart';
 import 'package:flutter_application_1/presentation/screens/onboarding/splashscreen.dart';
 import 'package:flutter_application_1/presentation/screens/treatments/my_treatments_screen.dart';
@@ -148,6 +150,12 @@ class _DentalCareAppState extends State<DentalCareApp> {
         ),
         '/nearby-hospitals-map': (context) => const ProtectedRoute(
           child: NearbyHospitalsMapScreen(),
+        ),
+        '/nearby-hospitals': (context) => const ProtectedRoute(
+          child: NearbyHospitalsScreen(),
+        ),
+        '/nearby-doctors': (context) => const ProtectedRoute(
+          child: NearbyDoctorsScreen(),
         ),
         '/emergency-help': (context) => const ProtectedRoute(
           child: EmergencyHelpScreen(),

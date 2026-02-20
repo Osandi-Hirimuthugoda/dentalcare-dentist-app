@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 import Patient from "../models/Patient.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dentalcare_secret_key_change_in_production";
@@ -103,6 +104,15 @@ export const registerPatient = async (req, res) => {
 // Login patient (for mobile app)
 export const loginPatient = async (req, res) => {
   try {
+    // Check if MongoDB is connected
+    if (mongoose.connection.readyState !== 1) {
+      console.error("❌ Login failed: MongoDB not connected (readyState:", mongoose.connection.readyState + ")");
+      return res.status(503).json({ 
+        message: "Database connection unavailable. Please try again later or contact support.",
+        error: "DATABASE_UNAVAILABLE"
+      });
+    }
+
     const { email, password } = req.body;
 
     // Validate required fields
@@ -168,6 +178,15 @@ export const loginPatient = async (req, res) => {
 
   } catch (error) {
     console.error("Login error:", error.message);
+    
+    // Check if error is due to MongoDB connection
+    if (error.name === 'MongoNetworkError' || error.name === 'MongooseError' || mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ 
+        message: "Database connection unavailable. Please try again later.",
+        error: "DATABASE_UNAVAILABLE"
+      });
+    }
+    
     res.status(500).json({ 
       message: "Login failed. Please try again later." 
     });

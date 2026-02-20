@@ -1,7 +1,7 @@
 import Appointment from "../models/Appointment.js";
 import Patient from "../models/Patient.js";
 import Doctor from "../models/doctorModel.js";
-import { createNotification } from "./notificationController.js";
+import { sendNotification } from "./notificationController.js";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dentalcare_secret_key_change_in_production";
@@ -179,12 +179,12 @@ export const getPatientTreatments = async (req, res) => {
     
     res.status(200).json(treatments);
   } catch (err) {
-    console.error("❌ Error fetching patient treatments:", err);
+    console.error("Error fetching patient treatments:", err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// 📋 Get appointments by doctor ID (for web app)
+//  Get appointments by doctor ID (for web app)
 export const getAppointmentsByDoctor = async (req, res) => {
   try {
     const { doctorId } = req.params;
@@ -199,7 +199,7 @@ export const getAppointmentsByDoctor = async (req, res) => {
   }
 };
 
-// 📊 Get recent activities for health screen (for mobile app)
+//  Get recent activities for health screen (for mobile app)
 export const getRecentActivities = async (req, res) => {
   try {
     const user = getUserFromToken(req);
@@ -272,12 +272,12 @@ export const getRecentActivities = async (req, res) => {
     
     res.status(200).json(activities);
   } catch (err) {
-    console.error("❌ Error fetching recent activities:", err);
+    console.error(" Error fetching recent activities:", err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// ➕ Create appointment
+//  Create appointment
 export const createAppointment = async (req, res) => {
   try {
     // Extract patient ID from token if available, otherwise use from body
@@ -366,19 +366,25 @@ export const createAppointment = async (req, res) => {
         notificationMessage = `Your appointment with ${doctorName} is pending confirmation for ${formattedDate} at ${formattedTime}. You will be notified once it's confirmed.`;
       }
       
-      await createNotification({
-        patient: appt.patient._id,
-        doctor: appt.doctor?._id,
-        appointment: appt._id,
-        title: notificationTitle,
-        message: notificationMessage,
-        type: "appointment"
-      });
+      // Send notification to doctor about new appointment
+      await sendNotification(
+        appt.doctor._id,
+        'Doctor',
+        'appointment',
+        notificationTitle,
+        `New appointment with ${appt.patient.name} on ${formattedDate} at ${formattedTime}`,
+        {
+          appointmentId: appt._id,
+          actionUrl: '/doctor/appointments'
+        },
+        appt.patient._id,
+        'Patient'
+      );
       
-      console.log(`✅ Notification created for appointment booking: ${appt._id}`);
+      console.log(` Notification sent to doctor for appointment: ${appt._id}`);
     } catch (notifError) {
       // Don't fail the appointment creation if notification creation fails
-      console.error("❌ Error creating notification:", notifError);
+      console.error(" Error creating notification:", notifError);
     }
     
     res.status(201).json(appt);
@@ -441,20 +447,26 @@ export const updateAppointment = async (req, res) => {
         }
         
         if (notificationTitle) {
-          await createNotification({
-            patient: appt.patient._id,
-            doctor: appt.doctor?._id,
-            appointment: appt._id,
-            title: notificationTitle,
-            message: notificationMessage,
-            type: notificationType
-          });
+          // Send notification to patient about status change
+          await sendNotification(
+            appt.patient._id,
+            'Patient',
+            notificationType,
+            notificationTitle,
+            notificationMessage,
+            {
+              appointmentId: appt._id,
+              actionUrl: '/appointments'
+            },
+            appt.doctor._id,
+            'Doctor'
+          );
           
-          console.log(`✅ Notification created for appointment status change: ${appt._id} - ${req.body.status}`);
+          console.log(` Notification sent for appointment status change: ${appt._id} - ${req.body.status}`);
         }
       } catch (notifError) {
         // Don't fail the appointment update if notification creation fails
-        console.error("❌ Error creating notification:", notifError);
+        console.error(" Error creating notification:", notifError);
       }
     }
     

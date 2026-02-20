@@ -1,0 +1,26 @@
+# Model weights - too large for git
+backend/models/model_weights.pth
+backend/models/*.pth
+
+# Node modules
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Environment files
+.env
+*.env.local
+
+# Build outputs
+build/
+dist/
+*.pyc
+__pycache__/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,133 +1,156 @@
-import Notification from "../models/Notification.js";
-import Patient from "../models/Patient.js";
-import jwt from "jsonwebtoken";
+import Notification from '../models/Notification.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || "dentalcare_secret_key_change_in_production";
-
-// Helper function to extract user from token
-const getUserFromToken = (req) => {
+// Send notification helper function
+export const sendNotification = async (recipientId, recipientModel, type, title, message, data = {}, senderId = null, senderModel = 'System') => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return null;
+    const notification = await Notification.create({
+      recipient: recipientId,
+      recipientModel,
+      sender: senderId,
+      senderModel,
+      type,
+      title,
+      message,
+      data,
+      actionUrl: data.actionUrl || null
+    });
+
+    // Emit real-time notification via Socket.io
+    if (global.io) {
+      global.io.to(`${recipientModel}_${recipientId}`).emit('notification', notification);
     }
-    
-    const token = authHeader.split(" ")[1];
-    if (!token) {
-      return null;
-    }
-    
-    const decoded = jwt.verify(token, JWT_SECRET);
-    return decoded;
-  } catch (err) {
-    console.error(`❌ Token verification failed: ${err.message}`);
-    return null;
+
+    return notification;
+  } catch (error) {
+    console.error('Error sending notification:', error);
+    throw error;
   }
 };
 
-// 📬 Get all notifications for a patient
-export const getPatientNotifications = async (req, res) => {
+// Get user notifications
+export const getNotifications = async (req, res) => {
   try {
-    const user = getUserFromToken(req);
-    if (!user || user.role !== "patient") {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
+    const { userId, userType } = req.params;
+    const { limit = 50, skip = 0 } = req.query;
     
-    const notifications = await Notification.find({ patient: user.id })
-      .populate("doctor", "fullName specialization")
-      .populate("appointment")
-      .sort({ createdAt: -1 });
-    
-    res.status(200).json(notifications);
-  } catch (err) {
-    console.error("❌ Error fetching notifications:", err);
-    res.status(500).json({ message: err.message });
+    const notifications = await Notification.find({
+      recipient: userId,
+      recipientModel: userType
+    })
+    .sort({ createdAt: -1 })
+    .limit(parseInt(limit))
+    .skip(parseInt(skip));
+
+    const unreadCount = await Notification.countDocuments({
+      recipient: userId,
+      recipientModel: userType,
+      read: false
+    });
+
+    res.json({
+      notifications,
+      unreadCount,
+      total: await Notification.countDocuments({ recipient: userId, recipientModel: userType })
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-// ✅ Mark notification as read
-export const markNotificationAsRead = async (req, res) => {
+// Get unread count
+export const getUnreadCount = async (req, res) => {
   try {
-    const user = getUserFromToken(req);
-    if (!user || user.role !== "patient") {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
+    const { userId, userType } = req.params;
     
+    const count = await Notification.countDocuments({
+      recipient: userId,
+      recipientModel: userType,
+      read: false
+    });
+
+    res.json({ count });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Mark as read
+export const markAsRead = async (req, res) => {
+  try {
     const { notificationId } = req.params;
     
-    const notification = await Notification.findOneAndUpdate(
-      { _id: notificationId, patient: user.id },
-      { isRead: true },
+    const notification = await Notification.findByIdAndUpdate(
+      notificationId,
+      { read: true, readAt: new Date() },
       { new: true }
     );
-    
+
     if (!notification) {
-      return res.status(404).json({ message: "Notification not found" });
+      return res.status(404).json({ message: 'Notification not found' });
     }
-    
-    res.status(200).json(notification);
-  } catch (err) {
-    console.error("❌ Error marking notification as read:", err);
-    res.status(500).json({ message: err.message });
+
+    res.json(notification);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-// ✅ Mark all notifications as read
-export const markAllNotificationsAsRead = async (req, res) => {
+// Mark all as read
+export const markAllAsRead = async (req, res) => {
   try {
-    const user = getUserFromToken(req);
-    if (!user || user.role !== "patient") {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
+    const { userId, userType } = req.body;
     
     await Notification.updateMany(
-      { patient: user.id, isRead: false },
-      { isRead: true }
+      { recipient: userId, recipientModel: userType, read: false },
+      { read: true, readAt: new Date() }
     );
-    
-    res.status(200).json({ message: "All notifications marked as read" });
-  } catch (err) {
-    console.error("❌ Error marking all notifications as read:", err);
-    res.status(500).json({ message: err.message });
+
+    res.json({ message: 'All notifications marked as read' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-// 🗑️ Delete notification
+// Delete notification
 export const deleteNotification = async (req, res) => {
   try {
-    const user = getUserFromToken(req);
-    if (!user || user.role !== "patient") {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-    
     const { notificationId } = req.params;
     
-    const notification = await Notification.findOneAndDelete({
-      _id: notificationId,
-      patient: user.id
-    });
+    const notification = await Notification.findByIdAndDelete(notificationId);
     
     if (!notification) {
-      return res.status(404).json({ message: "Notification not found" });
+      return res.status(404).json({ message: 'Notification not found' });
     }
-    
-    res.status(200).json({ message: "Notification deleted successfully" });
-  } catch (err) {
-    console.error("❌ Error deleting notification:", err);
-    res.status(500).json({ message: err.message });
+
+    res.json({ message: 'Notification deleted' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-// ➕ Create notification (internal use - called by other controllers)
-export const createNotification = async (notificationData) => {
+// Delete all notifications
+export const deleteAllNotifications = async (req, res) => {
   try {
-    const notification = new Notification(notificationData);
-    await notification.save();
-    console.log(`✅ Notification created: ${notification._id}`);
-    return notification;
-  } catch (err) {
-    console.error("❌ Error creating notification:", err);
-    throw err;
+    const { userId, userType } = req.body;
+    
+    await Notification.deleteMany({
+      recipient: userId,
+      recipientModel: userType
+    });
+
+    res.json({ message: 'All notifications deleted' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
+};
+
+export default {
+  sendNotification,
+  getNotifications,
+  getUnreadCount,
+  markAsRead,
+  markAllAsRead,
+  deleteNotification,
+  deleteAllNotifications
 };
 

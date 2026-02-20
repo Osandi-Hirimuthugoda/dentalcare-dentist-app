@@ -8,6 +8,7 @@ import {
   deleteHospital,
   getHospitalsByDistrict,
   getDistrictsWithCounts,
+  getNearbyHospitals,
 } from "../controllers/hospitalController.js";
 import { protectAdmin } from "../middleware/auth.js";
 
@@ -15,6 +16,7 @@ const router = express.Router();
 
 //  Public routes (for users to search)
 router.get("/search", searchHospitals);
+router.get("/nearby", getNearbyHospitals); // Location-based search
 router.get("/districts", getDistrictsWithCounts);
 router.get("/district/:district", getHospitalsByDistrict);
 router.get("/:id", getHospitalById);

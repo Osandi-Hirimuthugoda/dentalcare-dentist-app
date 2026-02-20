@@ -176,7 +176,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         }
       });
     } catch (e) {
-      debugPrint('❌ Error loading doctor availability: $e');
+      debugPrint('Error loading doctor availability: $e');
       // Continue with default slots if availability load fails
     }
   }

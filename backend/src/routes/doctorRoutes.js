@@ -9,6 +9,7 @@ import {
   updateDoctorProfile,
   updateDoctorServices,
   resetPassword,
+  getNearbyDoctors,
 } from "../controllers/doctorController.js";
 
 const router = express.Router();
@@ -16,10 +17,11 @@ const router = express.Router();
 router.post("/register", registerDoctor);
 
 // You added these later:
-router.post("/login", loginDoctor); // <--- This is the route we're looking for!
+router.post("/login", loginDoctor);
 router.get("/profile/:id", getDoctorProfile);
 router.get("/all", getAllDoctors); // Get all doctors (for admin)
 router.get("/available-now", getAvailableDoctorsNow); // Get available doctors at current time
+router.get("/nearby", getNearbyDoctors); // Location-based search
 
 // Update doctor profile
 router.put("/:doctorId/profile", updateDoctorProfile);
