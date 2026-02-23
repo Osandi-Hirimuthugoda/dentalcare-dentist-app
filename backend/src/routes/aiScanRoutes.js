@@ -1,8 +1,11 @@
 import express from "express";
 import multer from "multer";
-import { processTeethScan, upload } from "../controllers/aiScanController.js";
+import { getAiScanHealth, processTeethScan, upload } from "../controllers/aiScanController.js";
 
 const router = express.Router();
+
+/** GET /api/ai-scan/health - Check AI service and model status (no auth required) */
+router.get("/health", getAiScanHealth);
 
 // Error handling middleware for multer
 const handleMulterError = (err, req, res, next) => {

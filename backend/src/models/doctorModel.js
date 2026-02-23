@@ -38,12 +38,14 @@ doctorSchema.index({ location: "2dsphere" });
 // Hash password before saving
 doctorSchema.pre("save", async function (next) {
   // Skip if password is not modified
-  if (!this.isModified("password")) return next();
+  if (!this.isModified("password")) {
+    console.log("⏭️  Password not modified, skipping hash");
+    return next();
+  }
   
   // If password is already hashed (bcrypt hashes start with $2a$, $2b$, or $2y$), skip
-  // BUT if we're explicitly setting a new password, hash it anyway
-  if (this.password && this.password.startsWith("$2") && this.password.length > 50) {
-    // This is already a bcrypt hash, skip
+  if (this.password && this.password.match(/^\$2[aby]\$\d+\$/)) {
+    console.log("⏭️  Password already hashed, skipping");
     return next();
   }
   

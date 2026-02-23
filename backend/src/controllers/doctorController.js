@@ -106,6 +106,8 @@ export const loginDoctor = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    console.log("🔐 Login attempt:", { email, passwordLength: password?.length });
+
     // Validate required fields
     if (!email || !password) {
       return res.status(400).json({ 
@@ -116,19 +118,27 @@ export const loginDoctor = async (req, res) => {
     const normalizedEmail = email.toLowerCase().trim();
     const trimmedPassword = password.trim();
     
+    console.log("🔍 Looking for doctor:", normalizedEmail);
     const doctor = await Doctor.findOne({ email: normalizedEmail });
 
     if (!doctor) {
+      console.log("❌ Doctor not found");
       return res.status(401).json({ message: "Invalid email or password" });
     }
+
+    console.log("✅ Doctor found:", doctor.fullName);
 
     if (!doctor.password) {
+      console.log("❌ No password stored");
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    console.log("🔑 Comparing passwords...");
     const isMatch = await bcrypt.compare(trimmedPassword, doctor.password);
+    console.log("🔑 Password match:", isMatch);
     
     if (!isMatch) {
+      console.log("❌ Password mismatch");
       return res.status(401).json({ 
         message: "Invalid email or password. Please check your credentials and try again." 
       });

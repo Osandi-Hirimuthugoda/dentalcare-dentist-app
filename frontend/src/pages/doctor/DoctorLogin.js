@@ -13,11 +13,13 @@ export default function DoctorLogin() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    console.log("🔐 Login attempt:", { email, passwordLength: password.length });
     try {
       const res = await axios.post("http://localhost:4000/api/doctors/login", {
         email,
         password,
       });
+      console.log("✅ Login successful:", res.data);
       // Save doctor data and token for authentication
       localStorage.setItem("doctor", JSON.stringify(res.data.doctor));
       if (res.data.token) {
@@ -25,6 +27,7 @@ export default function DoctorLogin() {
       }
       navigate("/doctor-dashboard");
     } catch (err) {
+      console.error("❌ Login failed:", err.response?.data);
       setError(err.response?.data?.message || "Login failed");
     }
   };

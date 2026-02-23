@@ -327,6 +327,49 @@ function calculateHealthScore(className, confidence) {
   return 85;
 }
 
+// GET /api/ai-scan/health - Check if AI (Flask) service is reachable and model is loaded
+export const getAiScanHealth = async (req, res) => {
+  try {
+    const url = new URL(`${FLASK_API_URL}/health`);
+    const options = {
+      hostname: url.hostname,
+      port: url.port || 5000,
+      path: url.pathname,
+      method: 'GET',
+      timeout: 5000
+    };
+    const data = await new Promise((resolve, reject) => {
+      const httpReq = http.request(options, (res) => {
+        let body = '';
+        res.on('data', (chunk) => { body += chunk; });
+        res.on('end', () => resolve(body));
+      });
+      httpReq.on('error', reject);
+      httpReq.on('timeout', () => { httpReq.destroy(); reject(new Error('timeout')); });
+      httpReq.end();
+    });
+    const json = JSON.parse(data);
+    return res.status(200).json({
+      backend: 'ok',
+      aiService: FLASK_API_URL,
+      ai: json,
+      message: json.model_loaded
+        ? 'AI model is loaded and ready for predictions.'
+        : json.model_exists
+          ? 'AI service is up but model failed to load. Check AI container logs.'
+          : 'AI service is up but model_weights.pth is missing. Add it to backend/models/ and rebuild or mount the volume.'
+    });
+  } catch (err) {
+    return res.status(503).json({
+      backend: 'ok',
+      aiService: FLASK_API_URL,
+      ai: null,
+      error: err.message,
+      message: 'Cannot reach AI service. Ensure the AI container is running (docker-compose: dentalcare-ai-model) and FLASK_API_URL is correct.'
+    });
+  }
+};
+
 // Process teeth scan image with AI/CNN model
 export const processTeethScan = async (req, res) => {
   console.log("🚀 AI Scan endpoint hit!");

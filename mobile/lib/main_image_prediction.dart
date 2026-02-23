@@ -49,11 +49,9 @@ class _PredictionScreenState extends State<PredictionScreen> {
   List<dynamic> _questions = [];
   Map<String, TextEditingController> _answerControllers = {};
   
-  // Backend URL - Change this to your backend IP address
-  // For localhost testing: http://10.0.2.2:4001 (Android Emulator)
-  // For real device: http://<your-computer-ip>:4001
-  // Example: http://192.168.1.100:4001
-  static const String backendUrl = 'http://10.0.2.2:4001/api'; // Change this!
+  // Backend URL - Same as web app backend (port 4000)
+  // Android Emulator: 10.0.2.2:4000 | Real device: YOUR_PC_IP:4000
+  static const String backendUrl = 'http://10.0.2.2:4000/api';
 
   final ImagePicker _picker = ImagePicker();
 

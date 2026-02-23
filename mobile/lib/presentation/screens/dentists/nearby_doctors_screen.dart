@@ -20,7 +20,7 @@ class _NearbyDoctorsScreenState extends State<NearbyDoctorsScreen> {
   Set<Marker> _markers = {};
   bool _isLoading = true;
   String? _error;
-  final String _baseUrl = 'http://10.0.2.2:4001';
+  final String _baseUrl = 'http://10.0.2.2:4000';
   final TextEditingController _searchController = TextEditingController();
   String _searchLocation = '';
 

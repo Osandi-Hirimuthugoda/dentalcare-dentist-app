@@ -7,7 +7,7 @@ class AppConfig {
   static const String appBuildNumber = '1';
   
   // API Configuration
-  static const String apiBaseUrl = 'http://10.0.2.2:4001/api';
+  static const String apiBaseUrl = 'http://10.0.2.2:4000/api';
   static const String flaskApiUrl = 'http://10.0.2.2:5000';
   
   // Timeouts (in seconds)

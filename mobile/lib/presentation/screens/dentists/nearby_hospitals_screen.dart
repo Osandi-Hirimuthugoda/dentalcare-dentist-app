@@ -20,7 +20,7 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
   Set<Marker> _markers = {};
   bool _isLoading = true;
   String? _error;
-  final String _baseUrl = 'http://10.0.2.2:4001'; // Android emulator
+  final String _baseUrl = 'http://10.0.2.2:4000'; // Android emulator (same as backend)
   final TextEditingController _searchController = TextEditingController();
   String _searchLocation = '';
 
