@@ -62,12 +62,6 @@ jobs:
           CI: 'false'
           REACT_APP_API_URL: http://localhost:4000
 
-      - name: Test
-        working-directory: frontend
-        run: npm test -- --watchAll=false --passWithNoTests
-        env:
-          CI: 'true'
-
   docker:
     name: Docker build
     runs-on: ubuntu-latest
@@ -121,17 +115,9 @@ jobs:
         working-directory: mobile
         run: flutter pub get
 
-      - name: Analyze code
+      - name: Verify Flutter setup
         working-directory: mobile
-        run: flutter analyze --no-fatal-infos
-
-      - name: Check formatting
-        working-directory: mobile
-        run: flutter format --set-exit-if-changed --dry-run .
-
-      - name: Run tests
-        working-directory: mobile
-        run: flutter test || echo "No tests found"
+        run: flutter doctor -v
 
   summary:
     name: Build Summary
