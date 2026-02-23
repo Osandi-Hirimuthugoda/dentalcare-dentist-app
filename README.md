@@ -1,5 +1,7 @@
 # DentalCare+ — Dentists App
 
+[![CI/CD Pipeline](https://github.com/Osandi-Hirimuthugoda/dentalcare-dentist-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Osandi-Hirimuthugoda/dentalcare-dentist-app/actions/workflows/ci.yml)
+
 Full-stack dental care platform: **Backend API**, **AI teeth-scan model**, **React web app** (doctors & admin), and **Flutter mobile app** (patients). Includes real-time messaging, appointments, billing, and AI-powered dental disease detection.
 
 ---
