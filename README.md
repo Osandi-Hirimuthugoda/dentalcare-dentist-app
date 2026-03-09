@@ -86,6 +86,59 @@ To run the **mobile app**, use Flutter on your machine and point it to `http://l
 
 ---
 
+## Key Features
+
+### For Patients (Mobile App)
+- 🔐 User authentication (Register, Login, Email verification)
+- 🏠 Dashboard with health statistics and quick actions
+- 📅 Appointment booking, rescheduling, and cancellation
+- 🦷 AI-powered teeth scan for disease detection
+- 💬 Q&A system with dentists after scan results
+- 🏥 Find nearby hospitals and dentists (with Google Maps integration)
+- 💰 View and manage bills
+- 💳 Multiple payment methods (Wallet, Card payment)
+- 💊 Treatment history tracking
+- 🔔 Real-time notifications
+- 📊 Health score and tips
+- 👤 Profile management
+
+### For Doctors (Web App)
+- 🔐 Doctor authentication and registration
+- 📊 Comprehensive dashboard with statistics
+- 👥 Patient management
+- 📅 Appointment management (view, confirm, complete, cancel)
+- 🕐 Availability schedule management
+- 💬 Real-time messaging with patients (Socket.io)
+- 🦷 Scan Q&A review system (answer patient questions about AI scan results)
+- 🛠️ Service management (add/remove offered services)
+- ⭐ View patient reviews and ratings
+- 📈 Reports and analytics
+- 👤 Profile and settings management
+
+### For Admins (Web App)
+- 🔐 Admin authentication
+- 📊 System-wide dashboard with statistics
+- 👨‍⚕️ Doctor management (register, view, edit, delete)
+- 👥 Patient management
+- 📅 Appointment oversight
+- 🏥 Hospital management
+- 📈 System activity monitoring
+- 📋 Comprehensive reporting
+
+### Technical Features
+- 🤖 AI-powered dental disease detection using EfficientNet-B3
+- 🔄 Real-time notifications using Socket.io
+- 🗺️ Google Maps integration for location-based services
+- 📱 Responsive design for all screen sizes
+- 🐳 Docker containerization for easy deployment
+- 🔒 JWT-based authentication and authorization
+- 💾 MongoDB database with Mongoose ODM
+- 🎨 Modern UI with Tailwind CSS and Framer Motion
+- 📊 Data visualization with Recharts
+- 🧪 CI/CD pipeline with GitHub Actions
+
+---
+
 ## Project Structure
 
 ```
@@ -188,16 +241,109 @@ dentists-app/
 
 ## AI Model (Teeth Scan)
 
+### Overview
+
 - **Purpose:** Classify dental disease from a single teeth image.
 - **Location:** `backend/models/`
 - **Stack:** Flask, PyTorch, Torchvision, Pillow, NumPy.
 - **Model:** EfficientNet-B3, fine-tuned; preprocessing: circular mask (match training), resize 256, center crop 224, ImageNet normalization.
-- **Classes (default):** `calculus`, `cancers`, `gingivitis`, `ulcers`, `olp`.
+- **Classes (5):** `calculus`, `cancers`, `gingivitis`, `ulcers`, `olp` (oral lichen planus).
 - **Weights:** `model_weights.pth` (and optional `class_labels.json`) in `backend/models/`. Not in repo; add after training/export.
 - **Flask API:**
   - `GET /health` — Status, model loaded or not, device.
   - `POST /predict` — Input: multipart `file` or JSON `image` (base64). Output: `prediction`, `disease_name`, `confidence`, `class_index`, `all_probabilities`.
 - **Backend integration:** Backend calls this service (URL configurable) from `aiScanController` and returns result to client; mobile/frontend use `/api/ai-scan/teeth-scan`.
+
+### Model Training Details
+
+The AI model was trained using **EfficientNet-B3** architecture with the following approach:
+
+#### Dataset Preparation
+
+1. **Data Collection:** Images collected for 5 dental disease classes:
+   - Calculus
+   - Cancers
+   - Gingivitis
+   - Mouth Ulcers
+   - Oral Lichen Planus (OLP)
+
+2. **Data Balancing:**
+   - Calculated target K = M_total / C (mean images per class)
+   - Oversampling: Classes with count < K were duplicated
+   - Undersampling: Classes with count ≥ K were randomly sampled to K
+
+3. **Dataset Expansion (4x):**
+   - Segment 1: Original images
+   - Segment 2: Horizontally flipped images
+   - Segment 3: Circular masked original images
+   - Segment 4: Circular masked + flipped images
+
+4. **Data Split:**
+   - Training: 72% (after 80/20 split, then 90/10 from remaining)
+   - Validation: 8%
+   - Test: 20%
+
+#### Preprocessing & Augmentation
+
+**Circular Masking:**
+- Custom circular mask applied to focus on teeth region
+- Inscribed circle in the center of image
+- Black background outside the circle
+
+**Training Augmentations:**
+- Circular mask (applied first)
+- Random resized crop (224x224, scale 0.8-1.0)
+- Random horizontal flip (p=0.5)
+- Random rotation (±15°)
+- Color jitter (brightness, contrast, saturation ±0.2)
+- Random affine (translate ±0.1, scale 0.9-1.1)
+- ImageNet normalization
+
+**Validation/Test Transforms:**
+- Circular mask
+- Resize to 256
+- Center crop to 224
+- ImageNet normalization
+
+#### Model Architecture
+
+- **Base:** EfficientNet-B3 (pretrained on ImageNet)
+- **Classifier:** 
+  - Dropout (0.4)
+  - Linear layer (1536 → 5 classes)
+
+#### Training Configuration
+
+- **Optimizer:** AdamW (lr=0.001, weight_decay=1e-4)
+- **Loss:** CrossEntropyLoss with label smoothing (0.1)
+- **Scheduler:** ReduceLROnPlateau (factor=0.2, patience=3)
+- **Batch Size:** 32
+- **Epochs:** 30 (with early stopping, patience=15)
+- **Mixed Precision:** Enabled (AMP) for faster training
+- **Device:** CUDA (GPU)
+
+#### Advanced Techniques
+
+1. **Early Stopping:** Monitors validation loss, saves best model
+2. **Learning Rate Scheduling:** Reduces LR when validation loss plateaus
+3. **Mixed Precision Training:** Uses automatic mixed precision (AMP) for efficiency
+4. **Test-Time Augmentation (TTA):** 
+   - 5 augmented predictions per image
+   - Averages predictions for final result
+   - Improves test accuracy
+
+#### Training Script
+
+The complete training code is available in:
+```
+backend/models/dental_convolutional_neural_network_v3_(4).py
+```
+
+This was trained on Google Colab with GPU acceleration.
+
+#### Model Export
+
+After training, the model weights are saved as `model_weights.pth` and can be used with the Flask inference API (`flask_api.py`) for real-time predictions.
 
 ---
 
@@ -246,6 +392,23 @@ dentists-app/
 ---
 
 ## Setup & Run
+
+### Admin Account Setup
+
+Before using the admin panel, you need to create an admin account:
+
+```bash
+cd backend
+node createAdmin.js
+```
+
+This creates an admin account with:
+- **Email:** `admin`
+- **Password:** `admin123`
+
+You can then login at: `http://localhost:3000/admin-login`
+
+**Note:** For production, change these credentials immediately after first login.
 
 ### 1. Backend
 
@@ -396,6 +559,169 @@ To add **deploy** (e.g. push images to Docker Hub or deploy frontend to GitHub P
 
 ---
 
+---
+
+## Troubleshooting
+
+### Backend Issues
+
+**Port already in use:**
+```bash
+# Windows
+netstat -ano | findstr :4000
+taskkill /PID <PID> /F
+
+# Linux/Mac
+lsof -ti:4000 | xargs kill -9
+```
+
+**MongoDB connection failed:**
+- Check if MongoDB is running
+- Verify `MONGO_URI` in `.env` file
+- For MongoDB Atlas, check network access and credentials
+
+**Admin login 401 error:**
+- Make sure you ran `node createAdmin.js`
+- Restart the backend server after creating admin
+- Use exact credentials: email `admin`, password `admin123`
+
+### Frontend Issues
+
+**API calls failing:**
+- Verify backend is running on port 4000
+- Check `REACT_APP_API_URL` in frontend `.env`
+- Clear browser cache and restart frontend
+
+**Socket.io not connecting:**
+- Ensure backend Socket.io is configured correctly
+- Check CORS settings in `backend/server.js`
+
+### Mobile App Issues
+
+**Cannot connect to backend:**
+- For Android emulator, use `http://10.0.2.2:4000`
+- For iOS simulator, use `http://localhost:4000`
+- For physical device, use your computer's IP address
+
+**Google Maps not showing:**
+- Add Google Maps API key in Android/iOS configuration
+- Enable Maps SDK for Android/iOS in Google Cloud Console
+
+### AI Model Issues
+
+**Model predictions failing:**
+- Ensure `model_weights.pth` exists in `backend/models/`
+- Check if Flask service is running on port 5000
+- Verify Python dependencies are installed
+
+**Out of memory errors:**
+- Reduce batch size in inference
+- Use CPU instead of GPU if GPU memory is limited
+
+### Docker Issues
+
+**Container fails to start:**
+```bash
+# Check logs
+docker-compose logs <service-name>
+
+# Rebuild containers
+docker-compose up -d --build
+
+# Remove all containers and volumes
+docker-compose down -v
+```
+
+**MongoDB data not persisting:**
+- Check volume mounts in `docker-compose.yml`
+- Ensure proper permissions on volume directories
+
+---
+
+## API Documentation
+
+### Authentication Endpoints
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/api/auth/register` | Register new patient | No |
+| POST | `/api/auth/login` | Patient login | No |
+| POST | `/api/doctors/register` | Register new doctor | No |
+| POST | `/api/doctors/login` | Doctor login | No |
+| POST | `/api/admins/login` | Admin login | No |
+
+### Doctor Endpoints
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/doctors` | Get all doctors | No |
+| GET | `/api/doctors/profile/:id` | Get doctor profile | Yes |
+| GET | `/api/doctors/available-now` | Get available doctors | No |
+| GET | `/api/doctors/nearby` | Get nearby doctors | No |
+| PUT | `/api/doctors/:id/profile` | Update doctor profile | Yes |
+| PUT | `/api/doctors/:id/services` | Update doctor services | Yes |
+
+### Appointment Endpoints
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/appointments` | Get user appointments | Yes |
+| POST | `/api/appointments` | Create appointment | Yes |
+| PUT | `/api/appointments/:id` | Update appointment | Yes |
+| DELETE | `/api/appointments/:id` | Cancel appointment | Yes |
+
+### AI Scan Endpoints
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/api/ai-scan/teeth-scan` | Upload teeth image for AI analysis | Yes |
+| GET | `/api/scan-qa/pending` | Get pending scans (dentist) | Yes |
+| GET | `/api/scan-qa/dentist/:scanId` | Get scan details (dentist) | Yes |
+| POST | `/api/scan-qa/:scanId/question` | Add question to scan | Yes |
+| POST | `/api/scan-qa/:scanId/complete` | Complete Q&A session | Yes |
+
+### Other Endpoints
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/services` | Get all services | No |
+| GET | `/api/hospitals` | Get all hospitals | No |
+| GET | `/api/notifications` | Get user notifications | Yes |
+| POST | `/api/bills` | Create bill | Yes |
+| GET | `/api/reviews` | Get doctor reviews | No |
+| POST | `/api/messages` | Send message | Yes |
+
+---
+
+## Scripts
+
+### Backend Scripts
+
+```bash
+# Create admin account
+npm run create-admin
+
+# Seed services
+npm run seed-services
+
+# Seed hospitals
+npm run seed-hospitals
+
+# Create test doctor
+node createTestDoctor.js
+
+# Create test patient
+node createTestPatient.js
+
+# List all patients
+node listPatients.js
+
+# Reset doctor password
+node src/scripts/resetDoctorPassword.js
+```
+
+---
+
 ## Environment Variables (Backend)
 
 | Variable | Description |
@@ -404,6 +730,68 @@ To add **deploy** (e.g. push images to Docker Hub or deploy frontend to GitHub P
 | `JWT_SECRET` | Secret for JWT signing |
 | `PORT` | API port (default 4000) |
 | `ALLOW_DB_FAILURE` | Set `true` to run without DB (dev only); AI scan can still work |
+
+---
+
+---
+
+## Screenshots
+
+### Mobile App (Patient)
+- Home Dashboard
+- AI Teeth Scan
+- Appointment Booking
+- Nearby Doctors with Map
+- Bills & Payments
+
+### Web App (Doctor)
+- Doctor Dashboard
+- Patient Management
+- Scan Q&A Review
+- Appointment Management
+- Real-time Messaging
+
+### Web App (Admin)
+- Admin Dashboard
+- Doctor Registration
+- System Activity Monitoring
+
+*(Add screenshots to a `/screenshots` folder and link them here)*
+
+---
+
+## Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+### Development Guidelines
+
+- Follow existing code style and conventions
+- Write meaningful commit messages
+- Add comments for complex logic
+- Test your changes before submitting PR
+- Update documentation if needed
+
+---
+
+## Future Enhancements
+
+- [ ] Video consultation feature
+- [ ] Prescription management system
+- [ ] Insurance integration
+- [ ] Multi-language support
+- [ ] Dark mode for mobile app
+- [ ] Push notifications for mobile
+- [ ] Advanced analytics dashboard
+- [ ] Export reports as PDF
+- [ ] Integration with dental equipment
+- [ ] Telemedicine features
 
 ---
 
