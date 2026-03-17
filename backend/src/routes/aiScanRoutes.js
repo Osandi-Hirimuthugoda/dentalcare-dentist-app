@@ -9,7 +9,7 @@ router.get("/health", getAiScanHealth);
 
 // Error handling middleware for multer
 const handleMulterError = (err, req, res, next) => {
-  console.error("🔴 Multer error handler triggered:", err);
+  console.error(" Multer error handler triggered:", err);
   if (err instanceof multer.MulterError) {
     console.error("   Multer error code:", err.code);
     console.error("   Multer error message:", err.message);

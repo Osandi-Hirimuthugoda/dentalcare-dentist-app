@@ -49,6 +49,10 @@ export const getPendingScansForDentist = async (req, res) => {
         analysisResults: scan.analysisResults,
         questions: scan.questions,
         status: scan.status,
+        reportType: scan.reportType || "scan",
+        patientNote: scan.patientNote || "",
+        sentToPatient: scan.sentToPatient || false,
+        sentToPatientAt: scan.sentToPatientAt || null,
         createdAt: scan.createdAt,
         updatedAt: scan.updatedAt
       }))
@@ -148,6 +152,8 @@ export const getScanQAForDentist = async (req, res) => {
         analysisResults: scanQA.analysisResults,
         questions: scanQA.questions,
         status: scanQA.status,
+        reportType: scanQA.reportType || "scan",
+        patientNote: scanQA.patientNote || "",
         createdAt: scanQA.createdAt,
         updatedAt: scanQA.updatedAt
       }
@@ -359,6 +365,115 @@ export const markResultsShown = async (req, res) => {
     });
   } catch (error) {
     console.error("Error marking results as shown:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Send scan report PDF to doctor (from patient mobile app)
+export const sendScanReport = async (req, res) => {
+  try {
+    const user = getUserFromToken(req);
+    if (!user || user.role !== "patient") {
+      return res.status(401).json({ message: "Unauthorized. Patient authentication required." });
+    }
+
+    const { scanResults, note } = req.body;
+    const pdfFile = req.file;
+
+    if (!pdfFile) {
+      return res.status(400).json({ message: "PDF report file is required." });
+    }
+
+    let parsedResults = {};
+    try {
+      parsedResults = scanResults ? JSON.parse(scanResults) : {};
+    } catch (_) {}
+
+    // Create a ScanQA record to store the report
+    const scanId = uuidv4();
+    const scanQA = new ScanQA({
+      scanId,
+      patientId: user.id,
+      imageUrl: pdfFile.path,
+      analysisResults: parsedResults,
+      status: "pending_qa",
+      patientNote: note || "",
+      reportType: "pdf_report",
+    });
+
+    await scanQA.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Report sent to doctor successfully.",
+      scanId,
+    });
+  } catch (error) {
+    console.error("Error sending scan report:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Doctor sends a report to patient (marks sentToPatient = true)
+export const sendReportToPatient = async (req, res) => {
+  try {
+    const user = getUserFromToken(req);
+    if (!user || user.role !== "doctor") {
+      return res.status(401).json({ message: "Unauthorized. Doctor authentication required." });
+    }
+
+    const { scanId } = req.params;
+    const { doctorNote } = req.body;
+
+    const scanQA = await ScanQA.findOne({ scanId });
+    if (!scanQA) {
+      return res.status(404).json({ message: "Scan report not found." });
+    }
+
+    scanQA.sentToPatient = true;
+    scanQA.sentToPatientAt = new Date();
+    scanQA.doctorId = user.id;
+    if (doctorNote) scanQA.doctorNote = doctorNote;
+
+    await scanQA.save();
+
+    res.status(200).json({ success: true, message: "Report sent to patient successfully." });
+  } catch (error) {
+    console.error("Error sending report to patient:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get reports sent to patient by doctor (for mobile app)
+export const getReportsSentToPatient = async (req, res) => {
+  try {
+    const user = getUserFromToken(req);
+    if (!user || user.role !== "patient") {
+      return res.status(401).json({ message: "Unauthorized. Patient authentication required." });
+    }
+
+    const reports = await ScanQA.find({
+      patientId: user.id,
+      sentToPatient: true,
+      reportType: "pdf_report",
+    })
+      .populate("doctorId", "fullName specialization")
+      .sort({ sentToPatientAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      reports: reports.map((r) => ({
+        scanId: r.scanId,
+        doctorName: r.doctorId?.fullName || "Your Doctor",
+        doctorSpecialization: r.doctorId?.specialization || "",
+        doctorNote: r.doctorNote || "",
+        sentAt: r.sentToPatientAt,
+        reportUrl: `/api/scan-qa/report-file/${r.scanId}`,
+        analysisResults: r.analysisResults,
+      })),
+    });
+  } catch (error) {
+    console.error("Error fetching reports sent to patient:", error);
     res.status(500).json({ message: error.message });
   }
 };

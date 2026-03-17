@@ -48,6 +48,26 @@ const scanQASchema = new mongoose.Schema({
   },
   completedAt: {
     type: Date
+  },
+  patientNote: {
+    type: String,
+    default: ""
+  },
+  reportType: {
+    type: String,
+    enum: ["scan", "pdf_report"],
+    default: "scan"
+  },
+  sentToPatient: {
+    type: Boolean,
+    default: false
+  },
+  sentToPatientAt: {
+    type: Date
+  },
+  doctorNote: {
+    type: String,
+    default: ""
   }
 }, {
   timestamps: true // Adds createdAt and updatedAt fields
