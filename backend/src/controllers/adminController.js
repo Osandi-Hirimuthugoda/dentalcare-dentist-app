@@ -12,17 +12,29 @@ export const adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    console.log("🔐 Admin login attempt:");
+    console.log(`   Email received: "${email}"`);
+    console.log(`   Password received: "${password ? '***' + password.substring(password.length - 3) : 'EMPTY'}"`);
+    console.log(`   Email length: ${email?.length || 0}`);
+    console.log(`   Password length: ${password?.length || 0}`);
+
     // Check if admin exists
     const admin = await Admin.findOne({ email });
     if (!admin) {
+      console.log(`❌ Admin not found with email: "${email}"`);
       return res.status(401).json({ message: "Invalid credentials" });
     }
+
+    console.log(`✅ Admin found: ${admin.email}`);
 
     // Check password
     const isMatch = await bcrypt.compare(password, admin.password);
     if (!isMatch) {
+      console.log(`❌ Password mismatch for admin: ${email}`);
       return res.status(401).json({ message: "Invalid credentials" });
     }
+
+    console.log(`✅ Password matched for admin: ${email}`);
 
     // Generate JWT token
     const token = jwt.sign(
@@ -382,9 +394,7 @@ export const getSystemActivity = async (req, res) => {
 //  Get All Patients (Admin)
 export const getAllPatients = async (req, res) => {
   try {
-    const patients = await Patient.find()
-      .populate("selectedDoctor", "fullName specialization email phone")
-      .sort({ createdAt: -1 });
+    const patients = await Patient.find().sort({ createdAt: -1 });
     res.status(200).json(patients);
   } catch (error) {
     console.error(" Error fetching patients:", error);

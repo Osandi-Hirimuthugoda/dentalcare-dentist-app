@@ -35,7 +35,7 @@ export const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
     // Log file details for debugging
-    console.log('📁 File upload attempt:', {
+    console.log(' File upload attempt:', {
       originalname: file.originalname,
       mimetype: file.mimetype,
       fieldname: file.fieldname,
@@ -50,10 +50,10 @@ export const upload = multer({
     
     // Accept if extension matches OR mimetype starts with "image/"
     if (extname || isImageMimeType) {
-      console.log('✅ File accepted:', file.originalname, '- Extension:', extname, 'MIME:', isImageMimeType);
+      console.log(' File accepted:', file.originalname, '- Extension:', extname, 'MIME:', isImageMimeType);
       return cb(null, true);
     } else {
-      console.error('❌ File rejected:', {
+      console.error('File rejected:', {
         originalname: file.originalname,
         mimetype: file.mimetype,
         extension: path.extname(file.originalname)
@@ -105,20 +105,20 @@ const checkFlaskService = async () => {
             const json = JSON.parse(data);
             const isAvailable = json.model_exists === true;
             if (isAvailable) {
-              console.log('✅ Flask API service is available and model is loaded');
+              console.log(' Flask API service is available and model is loaded');
             } else {
-              console.log('⚠️  Flask API service is available but model is not loaded');
+              console.log('  Flask API service is available but model is not loaded');
             }
             resolve(isAvailable);
           } catch (error) {
-            console.log(`⚠️  Failed to parse Flask API health check: ${error.message}`);
+            console.log(`  Failed to parse Flask API health check: ${error.message}`);
             resolve(false);
           }
         });
       });
       
       req.on('error', (error) => {
-        console.log(`❌ Flask API service connection error: ${error.message}`);
+        console.log(` Flask API service connection error: ${error.message}`);
         console.log(`   Make sure Flask API is running on ${FLASK_API_URL}`);
         resolve(false);
       });
@@ -132,7 +132,7 @@ const checkFlaskService = async () => {
       req.end();
     });
   } catch (error) {
-    console.log(`❌ Error checking Flask API service: ${error.message}`);
+    console.log(` Error checking Flask API service: ${error.message}`);
     return false;
   }
 };
@@ -256,10 +256,10 @@ const callFlaskAPI = async (imagePath) => {
               timestamp: new Date().toISOString()
             };
             
-            console.log('✅ Converted Flask API response to analysis format');
-            console.log(`   ✅ Detected class from model: ${predictedClass}`);
-            console.log(`   ✅ Disease name: ${diseaseName}`);
-            console.log(`   ✅ Confidence: ${confidence}%`);
+            console.log(' Converted Flask API response to analysis format');
+            console.log(`    Detected class from model: ${predictedClass}`);
+            console.log(`    Disease name: ${diseaseName}`);
+            console.log(`    Confidence: ${confidence}%`);
             
             resolve(analysis);
           } catch (error) {
@@ -372,7 +372,7 @@ export const getAiScanHealth = async (req, res) => {
 
 // Process teeth scan image with AI/CNN model
 export const processTeethScan = async (req, res) => {
-  console.log("🚀 AI Scan endpoint hit!");
+  console.log(" AI Scan endpoint hit!");
   console.log("   Method:", req.method);
   console.log("   Path:", req.path);
   console.log("   Has file:", !!req.file);
@@ -393,12 +393,12 @@ export const processTeethScan = async (req, res) => {
     console.log("   Allow without auth:", allowWithoutAuth);
     
     if (!allowWithoutAuth && (!user || user.role !== "patient")) {
-      console.log("   ❌ Authentication failed");
+      console.log("    Authentication failed");
       return res.status(401).json({ message: "Unauthorized. Patient authentication required." });
     }
     
     if (!req.file) {
-      console.log("   ❌ No file provided");
+      console.log("    No file provided");
       return res.status(400).json({ message: "No image file provided" });
     }
     
@@ -416,13 +416,13 @@ export const processTeethScan = async (req, res) => {
       const flaskServiceAvailable = await checkFlaskService();
       
       if (flaskServiceAvailable) {
-        console.log('✅ Flask API service available! Calling trained model...');
+        console.log(' Flask API service available! Calling trained model...');
         try {
           analysisResults = await callFlaskAPI(imagePath);
           usingRealModel = true;
           
-          console.log('\n✅ Successfully processed image with trained model');
-          console.log('📊 Model Output Summary:');
+          console.log('\n Successfully processed image with trained model');
+          console.log(' Model Output Summary:');
           console.log(`   - Detected conditions: ${analysisResults.detectedConditions?.length || 0}`);
           
           if (analysisResults.detectedConditions && analysisResults.detectedConditions.length > 0) {
@@ -430,29 +430,29 @@ export const processTeethScan = async (req, res) => {
             const detectedClass = topCondition.modelClassName || 'Unknown';
             const diseaseName = topCondition.name || 'Unknown';
             
-            console.log(`   ✅ Model Detected Class: ${detectedClass}`);
-            console.log(`   ✅ Disease Name: ${diseaseName}`);
-            console.log(`   ✅ Type: ${topCondition.type || 'Unknown'}`);
+            console.log(`    Model Detected Class: ${detectedClass}`);
+            console.log(`   Disease Name: ${diseaseName}`);
+            console.log(`    Type: ${topCondition.type || 'Unknown'}`);
             
             // Verify it's one of the 5 classes
             const validClasses = ['calculus', 'cancers', 'gingivitis', 'ulcers', 'olp'];
             if (validClasses.includes(detectedClass)) {
-              console.log(`   ✅ Verified: '${detectedClass}' is a valid class from the 5 trained classes`);
+              console.log(`    Verified: '${detectedClass}' is a valid class from the 5 trained classes`);
             } else {
-              console.log(`   ⚠️  Warning: '${detectedClass}' is not in expected classes: ${validClasses}`);
+              console.log(`    Warning: '${detectedClass}' is not in expected classes: ${validClasses}`);
             }
           }
         } catch (callError) {
-          console.error('❌ Error calling Flask API:', callError.message);
+          console.error(' Error calling Flask API:', callError.message);
           console.error('   Stack:', callError.stack);
-          console.log('⚠️  Falling back to simulation mode');
+          console.log('  Falling back to simulation mode');
           // Fall back to simulation
           await new Promise(resolve => setTimeout(resolve, 1500));
           analysisResults = getMockAnalysis();
         }
       } else {
         // Fall back to simulation
-        console.log('⚠️  Flask API service not available, using simulation mode');
+        console.log(' Flask API service not available, using simulation mode');
         console.log('   To use real trained model:');
         console.log('   1. Make sure Flask API is running: cd backend/models && python flask_api.py');
         console.log('   2. Flask API should run on: http://localhost:5000');
@@ -463,7 +463,7 @@ export const processTeethScan = async (req, res) => {
       }
     } catch (error) {
       // If Flask API fails, fall back to simulation
-      console.error('❌ Flask API error, falling back to simulation:', error.message);
+      console.error(' Flask API error, falling back to simulation:', error.message);
       await new Promise(resolve => setTimeout(resolve, 1500));
       analysisResults = getMockAnalysis();
     }
@@ -473,9 +473,9 @@ export const processTeethScan = async (req, res) => {
       analysisResults.timestamp = new Date().toISOString();
     }
     
-    console.log(`\n✅ AI Scan completed for user ${userId}`);
-    console.log('📊 Final Results Summary:');
-    console.log(`   - Using Real Model: ${usingRealModel ? 'YES ✅' : 'NO ⚠️ (Simulation)'}`);
+    console.log(`\n AI Scan completed for user ${userId}`);
+    console.log('Final Results Summary:');
+    console.log(`   - Using Real Model: ${usingRealModel ? 'YES ' : 'NO  (Simulation)'}`);
     console.log(`   - Has Oral Cancer: ${analysisResults.hasOralCancer || false}`);
     console.log(`   - Has Oral Diseases: ${analysisResults.hasOralDiseases || false}`);
     console.log(`   - Health Score: ${analysisResults.healthScore || 'N/A'}`);
@@ -483,7 +483,7 @@ export const processTeethScan = async (req, res) => {
     
     if (analysisResults.detectedConditions && analysisResults.detectedConditions.length > 0) {
       const topCondition = analysisResults.detectedConditions[0];
-      console.log(`\n🎯 Model Detection Result:`);
+      console.log(`\n Model Detection Result:`);
       console.log(`   - Detected Class: ${topCondition.modelClassName || 'Unknown'}`);
       console.log(`   - Disease Name: ${topCondition.name || 'Unknown'}`);
     }

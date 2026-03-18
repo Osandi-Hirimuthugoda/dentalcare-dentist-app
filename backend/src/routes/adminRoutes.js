@@ -13,8 +13,13 @@ import {
 
 const router = express.Router();
 
-// 🔐 Admin Login
-router.post("/login", adminLogin);
+// Debug middleware for login route
+router.post("/login", (req, res, next) => {
+  console.log("📥 Admin login route hit");
+  console.log("   Body:", req.body);
+  console.log("   Headers:", req.headers);
+  next();
+}, adminLogin);
 
 // 📊 Admin Dashboard Statistics
 router.get("/dashboard/stats", getDashboardStats);
