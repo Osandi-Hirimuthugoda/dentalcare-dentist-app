@@ -3,6 +3,7 @@ import Patient from "../models/Patient.js";
 import Doctor from "../models/doctorModel.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import { sendNotification } from "./notificationController.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dentalcare_secret_key_change_in_production";
 
@@ -319,6 +320,35 @@ export const sendMessage = async (req, res) => {
         await newMessage.populate("sender", "fullName email");
         await newMessage.populate("receiver", "name email");
         messages.push(newMessage);
+
+        // Send real-time socket notification to each patient
+        if (global.io) {
+          global.io.to(`Patient_${patientId}`).emit('new_message', {
+            _id: newMessage._id,
+            message: newMessage.message,
+            senderModel: 'Doctor',
+            sender: newMessage.sender,
+            isAnnouncement: true,
+            announcementType: announcementType || 'general',
+            createdAt: newMessage.createdAt,
+          });
+        }
+
+        // Send push notification to each patient
+        try {
+          await sendNotification(
+            patientId,
+            'Patient',
+            'message',
+            `📢 Announcement from ${doctor.fullName || 'Your Doctor'}`,
+            message.length > 80 ? message.substring(0, 80) + '...' : message,
+            { actionUrl: '/messages' },
+            senderId,
+            'Doctor'
+          );
+        } catch (notifErr) {
+          console.error('Failed to send announcement notification:', notifErr);
+        }
       }
 
       return res.status(201).json({ 
@@ -381,6 +411,46 @@ export const sendMessage = async (req, res) => {
     // Populate before sending
     await newMessage.populate("sender", "name email fullName");
     await newMessage.populate("receiver", "name email fullName");
+
+    // Emit real-time message via Socket.io
+    if (global.io) {
+      const receiverRoom = `${newMessage.receiverModel}_${receiverObjectId}`;
+      const senderRoom = `${newMessage.senderModel}_${senderObjectId}`;
+      const payload = {
+        _id: newMessage._id,
+        message: newMessage.message,
+        senderModel: newMessage.senderModel,
+        receiverModel: newMessage.receiverModel,
+        sender: newMessage.sender,
+        receiver: newMessage.receiver,
+        createdAt: newMessage.createdAt,
+        read: false,
+      };
+      global.io.to(receiverRoom).emit('new_message', payload);
+      global.io.to(senderRoom).emit('new_message', payload);
+    }
+
+    // Create notification for receiver
+    try {
+      const senderName = newMessage.senderModel === "Doctor"
+        ? (newMessage.sender?.fullName || "Your Doctor")
+        : (newMessage.sender?.name || "Patient");
+
+      await sendNotification(
+        receiverObjectId,
+        newMessage.receiverModel,
+        "message",
+        `New message from ${senderName}`,
+        newMessage.message.length > 80
+          ? newMessage.message.substring(0, 80) + "..."
+          : newMessage.message,
+        { actionUrl: "/messages" },
+        senderObjectId,
+        newMessage.senderModel
+      );
+    } catch (notifErr) {
+      console.error("Failed to create message notification:", notifErr);
+    }
 
     console.log("Message populated and ready to send");
 

@@ -1,5 +1,34 @@
 import Hospital, { SRI_LANKAN_DISTRICTS } from "../models/Hospital.js";
 
+// Approximate center coordinates for each Sri Lankan district
+const DISTRICT_COORDINATES = {
+  "Colombo":      [79.8612, 6.9271],
+  "Gampaha":      [80.0000, 7.0840],
+  "Kalutara":     [79.9597, 6.5854],
+  "Kandy":        [80.6350, 7.2906],
+  "Matale":       [80.6237, 7.4675],
+  "Nuwara Eliya": [80.7820, 6.9497],
+  "Galle":        [80.2170, 6.0535],
+  "Matara":       [80.5353, 5.9549],
+  "Hambantota":   [81.1197, 6.1241],
+  "Jaffna":       [80.0137, 9.6615],
+  "Kilinochchi":  [80.4037, 9.3803],
+  "Mannar":       [79.9044, 8.9810],
+  "Vavuniya":     [80.4982, 8.7514],
+  "Mullaitivu":   [80.8142, 9.2671],
+  "Batticaloa":   [81.6924, 7.7170],
+  "Ampara":       [81.6747, 7.2913],
+  "Trincomalee":  [81.2335, 8.5874],
+  "Kurunegala":   [80.3647, 7.4818],
+  "Puttalam":     [79.8283, 8.0362],
+  "Anuradhapura": [80.4037, 8.3114],
+  "Polonnaruwa":  [81.0003, 7.9403],
+  "Badulla":      [81.0550, 6.9934],
+  "Moneragala":   [81.3497, 6.8728],
+  "Ratnapura":    [80.3849, 6.6828],
+  "Kegalle":      [80.3464, 7.2513],
+};
+
 // Get All Hospitals (Admin)
 export const getAllHospitals = async (req, res) => {
   try {
@@ -172,6 +201,10 @@ export const createHospital = async (req, res) => {
       website: website?.trim(),
       description: description?.trim(),
       facilities: facilities || [],
+      location: {
+        type: 'Point',
+        coordinates: DISTRICT_COORDINATES[district] || [79.8612, 6.9271],
+      },
       updatedBy: req.admin?._id,
       lastUpdated: new Date(),
     });
@@ -268,6 +301,7 @@ export const updateHospital = async (req, res) => {
     if (description !== undefined) updateData.description = description?.trim();
     if (facilities !== undefined) updateData.facilities = facilities;
     if (isActive !== undefined) updateData.isActive = isActive;
+    if (district) updateData.location = { type: 'Point', coordinates: DISTRICT_COORDINATES[district] || [79.8612, 6.9271] };
     
     updateData.updatedBy = req.admin?._id;
     updateData.lastUpdated = new Date();
