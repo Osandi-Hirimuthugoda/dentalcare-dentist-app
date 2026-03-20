@@ -1,228 +1,99 @@
 import React, { useState, useEffect } from "react";
 import AdminSidebar from "../../components/layout/AdminSidebar";
-import { motion } from "framer-motion";
-import { Activity, TrendingUp, Users, Calendar, Clock } from "lucide-react";
+import { Activity, TrendingUp, Users, Calendar, Clock, RefreshCw } from "lucide-react";
 import axios from "axios";
-import styles from "../../styles/pages/DoctorDashboard.module.css";
+import "../../styles/pages/AdminActivity.css";
+
+const API = "http://localhost:4000/api";
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "N/A";
 
 export default function AdminActivity() {
-  const [activityData, setActivityData] = useState({
-    recentRegistrations: [],
-    systemStats: {},
-  });
+  const [data, setData]       = useState({ recentRegistrations: [], systemStats: {} });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchActivityData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
-  const fetchActivityData = async () => {
+  const fetchData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      
-      // Fetch system activity from admin API
       try {
-        const activityRes = await axios.get("http://localhost:4000/api/admins/activity");
-        const { recentRegistrations, systemStats } = activityRes.data;
-        
-        setActivityData({
-          recentRegistrations: recentRegistrations || [],
-          systemStats: systemStats || {},
-        });
-      } catch (err) {
-        console.error("Error fetching activity data:", err);
-        // Fallback to individual API calls
-        let recentDoctors = [];
-        try {
-          const doctorsRes = await axios.get("http://localhost:4000/api/doctors/all");
-          recentDoctors = (doctorsRes.data || []).slice(0, 5);
-        } catch (err2) {
-          recentDoctors = [];
-        }
-
-        const stats = {
-          totalDoctors: 0,
-          totalAppointments: 0,
-          activeToday: 0,
-          systemUptime: "99.9%",
-        };
-
-        setActivityData({
-          recentRegistrations: recentDoctors,
-          systemStats: stats,
-        });
+        const res = await axios.get(`${API}/admins/activity`);
+        setData({ recentRegistrations: res.data.recentRegistrations || [], systemStats: res.data.systemStats || {} });
+      } catch {
+        let doctors = [];
+        try { const dr = await axios.get(`${API}/doctors/all`); doctors = (dr.data || []).slice(0, 10); } catch { /* silent */ }
+        setData({ recentRegistrations: doctors, systemStats: { totalDoctors: doctors.length, totalAppointments: 0, activeToday: 0, systemUptime: "99.9%" } });
       }
-    } catch (err) {
-      console.error("Error fetching activity data:", err);
-    } finally {
-      setLoading(false);
-    }
+    } catch { /* silent */ }
+    finally { setLoading(false); }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  const STATS = [
+    { label: "Total Doctors",      value: data.systemStats.totalDoctors      ?? "—", color: "#3b82f6", bg: "#eff6ff",  icon: Users },
+    { label: "Total Appointments", value: data.systemStats.totalAppointments ?? "—", color: "#10b981", bg: "#f0fdf4",  icon: Calendar },
+    { label: "Active Today",       value: data.systemStats.activeToday       ?? "—", color: "#f59e0b", bg: "#fffbeb",  icon: Activity },
+    { label: "System Uptime",      value: data.systemStats.systemUptime      ?? "—", color: "#8b5cf6", bg: "#f5f3ff",  icon: TrendingUp },
+  ];
 
-  if (loading) {
-    return (
-      <div className={styles.dashboardWrapper}>
-        <AdminSidebar />
-        <div className={styles.mainContentArea}>
-          <div style={{ textAlign: "center", padding: "3rem" }}>Loading activity...</div>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="act-wrapper"><AdminSidebar />
+      <div className="act-content"><div className="act-loading"><div className="act-spinner" /><p>Loading activity...</p></div></div>
+    </div>
+  );
 
   return (
-    <div className={styles.dashboardWrapper}>
+    <div className="act-wrapper">
       <AdminSidebar />
-
-      <div className={styles.mainContentArea}>
-        <header className={styles.header}>
-          <div className={styles.titleGroup}>
-            <h1 className={styles.mainTitle}>System Activity</h1>
-            <p className={styles.statsGridLabel}>Monitor system performance and recent activity</p>
+      <div className="act-content">
+        <div className="act-header">
+          <div>
+            <h1><Activity size={22} /> System Activity</h1>
+            <p>Monitor system performance and recent activity</p>
           </div>
-        </header>
-
-        {/* System Stats */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-            gap: "1.5rem",
-            marginBottom: "2rem",
-          }}
-        >
-          {[
-            { label: "Total Doctors", value: activityData.systemStats.totalDoctors, icon: Users, color: "#3b82f6" },
-            { label: "Total Appointments", value: activityData.systemStats.totalAppointments, icon: Calendar, color: "#10b981" },
-            { label: "Active Today", value: activityData.systemStats.activeToday, icon: Activity, color: "#f59e0b" },
-            { label: "System Uptime", value: activityData.systemStats.systemUptime, icon: TrendingUp, color: "#8b5cf6" },
-          ].map((stat, index) => {
-            const IconComponent = stat.icon;
-            return (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ y: -5, boxShadow: "0 15px 30px rgba(0, 0, 0, 0.12)" }}
-                style={{
-                  backgroundColor: "white",
-                  borderRadius: "1.25rem",
-                  padding: "1.5rem",
-                  boxShadow: "0 10px 20px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.04)",
-                  border: "1px solid #e5e7eb",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "1rem",
-                }}
-              >
-                <div
-                  style={{
-                    backgroundColor: `${stat.color}20`,
-                    padding: "1rem",
-                    borderRadius: "0.75rem",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <IconComponent size={24} style={{ color: stat.color }} />
-                </div>
-                <div>
-                  <div style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.25rem" }}>
-                    {stat.label}
-                  </div>
-                  <div style={{ fontSize: "1.75rem", fontWeight: "700", color: stat.color }}>
-                    {stat.value}
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
+          <button className="act-refresh-btn" onClick={fetchData}><RefreshCw size={13} /> Refresh</button>
         </div>
 
-        {/* Recent Activity */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          style={{
-            backgroundColor: "white",
-            borderRadius: "1.25rem",
-            padding: "2rem",
-            boxShadow: "0 10px 20px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.04)",
-            border: "1px solid #e5e7eb",
-          }}
-        >
-          <h2 style={{ fontSize: "1.5rem", fontWeight: "700", color: "#1e3a8a", marginBottom: "1.5rem" }}>
-            Recent Doctor Registrations
-          </h2>
+        {/* Stats */}
+        <div className="act-stats">
+          {STATS.map((s, i) => (
+            <div key={i} className="act-stat-card">
+              <div className="act-stat-icon" style={{ background: s.bg }}>
+                <s.icon size={20} style={{ color: s.color }} />
+              </div>
+              <div>
+                <div className="act-stat-value" style={{ color: s.color }}>{s.value}</div>
+                <div className="act-stat-label">{s.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
 
-          {activityData.recentRegistrations.length > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              {activityData.recentRegistrations.map((doctor, index) => (
-                <div
-                  key={index}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "1rem",
-                    backgroundColor: "#f9fafb",
-                    borderRadius: "0.75rem",
-                    border: "1px solid #e5e7eb",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                    <div
-                      style={{
-                        width: "2.5rem",
-                        height: "2.5rem",
-                        backgroundColor: "#e0f2fe",
-                        borderRadius: "50%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "1.125rem",
-                        fontWeight: "600",
-                        color: "#2563eb",
-                      }}
-                    >
-                      {doctor.fullName?.charAt(0) || "D"}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: "1rem", fontWeight: "600", color: "#1e3a8a" }}>
-                        {doctor.fullName || "Unknown Doctor"}
-                      </div>
-                      <div style={{ fontSize: "0.875rem", color: "#6b7280", display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.25rem" }}>
-                        <Clock size={14} />
-                        {formatDate(doctor.createdAt)}
-                      </div>
-                    </div>
+        {/* Recent Registrations */}
+        <div className="act-card">
+          <div className="act-card-header">
+            <h2>Recent Doctor Registrations</h2>
+          </div>
+          {data.recentRegistrations.length === 0 ? (
+            <div className="act-empty"><Users size={40} /><p>No recent registrations</p></div>
+          ) : (
+            <div className="act-list">
+              {data.recentRegistrations.map((doc, i) => (
+                <div key={i} className="act-item">
+                  <div className="act-avatar">{(doc.fullName || "D").charAt(0).toUpperCase()}</div>
+                  <div className="act-item-info">
+                    <div className="act-item-name">{doc.fullName || "Unknown Doctor"}</div>
+                    {doc.specialization && <div className="act-item-spec">{doc.specialization}</div>}
+                    {doc.email && <div className="act-item-email">{doc.email}</div>}
+                  </div>
+                  <div className="act-item-time">
+                    <Clock size={12} /> {fmtDate(doc.createdAt)}
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <p style={{ color: "#6b7280", textAlign: "center", padding: "2rem" }}>
-              No recent registrations
-            </p>
           )}
-        </motion.div>
+        </div>
       </div>
     </div>
   );
 }
-
