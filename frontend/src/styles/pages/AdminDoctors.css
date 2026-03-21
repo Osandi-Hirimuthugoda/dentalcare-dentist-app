@@ -1,0 +1,436 @@
+/* AdminDoctors.css */
+
+.adoc-wrapper { display: flex; min-height: 100vh; background: #f8fafc; }
+
+.adoc-content {
+  flex: 1;
+  margin-left: 220px;
+  padding: 2rem 2.5rem;
+  box-sizing: border-box;
+}
+
+/* ── Header ── */
+.adoc-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1.75rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.adoc-header h1 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #111827;
+  margin: 0 0 0.25rem;
+  letter-spacing: -0.4px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.adoc-header p { color: #6b7280; font-size: 0.875rem; margin: 0; }
+
+.adoc-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0.55rem 1rem;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.625rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.adoc-refresh-btn:hover { background: #e5e7eb; }
+
+/* ── Toast ── */
+.adoc-toast {
+  padding: 0.875rem 1.25rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.adoc-toast.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+.adoc-toast.error   { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
+
+/* ── Filters ── */
+.adoc-filters {
+  background: #fff;
+  border-radius: 0.875rem;
+  border: 1px solid #f0f0f0;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  gap: 0.875rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.adoc-search {
+  flex: 1;
+  min-width: 220px;
+  position: relative;
+}
+
+.adoc-search svg {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.adoc-search input {
+  width: 100%;
+  padding: 0.6rem 0.875rem 0.6rem 2.5rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+  color: #111827;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.adoc-search input:focus { border-color: #00897B; }
+
+.adoc-select {
+  padding: 0.6rem 0.875rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+  color: #111827;
+  outline: none;
+  cursor: pointer;
+  background: #fff;
+  transition: border-color 0.15s;
+}
+
+.adoc-select:focus { border-color: #00897B; }
+
+/* ── Grid ── */
+.adoc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+/* ── Card ── */
+.adoc-card {
+  background: #fff;
+  border-radius: 1rem;
+  border: 1.5px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  padding: 1.25rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.adoc-card:hover {
+  border-color: #99d6d0;
+  box-shadow: 0 4px 16px rgba(0,137,123,0.08);
+}
+
+.adoc-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.adoc-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00897B 0%, #26A69A 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+.adoc-card-info { flex: 1; min-width: 0; }
+
+.adoc-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #111827;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adoc-spec-badge {
+  display: inline-block;
+  padding: 0.2rem 0.625rem;
+  background: #f0faf9;
+  border: 1px solid #99d6d0;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #00695C;
+}
+
+.adoc-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.adoc-detail-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.adoc-detail-row svg { color: #d1d5db; flex-shrink: 0; }
+
+/* ── Actions ── */
+.adoc-actions { display: flex; gap: 0.5rem; }
+
+.adoc-edit-btn {
+  flex: 1;
+  padding: 0.5rem;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.15s;
+}
+
+.adoc-edit-btn:hover { background: #2563eb; color: white; border-color: #2563eb; }
+
+.adoc-delete-btn {
+  flex: 1;
+  padding: 0.5rem;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  border-radius: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.15s;
+}
+
+.adoc-delete-btn:hover { background: #ef4444; color: white; border-color: #ef4444; }
+
+/* ── Empty ── */
+.adoc-empty {
+  text-align: center;
+  padding: 4rem 1rem;
+  color: #9ca3af;
+  background: #fff;
+  border-radius: 1rem;
+  border: 1px solid #f0f0f0;
+}
+
+.adoc-empty svg { margin-bottom: 1rem; opacity: 0.3; }
+.adoc-empty h3 { font-size: 1rem; font-weight: 700; color: #374151; margin: 0 0 0.25rem; }
+.adoc-empty p  { font-size: 0.875rem; margin: 0; }
+
+/* ── Modal ── */
+.adoc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.adoc-modal {
+  background: #fff;
+  border-radius: 1rem;
+  width: 100%;
+  max-width: 580px;
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+
+.adoc-modal-sm { max-width: 400px; }
+
+.adoc-modal-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
+}
+
+.adoc-modal-header h2 { font-size: 1rem; font-weight: 800; color: #111827; margin: 0; }
+
+.adoc-modal-close {
+  padding: 0.4rem;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  transition: background 0.15s;
+}
+
+.adoc-modal-close:hover { background: #e5e7eb; }
+
+.adoc-modal-body { padding: 1.5rem; }
+
+.adoc-edit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.adoc-edit-field { display: flex; flex-direction: column; gap: 0.35rem; }
+
+.adoc-edit-field label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.adoc-edit-field input,
+.adoc-edit-field select {
+  padding: 0.6rem 0.875rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+  color: #111827;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff;
+  transition: border-color 0.15s;
+}
+
+.adoc-edit-field input:focus,
+.adoc-edit-field select:focus { border-color: #00897B; }
+
+.adoc-modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  gap: 0.625rem;
+  justify-content: flex-end;
+}
+
+.adoc-cancel-btn {
+  padding: 0.6rem 1.25rem;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.adoc-cancel-btn:hover { background: #e5e7eb; }
+
+.adoc-save-btn {
+  padding: 0.6rem 1.5rem;
+  background: #00897B;
+  color: white;
+  border: none;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.15s;
+}
+
+.adoc-save-btn:hover:not(:disabled) { background: #00695C; }
+.adoc-save-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+
+.adoc-delete-confirm-btn {
+  padding: 0.6rem 1.25rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: background 0.15s;
+}
+
+.adoc-delete-confirm-btn:hover { background: #dc2626; }
+
+/* ── Loading ── */
+.adoc-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  flex-direction: column;
+  gap: 1rem;
+  color: #6b7280;
+}
+
+.adoc-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #00897B;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+@media (max-width: 768px) {
+  .adoc-content { margin-left: 0; padding: 1rem; }
+  .adoc-grid { grid-template-columns: 1fr; }
+  .adoc-edit-grid { grid-template-columns: 1fr; }
+}
