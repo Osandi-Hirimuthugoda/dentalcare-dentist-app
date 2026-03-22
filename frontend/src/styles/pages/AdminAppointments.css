@@ -1,0 +1,63 @@
+/* AdminAppointments.css */
+.aap-wrapper { display: flex; min-height: 100vh; background: #f8fafc; }
+.aap-content { flex: 1; margin-left: 220px; padding: 2rem 2.5rem; box-sizing: border-box; }
+
+.aap-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem; }
+.aap-header h1 { font-size: 1.75rem; font-weight: 800; color: #111827; margin: 0 0 0.25rem; letter-spacing: -0.4px; display: flex; align-items: center; gap: 0.5rem; }
+.aap-header p  { color: #6b7280; font-size: 0.875rem; margin: 0; }
+.aap-refresh-btn { display: inline-flex; align-items: center; gap: 5px; padding: 0.55rem 1rem; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 0.625rem; font-size: 0.8rem; font-weight: 600; color: #374151; cursor: pointer; }
+.aap-refresh-btn:hover { background: #e5e7eb; }
+
+.aap-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+.aap-stat-chip { background: #fff; border-radius: 0.875rem; border: 1.5px solid #f0f0f0; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 1rem 1.25rem; display: flex; align-items: center; gap: 0.875rem; cursor: pointer; transition: all 0.15s; }
+.aap-stat-chip:hover, .aap-stat-chip.active { border-color: var(--chip-color, #00897B); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.aap-stat-icon { width: 38px; height: 38px; border-radius: 0.625rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.aap-stat-label { font-size: 0.7rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.06em; }
+.aap-stat-count { font-size: 1.5rem; font-weight: 800; line-height: 1.2; }
+
+.aap-filters { background: #fff; border-radius: 0.875rem; border: 1px solid #f0f0f0; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; gap: 0.875rem; align-items: center; flex-wrap: wrap; }
+.aap-search { flex: 1; min-width: 220px; position: relative; }
+.aap-search svg { position: absolute; left: 0.875rem; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; }
+.aap-search input { width: 100%; padding: 0.6rem 0.875rem 0.6rem 2.5rem; border: 1.5px solid #e5e7eb; border-radius: 0.625rem; font-size: 0.875rem; color: #111827; outline: none; box-sizing: border-box; transition: border-color 0.15s; }
+.aap-search input:focus { border-color: #00897B; }
+.aap-select { padding: 0.6rem 0.875rem; border: 1.5px solid #e5e7eb; border-radius: 0.625rem; font-size: 0.875rem; color: #111827; outline: none; cursor: pointer; background: #fff; }
+.aap-select:focus { border-color: #00897B; }
+
+.aap-card { background: #fff; border-radius: 1rem; border: 1px solid #f0f0f0; box-shadow: 0 2px 12px rgba(0,0,0,0.05); overflow: hidden; }
+
+.aap-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.aap-table thead tr { background: #f9fafb; border-bottom: 1px solid #f0f0f0; }
+.aap-table th { padding: 0.875rem 1.25rem; text-align: left; font-size: 0.72rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+.aap-table tbody tr { border-bottom: 1px solid #f9fafb; transition: background 0.12s; }
+.aap-table tbody tr:last-child { border-bottom: none; }
+.aap-table tbody tr:hover { background: #f9fafb; }
+.aap-table td { padding: 0.875rem 1.25rem; color: #374151; vertical-align: middle; }
+
+.aap-patient-cell { display: flex; align-items: center; gap: 0.625rem; }
+.aap-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #00897B 0%, #26A69A 100%); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700; color: white; flex-shrink: 0; }
+.aap-patient-name { font-weight: 600; color: #111827; font-size: 0.875rem; }
+.aap-patient-email { font-size: 0.75rem; color: #9ca3af; }
+.aap-doctor-name { font-weight: 600; color: #111827; font-size: 0.875rem; }
+.aap-doctor-spec { font-size: 0.75rem; color: #9ca3af; }
+.aap-datetime { display: flex; flex-direction: column; gap: 2px; }
+.aap-date { font-weight: 600; color: #111827; font-size: 0.875rem; display: flex; align-items: center; gap: 3px; }
+.aap-time { font-size: 0.75rem; color: #6b7280; display: flex; align-items: center; gap: 3px; }
+.aap-notes { font-size: 0.8rem; color: #6b7280; font-style: italic; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aap-na { color: #d1d5db; }
+
+.aap-status { display: inline-flex; align-items: center; gap: 4px; padding: 0.3rem 0.75rem; border-radius: 20px; font-size: 0.72rem; font-weight: 700; text-transform: capitalize; white-space: nowrap; }
+.aap-confirmed  { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.aap-pending    { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+.aap-completed  { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.aap-cancelled  { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+
+.aap-empty { text-align: center; padding: 4rem 1rem; color: #9ca3af; }
+.aap-empty svg { margin-bottom: 1rem; opacity: 0.3; }
+.aap-empty h3 { font-size: 1rem; font-weight: 700; color: #374151; margin: 0 0 0.25rem; }
+.aap-empty p  { font-size: 0.875rem; margin: 0; }
+
+.aap-loading { display: flex; justify-content: center; align-items: center; min-height: 60vh; flex-direction: column; gap: 1rem; color: #6b7280; }
+.aap-spinner { width: 36px; height: 36px; border: 3px solid #e5e7eb; border-top-color: #00897B; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@media (max-width: 1100px) { .aap-stats { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 768px) { .aap-content { margin-left: 0; padding: 1rem; } .aap-stats { grid-template-columns: repeat(2, 1fr); } }

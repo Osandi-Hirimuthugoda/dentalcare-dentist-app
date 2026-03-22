@@ -1,550 +1,247 @@
 import React, { useState, useEffect } from "react";
 import AdminSidebar from "../../components/layout/AdminSidebar";
-import { motion } from "framer-motion";
-import { Search, Filter, User, Mail, Phone, Calendar, FileText, Trash2, Eye, AlertCircle, CheckCircle } from "lucide-react";
+import {
+  Search, Mail, Phone, Calendar, FileText, Trash2, Eye,
+  AlertCircle, CheckCircle, Users, UserCheck, Filter, X, User,
+} from "lucide-react";
 import axios from "axios";
-import styles from "../../styles/pages/DoctorDashboard.module.css";
+import "../../styles/pages/AdminPatients.css";
+
+const API = "http://localhost:4000/api";
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "N/A";
+const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "N/A";
 
 export default function AdminPatients() {
-  const [patients, setPatients] = useState([]);
-  const [filteredPatients, setFilteredPatients] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedPatient, setSelectedPatient] = useState(null);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [message, setMessage] = useState({ type: "", text: "" });
+  const [patients, setPatients]         = useState([]);
+  const [filtered, setFiltered]         = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [search, setSearch]             = useState("");
+  const [genderFilter, setGenderFilter] = useState("all");
+  const [selected, setSelected]         = useState(null);
+  const [deleteId, setDeleteId]         = useState(null);
+  const [toast, setToast]               = useState({ type: "", text: "" });
+
+  useEffect(() => { fetchPatients(); }, []);
 
   useEffect(() => {
-    fetchPatients();
-  }, []);
+    let list = [...patients];
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter(p => p.name?.toLowerCase().includes(q) || p.email?.toLowerCase().includes(q) || p.phone?.includes(q));
+    }
+    if (genderFilter !== "all") list = list.filter(p => p.gender?.toLowerCase() === genderFilter);
+    setFiltered(list);
+  }, [search, genderFilter, patients]);
 
-  useEffect(() => {
-    filterPatients();
-  }, [searchTerm, patients]);
+  const showToast = (type, text) => { setToast({ type, text }); setTimeout(() => setToast({ type: "", text: "" }), 3000); };
 
   const fetchPatients = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await axios.get("http://localhost:4000/api/admins/patients");
-      setPatients(response.data || []);
-      setFilteredPatients(response.data || []);
+      const res = await axios.get(`${API}/admins/patients`);
+      setPatients(res.data || []);
+    } catch { setPatients([]); }
+    finally { setLoading(false); }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await axios.delete(`${API}/patients/${deleteId}`);
+      showToast("success", "Patient deleted successfully.");
+      setDeleteId(null);
+      await fetchPatients();
     } catch (err) {
-      console.error("Error fetching patients:", err);
-      setPatients([]);
-      setFilteredPatients([]);
-    } finally {
-      setLoading(false);
+      showToast("error", err.response?.data?.message || "Failed to delete.");
+      setDeleteId(null);
     }
   };
 
-  const filterPatients = () => {
-    let filtered = [...patients];
+  const now = new Date();
+  const stats = [
+    { label: "Total Patients",  value: patients.length,                                                                    color: "#3b82f6", bg: "#eff6ff",  icon: Users },
+    { label: "Active",          value: patients.filter(p => (p.status || "active") === "active").length,                  color: "#10b981", bg: "#f0fdf4",  icon: UserCheck },
+    { label: "Email Verified",  value: patients.filter(p => p.isEmailVerified).length,                                    color: "#8b5cf6", bg: "#f5f3ff",  icon: CheckCircle },
+    { label: "New This Month",  value: patients.filter(p => { const d = new Date(p.createdAt); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length, color: "#f59e0b", bg: "#fffbeb", icon: Calendar },
+  ];
 
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (patient) =>
-          patient.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          patient.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          patient.phone?.includes(searchTerm) ||
-          patient.selectedDoctor?.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    setFilteredPatients(filtered);
-  };
-
-  const handleDelete = async (patientId) => {
-    try {
-      setLoading(true);
-      // Note: Delete patient endpoint needs to be added to backend
-      const response = await axios.delete(`http://localhost:4000/api/patients/${patientId}`);
-
-      if (response.status === 200) {
-        setMessage({ type: "success", text: "Patient deleted successfully!" });
-        setDeleteConfirm(null);
-        await fetchPatients();
-        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
-      }
-    } catch (error) {
-      setMessage({
-        type: "error",
-        text: error.response?.data?.message || "Failed to delete patient. Please try again.",
-      });
-      setDeleteConfirm(null);
-      setTimeout(() => setMessage({ type: "", text: "" }), 3000);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  if (loading) {
-    return (
-      <div className={styles.dashboardWrapper}>
-        <AdminSidebar />
-        <div className={styles.mainContentArea}>
-          <div style={{ textAlign: "center", padding: "3rem" }}>Loading patients...</div>
-        </div>
-      </div>
-    );
-  }
+  if (loading && patients.length === 0) return (
+    <div className="apt-wrapper"><AdminSidebar />
+      <div className="apt-content"><div className="apt-loading"><div className="apt-spinner" /><p>Loading patients...</p></div></div>
+    </div>
+  );
 
   return (
-    <div className={styles.dashboardWrapper}>
+    <div className="apt-wrapper">
       <AdminSidebar />
+      <div className="apt-content">
+        <div className="apt-header">
+          <h1><Users size={22} /> Manage Patients</h1>
+          <p>All patients registered via the mobile app</p>
+        </div>
 
-      <div className={styles.mainContentArea}>
-        <header className={styles.header}>
-          <div className={styles.titleGroup}>
-            <h1 className={styles.mainTitle}>Manage Patients</h1>
-            <p className={styles.statsGridLabel}>View and manage all registered patients</p>
-          </div>
-        </header>
-
-        {/* Success/Error Messages */}
-        {message.text && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`mb-4 p-4 rounded-xl flex items-center gap-3 ${
-              message.type === "success"
-                ? "bg-green-50 text-green-800 border border-green-200"
-                : "bg-red-50 text-red-800 border border-red-200"
-            }`}
-          >
-            {message.type === "success" ? (
-              <CheckCircle size={20} className="text-green-600" />
-            ) : (
-              <AlertCircle size={20} className="text-red-600" />
-            )}
-            <span className="font-medium">{message.text}</span>
-          </motion.div>
-        )}
-
-        {/* Search Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          style={{
-            backgroundColor: "white",
-            borderRadius: "1.25rem",
-            padding: "1.5rem",
-            boxShadow: "0 10px 20px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.04)",
-            border: "1px solid #e5e7eb",
-            marginBottom: "2rem",
-          }}
-        >
-          <div style={{ position: "relative" }}>
-            <Search
-              size={20}
-              style={{
-                position: "absolute",
-                left: "0.75rem",
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "#9ca3af",
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Search by name, email, phone, or doctor..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "0.75rem 0.75rem 0.75rem 2.5rem",
-                border: "1px solid #d1d5db",
-                borderRadius: "0.75rem",
-                fontSize: "1rem",
-                outline: "none",
-              }}
-            />
-          </div>
-          <div style={{ marginTop: "1rem", color: "#6b7280", fontSize: "0.875rem" }}>
-            Showing {filteredPatients.length} of {patients.length} patients
-          </div>
-        </motion.div>
-
-        {/* Patients Grid */}
-        {filteredPatients.length > 0 ? (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
-              gap: "1.5rem",
-            }}
-          >
-            {filteredPatients.map((patient, index) => (
-              <motion.div
-                key={patient._id || index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ y: -5, boxShadow: "0 15px 30px rgba(0, 0, 0, 0.12)" }}
-                style={{
-                  backgroundColor: "white",
-                  borderRadius: "1.25rem",
-                  padding: "1.5rem",
-                  boxShadow: "0 10px 20px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.04)",
-                  border: "1px solid #e5e7eb",
-                  transition: "all 0.3s ease",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
-                  <div
-                    style={{
-                      width: "3.5rem",
-                      height: "3.5rem",
-                      backgroundColor: "#e0f2fe",
-                      borderRadius: "50%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "1.5rem",
-                      fontWeight: "600",
-                      color: "#2563eb",
-                    }}
-                  >
-                    {patient.name?.charAt(0) || "P"}
-                  </div>
-                  <div style={{ flex: "1" }}>
-                    <h3 style={{ fontSize: "1.25rem", fontWeight: "600", color: "#1e3a8a", marginBottom: "0.25rem" }}>
-                      {patient.name || "Unknown Patient"}
-                    </h3>
-                    {patient.selectedDoctor && (
-                      <span
-                        style={{
-                          display: "inline-block",
-                          backgroundColor: "#dbeafe",
-                          color: "#1e40af",
-                          padding: "0.25rem 0.75rem",
-                          borderRadius: "0.5rem",
-                          fontSize: "0.875rem",
-                          fontWeight: "500",
-                        }}
-                      >
-                        {patient.selectedDoctor.fullName}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1rem" }}>
-                  {patient.email && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#6b7280" }}>
-                      <Mail size={16} />
-                      <span style={{ fontSize: "0.875rem" }}>{patient.email}</span>
-                    </div>
-                  )}
-
-                  {patient.phone && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#6b7280" }}>
-                      <Phone size={16} />
-                      <span style={{ fontSize: "0.875rem" }}>{patient.phone}</span>
-                    </div>
-                  )}
-
-                  {patient.age && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#6b7280" }}>
-                      <User size={16} />
-                      <span style={{ fontSize: "0.875rem" }}>Age: {patient.age} | {patient.gender || "N/A"}</span>
-                    </div>
-                  )}
-
-                  {patient.createdAt && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#6b7280" }}>
-                      <Calendar size={16} />
-                      <span style={{ fontSize: "0.875rem" }}>Registered: {formatDate(patient.createdAt)}</span>
-                    </div>
-                  )}
-
-                  {patient.diagnosis && (
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", color: "#6b7280" }}>
-                      <FileText size={16} style={{ marginTop: "0.125rem" }} />
-                      <span style={{ fontSize: "0.875rem" }}>Diagnosis: {patient.diagnosis}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Action Buttons */}
-                <div style={{ display: "flex", gap: "0.5rem", paddingTop: "1rem", borderTop: "1px solid #e5e7eb" }}>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setSelectedPatient(patient)}
-                    style={{
-                      flex: 1,
-                      padding: "0.5rem",
-                      backgroundColor: "#3b82f6",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "0.5rem",
-                      fontSize: "0.875rem",
-                      fontWeight: "600",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "0.5rem",
-                    }}
-                  >
-                    <Eye size={16} />
-                    View
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setDeleteConfirm(patient._id)}
-                    style={{
-                      flex: 1,
-                      padding: "0.5rem",
-                      backgroundColor: "#ef4444",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "0.5rem",
-                      fontSize: "0.875rem",
-                      fontWeight: "600",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "0.5rem",
-                    }}
-                  >
-                    <Trash2 size={16} />
-                    Delete
-                  </motion.button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <div
-            style={{
-              backgroundColor: "white",
-              borderRadius: "1.25rem",
-              padding: "3rem",
-              textAlign: "center",
-              boxShadow: "0 10px 20px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.04)",
-              border: "1px solid #e5e7eb",
-            }}
-          >
-            <User size={48} style={{ color: "#9ca3af", marginBottom: "1rem" }} />
-            <p style={{ color: "#6b7280", fontSize: "1.125rem" }}>
-              No patients found matching your search criteria.
-            </p>
+        {toast.text && (
+          <div className={`apt-toast ${toast.type}`}>
+            {toast.type === "success" ? <CheckCircle size={15} /> : <AlertCircle size={15} />} {toast.text}
           </div>
         )}
 
-        {/* Patient Details Modal */}
-        {selectedPatient && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-            }}
-            onClick={() => setSelectedPatient(null)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                backgroundColor: "white",
-                borderRadius: "1rem",
-                padding: "2rem",
-                maxWidth: "600px",
-                width: "90%",
-                maxHeight: "80vh",
-                overflowY: "auto",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                <h2 style={{ fontSize: "1.5rem", fontWeight: "700", color: "#1e3a8a" }}>
-                  Patient Details
-                </h2>
-                <button
-                  onClick={() => setSelectedPatient(null)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    fontSize: "1.5rem",
-                    cursor: "pointer",
-                    color: "#6b7280",
-                  }}
-                >
-                  ×
+        {/* Stats */}
+        <div className="apt-stats">
+          {stats.map((s, i) => (
+            <div key={i} className="apt-stat-card">
+              <div className="apt-stat-icon" style={{ background: s.bg }}>
+                <s.icon size={18} style={{ color: s.color }} />
+              </div>
+              <div>
+                <div className="apt-stat-value" style={{ color: s.color }}>{s.value}</div>
+                <div className="apt-stat-label">{s.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Filters */}
+        <div className="apt-filters">
+          <div className="apt-search">
+            <Search size={14} />
+            <input type="text" placeholder="Search by name, email, phone..."
+              value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          <select className="apt-select" value={genderFilter} onChange={e => setGenderFilter(e.target.value)}>
+            <option value="all">All Genders</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+          {(search || genderFilter !== "all") && (
+            <button className="apt-clear-btn" onClick={() => { setSearch(""); setGenderFilter("all"); }}>
+              <X size={13} /> Clear
+            </button>
+          )}
+          <span className="apt-count">{filtered.length} of {patients.length}</span>
+        </div>
+
+        {/* Table */}
+        <div className="apt-card">
+          {filtered.length === 0 ? (
+            <div className="apt-empty"><Users size={44} /><h3>No patients found</h3><p>{search ? "Try adjusting your search" : "No patients registered yet"}</p></div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table className="apt-table">
+                <thead>
+                  <tr>
+                    <th>Patient</th><th>Contact</th><th>Age / Gender</th>
+                    <th>Blood Group</th><th>Status</th><th>Registered</th><th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((p, i) => (
+                    <tr key={p._id || i}>
+                      <td>
+                        <div className="apt-patient-cell">
+                          <div className="apt-avatar">{(p.name || "P").charAt(0).toUpperCase()}</div>
+                          <div>
+                            <div className="apt-patient-name">{p.name || "Unknown"}</div>
+                            <div className="apt-verified">
+                              {p.isEmailVerified
+                                ? <><CheckCircle size={10} style={{ color: "#10b981" }} /> Verified</>
+                                : <><AlertCircle size={10} style={{ color: "#f59e0b" }} /> Unverified</>}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="apt-contact"><Mail size={12} />{p.email || "—"}</div>
+                        <div className="apt-contact"><Phone size={12} />{p.phone || "—"}</div>
+                      </td>
+                      <td className="apt-cell-sm">{p.age ? `${p.age} yrs` : "—"} / {cap(p.gender)}</td>
+                      <td>
+                        {p.bloodGroup
+                          ? <span className="apt-blood-badge">{p.bloodGroup}</span>
+                          : <span className="apt-na">—</span>}
+                      </td>
+                      <td>
+                        <span className={`apt-status-badge ${(p.status || "active") === "active" ? "active" : "inactive"}`}>
+                          {cap(p.status || "active")}
+                        </span>
+                      </td>
+                      <td className="apt-cell-sm">{fmtDate(p.createdAt)}</td>
+                      <td>
+                        <div className="apt-row-actions">
+                          <button className="apt-view-btn" onClick={() => setSelected(p)}><Eye size={12} /> View</button>
+                          <button className="apt-del-btn" onClick={() => setDeleteId(p._id)}><Trash2 size={12} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* View Modal */}
+      {selected && (
+        <div className="apt-modal-overlay" onClick={() => setSelected(null)}>
+          <div className="apt-modal" onClick={e => e.stopPropagation()}>
+            <div className="apt-modal-header">
+              <h2>Patient Details</h2>
+              <button className="apt-modal-close" onClick={() => setSelected(null)}><X size={15} /></button>
+            </div>
+            <div className="apt-modal-body">
+              <div className="apt-modal-avatar-wrap">
+                <div className="apt-modal-avatar">{(selected.name || "P").charAt(0).toUpperCase()}</div>
+                <div className="apt-modal-name">{selected.name}</div>
+                <span className={`apt-status-badge ${selected.isEmailVerified ? "active" : "inactive"}`}>
+                  {selected.isEmailVerified ? "✓ Email Verified" : "⚠ Unverified"}
+                </span>
+              </div>
+              <div className="apt-detail-grid">
+                {[
+                  ["Email",       selected.email,                                    Mail],
+                  ["Phone",       selected.phone || "—",                             Phone],
+                  ["Age",         selected.age ? `${selected.age} years` : "—",     User],
+                  ["Gender",      cap(selected.gender),                              User],
+                  ["Blood Group", selected.bloodGroup || "—",                        FileText],
+                  ["Status",      cap(selected.status || "active"),                  UserCheck],
+                  ["Registered",  fmtDate(selected.createdAt),                       Calendar],
+                ].map(([label, value, Icon]) => (
+                  <div key={label} className="apt-detail-item">
+                    <div className="apt-detail-label"><Icon size={11} /> {label}</div>
+                    <div className="apt-detail-value">{value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="apt-modal-footer">
+              <button className="apt-cancel-btn" onClick={() => setSelected(null)}>Close</button>
+              <button className="apt-delete-btn" onClick={() => { setDeleteId(selected._id); setSelected(null); }}>
+                <Trash2 size={14} /> Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirm */}
+      {deleteId && (
+        <div className="apt-modal-overlay" onClick={() => setDeleteId(null)}>
+          <div className="apt-modal apt-modal-sm" onClick={e => e.stopPropagation()}>
+            <div className="apt-modal-body" style={{ textAlign: "center", padding: "2rem" }}>
+              <AlertCircle size={44} style={{ color: "#ef4444", marginBottom: "1rem" }} />
+              <h2 style={{ fontSize: "1rem", fontWeight: "800", color: "#111827", margin: "0 0 0.5rem" }}>Delete Patient?</h2>
+              <p style={{ color: "#6b7280", fontSize: "0.875rem", margin: "0 0 1.5rem" }}>This will permanently delete the patient and all their appointments.</p>
+              <div style={{ display: "flex", gap: "0.75rem" }}>
+                <button className="apt-cancel-btn" style={{ flex: 1 }} onClick={() => setDeleteId(null)}>Cancel</button>
+                <button className="apt-delete-btn" style={{ flex: 1 }} onClick={handleDelete}>
+                  <Trash2 size={14} /> Delete
                 </button>
               </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                <div>
-                  <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280" }}>Name</label>
-                  <p style={{ marginTop: "0.5rem", fontSize: "1rem" }}>{selectedPatient.name}</p>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280" }}>Email</label>
-                  <p style={{ marginTop: "0.5rem", fontSize: "1rem" }}>{selectedPatient.email}</p>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280" }}>Phone</label>
-                  <p style={{ marginTop: "0.5rem", fontSize: "1rem" }}>{selectedPatient.phone || "N/A"}</p>
-                </div>
-
-                {selectedPatient.age && (
-                  <div>
-                    <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280" }}>Age & Gender</label>
-                    <p style={{ marginTop: "0.5rem", fontSize: "1rem" }}>
-                      {selectedPatient.age} years old | {selectedPatient.gender || "N/A"}
-                    </p>
-                  </div>
-                )}
-
-                {selectedPatient.selectedDoctor && (
-                  <div>
-                    <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280" }}>Assigned Doctor</label>
-                    <p style={{ marginTop: "0.5rem", fontSize: "1rem" }}>
-                      {selectedPatient.selectedDoctor.fullName} ({selectedPatient.selectedDoctor.specialization})
-                    </p>
-                  </div>
-                )}
-
-                {selectedPatient.diagnosis && (
-                  <div>
-                    <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280" }}>Diagnosis</label>
-                    <p style={{ marginTop: "0.5rem", fontSize: "1rem", color: "#ef4444" }}>{selectedPatient.diagnosis}</p>
-                  </div>
-                )}
-
-                {selectedPatient.doctorNotes && (
-                  <div>
-                    <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280" }}>Doctor Notes</label>
-                    <p style={{ marginTop: "0.5rem", fontSize: "1rem" }}>{selectedPatient.doctorNotes}</p>
-                  </div>
-                )}
-
-                {selectedPatient.history && selectedPatient.history.length > 0 && (
-                  <div>
-                    <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280" }}>Medical History</label>
-                    <ul style={{ marginTop: "0.5rem", paddingLeft: "1.5rem" }}>
-                      {selectedPatient.history.map((item, idx) => (
-                        <li key={idx} style={{ fontSize: "1rem", marginBottom: "0.25rem" }}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                <div>
-                  <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#6b7280" }}>Registration Date</label>
-                  <p style={{ marginTop: "0.5rem", fontSize: "1rem" }}>{formatDate(selectedPatient.createdAt)}</p>
-                </div>
-              </div>
-            </motion.div>
+            </div>
           </div>
-        )}
-
-        {/* Delete Confirmation Modal */}
-        {deleteConfirm && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-            }}
-            onClick={() => setDeleteConfirm(null)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                backgroundColor: "white",
-                borderRadius: "1rem",
-                padding: "2rem",
-                maxWidth: "400px",
-                width: "90%",
-              }}
-            >
-              <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
-                <AlertCircle size={48} style={{ color: "#ef4444", marginBottom: "1rem" }} />
-                <h2 style={{ fontSize: "1.25rem", fontWeight: "700", color: "#1e3a8a", marginBottom: "0.5rem" }}>
-                  Delete Patient?
-                </h2>
-                <p style={{ color: "#6b7280" }}>
-                  Are you sure you want to delete this patient? This action cannot be undone and will also delete all associated appointments.
-                </p>
-              </div>
-
-              <div style={{ display: "flex", gap: "1rem" }}>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setDeleteConfirm(null)}
-                  style={{
-                    flex: 1,
-                    padding: "0.75rem",
-                    backgroundColor: "#6b7280",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "0.5rem",
-                    fontSize: "1rem",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                  }}
-                >
-                  Cancel
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleDelete(deleteConfirm)}
-                  disabled={loading}
-                  style={{
-                    flex: 1,
-                    padding: "0.75rem",
-                    backgroundColor: "#ef4444",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "0.5rem",
-                    fontSize: "1rem",
-                    fontWeight: "600",
-                    cursor: loading ? "not-allowed" : "pointer",
-                    opacity: loading ? 0.7 : 1,
-                  }}
-                >
-                  {loading ? "Deleting..." : "Delete"}
-                </motion.button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
-
