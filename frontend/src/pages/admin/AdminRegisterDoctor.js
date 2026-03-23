@@ -1,459 +1,242 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import AdminSidebar from "../../components/layout/AdminSidebar";
 import axios from "axios";
-import { User, Lock, Briefcase, CheckCircle, AlertCircle, Copy, Mail, Key, X } from "lucide-react";
+import {
+  User, Lock, Briefcase, CheckCircle, AlertCircle,
+  Copy, Mail, Key, X, UserPlus, Phone, Building,
+} from "lucide-react";
 import PasswordInput from "../../components/common/PasswordInput";
-import styles from "../../styles/components/DoctorSidebar.module.css";
-import formStyles from "../../styles/pages/AdminRegisterDoctor.module.css";
+import { DENTAL_SPECIALIZATIONS } from "../../utils/constants";
+import "../../styles/pages/AdminRegisterDoctor.css";
+
+const API = "http://localhost:4000/api";
 
 export default function AdminRegisterDoctor() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
-    password: "",
-    licenseNumber: "",
-    specialization: "",
-    qualifications: "",
-    hospital: "",
-    experience: "",
+  const [form, setForm] = useState({
+    fullName: "", email: "", phone: "", password: "",
+    licenseNumber: "", specialization: "", qualifications: "",
+    hospital: "", experience: "",
   });
-
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [registeredCredentials, setRegisteredCredentials] = useState(null); // Store credentials for display
+  const [credentials, setCredentials] = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }));
-    }
+    setForm(p => ({ ...p, [name]: value }));
+    if (errors[name]) setErrors(p => ({ ...p, [name]: "" }));
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.fullName.trim()) newErrors.fullName = "Full name is required";
-    if (!formData.email.trim()) newErrors.email = "Email is required";
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Email is invalid";
-
-    if (!formData.phone.trim()) newErrors.phone = "Phone number is required";
-
-    if (!formData.password) newErrors.password = "Password is required";
-    else if (formData.password.length < 6)
-      newErrors.password = "Password must be at least 6 characters";
-
-    if (!formData.licenseNumber.trim())
-      newErrors.licenseNumber = "License number is required";
-
-    if (!formData.specialization)
-      newErrors.specialization = "Specialization is required";
-
-    if (!formData.experience)
-      newErrors.experience = "Years of experience is required";
-
-    return newErrors;
+  const validate = () => {
+    const e = {};
+    if (!form.fullName.trim())      e.fullName      = "Required";
+    if (!form.email.trim())         e.email         = "Required";
+    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Invalid email";
+    if (!form.phone.trim())         e.phone         = "Required";
+    if (!form.password)             e.password      = "Required";
+    else if (form.password.length < 6) e.password   = "Min 6 characters";
+    if (!form.licenseNumber.trim()) e.licenseNumber = "Required";
+    if (!form.specialization)       e.specialization = "Required";
+    if (!form.experience)           e.experience    = "Required";
+    return e;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const formErrors = validateForm();
-
-    if (Object.keys(formErrors).length > 0) {
-      setErrors(formErrors);
-      return;
-    }
-
+    const errs = validate();
+    if (Object.keys(errs).length) { setErrors(errs); return; }
     setLoading(true);
-    setSuccess(false);
-
     try {
-      // Get admin token from localStorage
-      const adminData = localStorage.getItem("admin");
-      const admin = adminData ? JSON.parse(adminData) : null;
-      const token = admin?.token || "";
-
-      const response = await axios.post(
-        "http://localhost:4000/api/admins/doctors/register", 
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      
-      if (response.data.message === "Doctor registered successfully") {
-        setSuccess(true);
-        
-        // Use credentials from response if available, otherwise use form data
-        const registeredEmail = response.data.credentials?.email || formData.email.trim();
-        const registeredPassword = response.data.credentials?.password || formData.password;
-        
-        setFormData({
-          fullName: "",
-          email: "",
-          phone: "",
-          password: "",
-          licenseNumber: "",
-          specialization: "",
-          qualifications: "",
-          hospital: "",
-          experience: "",
+      const admin = JSON.parse(localStorage.getItem("admin") || "{}");
+      const res = await axios.post(`${API}/admins/doctors/register`, form, {
+        headers: { Authorization: `Bearer ${admin?.token || ""}` },
+      });
+      if (res.data.message === "Doctor registered successfully") {
+        setCredentials({
+          fullName: res.data.doctor?.fullName || form.fullName,
+          email:    res.data.credentials?.email    || form.email,
+          password: res.data.credentials?.password || form.password,
         });
-        
-        // Store credentials for display in modal (modal will show automatically)
-        setRegisteredCredentials({
-          email: registeredEmail,
-          password: registeredPassword, // This is the exact password that works for login
-          fullName: response.data.doctor?.fullName || formData.fullName
-        });
+        setForm({ fullName: "", email: "", phone: "", password: "", licenseNumber: "", specialization: "", qualifications: "", hospital: "", experience: "" });
+        setErrors({});
       }
-    } catch (error) {
-      setErrors({ submit: error.response?.data?.message || "Failed to register doctor. Please try again." });
+    } catch (err) {
+      setErrors({ submit: err.response?.data?.message || "Failed to register doctor." });
     } finally {
       setLoading(false);
     }
   };
 
-  const specializations = [
-    "Orthodontist",
-    "Periodontist",
-    "Endodontist",
-    "Oral Surgeon",
-    "Prosthodontist",
-    "Pediatric Dentist",
-    "Oral Pathologist",
-    "General Dentist",
-    "Other",
-  ];
+  const copy = (text) => navigator.clipboard.writeText(text);
 
   return (
-    <div className={styles.dashboardWrapper}>
+    <div className="reg-wrapper">
       <AdminSidebar />
 
-      <div className={styles.mainContentArea}>
-        <header className={styles.header}>
-          <div className={styles.titleGroup}>
-            <h1 className={styles.mainTitle}>Register New Doctor</h1>
-            <p className={styles.statsGridLabel}>Add a new doctor to the system</p>
+      <div className="reg-content">
+        {/* Header */}
+        <div className="reg-header">
+          <h1><UserPlus size={22} /> Register New Doctor</h1>
+          <p>Add a new doctor to the DentalCare+ system</p>
+        </div>
+
+        {errors.submit && (
+          <div className="reg-error-banner">
+            <AlertCircle size={15} /> {errors.submit}
           </div>
-        </header>
+        )}
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className={formStyles.formContainer}
-        >
-          {success && registeredCredentials && (
-            <div className={formStyles.credentialsModal}>
-              <div className={formStyles.credentialsCard}>
-                <div className={formStyles.credentialsHeader}>
-                  <CheckCircle size={24} style={{ color: "#10b981" }} />
-                  <h3>Doctor Registered Successfully!</h3>
-                  <button 
-                    onClick={() => {
-                      setSuccess(false);
-                      setRegisteredCredentials(null);
-                      navigate("/admin/doctors");
-                    }}
-                    className={formStyles.closeButton}
-                  >
-                    <X size={20} />
-                  </button>
+        <form onSubmit={handleSubmit} className="reg-form">
+          {/* Personal Info */}
+          <div className="reg-card">
+            <div className="reg-card-header">
+              <div className="reg-card-icon" style={{ background: "#eff6ff", border: "1px solid #bfdbfe" }}>
+                <User size={16} style={{ color: "#2563eb" }} />
+              </div>
+              <h2>Personal Information</h2>
+            </div>
+            <div className="reg-grid">
+              {[
+                { label: "Full Name",     name: "fullName",  type: "text",  placeholder: "Dr. John Doe",       req: true },
+                { label: "Email Address", name: "email",     type: "email", placeholder: "doctor@example.com", req: true },
+                { label: "Phone Number",  name: "phone",     type: "tel",   placeholder: "+94 77 123 4567",    req: true },
+              ].map(f => (
+                <div key={f.name} className="reg-field">
+                  <label>{f.label} {f.req && <span className="req-star">*</span>}</label>
+                  <input type={f.type} name={f.name} value={form[f.name]}
+                    onChange={handleChange} placeholder={f.placeholder}
+                    className={errors[f.name] ? "has-error" : ""} />
+                  {errors[f.name] && <span className="field-error"><AlertCircle size={11} />{errors[f.name]}</span>}
                 </div>
-                
-                <div className={formStyles.credentialsBody}>
-                  <p style={{ marginBottom: "1rem", color: "#6b7280" }}>
-                    Please share these login credentials with the doctor:
-                  </p>
-                  
-                  <div className={formStyles.credentialItem}>
-                    <div className={formStyles.credentialLabel}>
-                      <Mail size={18} />
-                      <span>Email Address</span>
-                    </div>
-                    <div className={formStyles.credentialValue}>
-                      <code>{registeredCredentials.email}</code>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(registeredCredentials.email);
-                          alert("Email copied to clipboard!");
-                        }}
-                        className={formStyles.copyButton}
-                        title="Copy email"
-                      >
-                        <Copy size={16} />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className={formStyles.credentialItem}>
-                    <div className={formStyles.credentialLabel}>
-                      <Key size={18} />
-                      <span>Password</span>
-                    </div>
-                    <div className={formStyles.credentialValue}>
-                      <code>{registeredCredentials.password}</code>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(registeredCredentials.password);
-                          alert("Password copied to clipboard!");
-                        }}
-                        className={formStyles.copyButton}
-                        title="Copy password"
-                      >
-                        <Copy size={16} />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className={formStyles.credentialsWarning}>
-                    <AlertCircle size={18} />
-                    <p>
-                      <strong>Important:</strong> These credentials are only shown once. 
-                      Please save them or share them with the doctor immediately.
-                    </p>
-                  </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Professional Details */}
+          <div className="reg-card">
+            <div className="reg-card-header">
+              <div className="reg-card-icon" style={{ background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
+                <Briefcase size={16} style={{ color: "#059669" }} />
+              </div>
+              <h2>Professional Details</h2>
+            </div>
+            <div className="reg-grid">
+              {[
+                { label: "License Number",       name: "licenseNumber", type: "text",   placeholder: "SLMC12345",                  req: true },
+                { label: "Years of Experience",  name: "experience",    type: "number", placeholder: "e.g. 5",                     req: true },
+                { label: "Hospital / Workplace", name: "hospital",      type: "text",   placeholder: "Colombo National Hospital",  req: false },
+              ].map(f => (
+                <div key={f.name} className="reg-field">
+                  <label>{f.label} {f.req && <span className="req-star">*</span>}</label>
+                  <input type={f.type} name={f.name} value={form[f.name]}
+                    onChange={handleChange} placeholder={f.placeholder}
+                    className={errors[f.name] ? "has-error" : ""} />
+                  {errors[f.name] && <span className="field-error"><AlertCircle size={11} />{errors[f.name]}</span>}
                 </div>
-                
-                <div className={formStyles.credentialsFooter}>
-                  <button
-                    onClick={() => {
-                      const text = `Login Credentials for ${registeredCredentials.email}:\nEmail: ${registeredCredentials.email}\nPassword: ${registeredCredentials.password}`;
-                      navigator.clipboard.writeText(text);
-                      alert("All credentials copied to clipboard!");
-                    }}
-                    className={formStyles.copyAllButton}
-                  >
-                    <Copy size={18} />
-                    Copy All Credentials
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSuccess(false);
-                      setRegisteredCredentials(null);
-                      navigate("/admin/doctors");
-                    }}
-                    className={formStyles.continueButton}
-                  >
-                    Continue
-                  </button>
-                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Specialization */}
+          <div className="reg-card">
+            <div className="reg-card-header">
+              <div className="reg-card-icon" style={{ background: "#fdf4ff", border: "1px solid #e9d5ff" }}>
+                <Briefcase size={16} style={{ color: "#7c3aed" }} />
+              </div>
+              <h2>Specialization &amp; Qualifications</h2>
+            </div>
+            <div className="reg-grid">
+              <div className="reg-field">
+                <label>Specialization <span className="req-star">*</span></label>
+                <select name="specialization" value={form.specialization} onChange={handleChange}
+                  className={errors.specialization ? "has-error" : ""}>
+                  <option value="">Select Specialization</option>
+                  {DENTAL_SPECIALIZATIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                {errors.specialization && <span className="field-error"><AlertCircle size={11} />{errors.specialization}</span>}
+              </div>
+              <div className="reg-field">
+                <label>Qualifications</label>
+                <input type="text" name="qualifications" value={form.qualifications}
+                  onChange={handleChange} placeholder="BDS, MDS, FRCS..." />
               </div>
             </div>
-          )}
-          
-          {success && !registeredCredentials && (
-            <div className={formStyles.successMessage}>
-              <CheckCircle size={20} />
-              Doctor registered successfully! Redirecting...
+          </div>
+
+          {/* Password */}
+          <div className="reg-card">
+            <div className="reg-card-header">
+              <div className="reg-card-icon" style={{ background: "#fff7ed", border: "1px solid #fed7aa" }}>
+                <Lock size={16} style={{ color: "#ea580c" }} />
+              </div>
+              <h2>Account Password</h2>
             </div>
-          )}
-
-          {errors.submit && (
-            <div className={formStyles.errorMessage}>
-              <AlertCircle size={20} style={{ display: "inline", marginRight: "0.5rem" }} />
-              {errors.submit}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className={formStyles.form}>
-            {/* Personal Information */}
-            <div className={`${formStyles.section} ${formStyles.personalSection}`}>
-              <h2 className={formStyles.sectionTitle}>
-                <User className={formStyles.sectionIcon} />
-                Personal Information
-              </h2>
-
-              <div className={formStyles.grid}>
-                {[
-                  { label: "Full Name", name: "fullName", type: "text", placeholder: "Dr. John Doe" },
-                  { label: "Email Address", name: "email", type: "email", placeholder: "email@example.com" },
-                  { label: "Phone Number", name: "phone", type: "tel", placeholder: "+94 77 123 4567" },
-                ].map((field) => (
-                  <div key={field.name} className={formStyles.formGroup}>
-                    <label className={formStyles.label}>
-                      {field.label}
-                    </label>
-                    <input
-                      type={field.type}
-                      name={field.name}
-                      value={formData[field.name]}
-                      onChange={handleChange}
-                      placeholder={field.placeholder}
-                      className={`${formStyles.input} ${errors[field.name] ? formStyles.error : ""}`}
-                    />
-                    {errors[field.name] && (
-                      <p className={formStyles.errorText}>
-                        <AlertCircle size={14} />
-                        {errors[field.name]}
-                      </p>
-                    )}
-                  </div>
-                ))}
+            <div style={{ maxWidth: "380px" }}>
+              <div className="reg-field">
+                <label>Password <span className="req-star">*</span></label>
+                <PasswordInput name="password" value={form.password} onChange={handleChange}
+                  placeholder="Min 6 characters"
+                  style={{ padding: "0.625rem 2.75rem 0.625rem 0.875rem", border: `1.5px solid ${errors.password ? "#ef4444" : "#e5e7eb"}`, borderRadius: "0.625rem", fontSize: "0.875rem", width: "100%", boxSizing: "border-box", outline: "none" }} />
+                {errors.password && <span className="field-error"><AlertCircle size={11} />{errors.password}</span>}
               </div>
             </div>
+          </div>
 
-            {/* Account Information */}
-            <div className={`${formStyles.section} ${formStyles.accountSection}`}>
-              <h2 className={formStyles.sectionTitle}>
-                <Lock className={formStyles.sectionIcon} />
-                Account Information
-              </h2>
-
-              <div className={formStyles.passwordGroup}>
-                <label className={formStyles.label}>
-                  Password
-                </label>
-                <PasswordInput
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  className={`${formStyles.input} ${errors.password ? formStyles.error : ""}`}
-                  error={!!errors.password}
-                />
-                {errors.password && (
-                  <p className={formStyles.errorText}>
-                    <AlertCircle size={14} />
-                    {errors.password}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Professional Details */}
-            <div className={`${formStyles.section} ${formStyles.professionalSection}`}>
-              <h2 className={formStyles.sectionTitle}>
-                <Briefcase className={formStyles.sectionIcon} />
-                Professional Details
-              </h2>
-
-              <div className={formStyles.grid}>
-                <div className={formStyles.formGroup}>
-                  <label className={formStyles.label}>
-                    Medical License Number
-                  </label>
-                  <input
-                    type="text"
-                    name="licenseNumber"
-                    value={formData.licenseNumber}
-                    onChange={handleChange}
-                    placeholder="SLMC / GMC / etc."
-                    className={`${formStyles.input} ${errors.licenseNumber ? formStyles.error : ""}`}
-                  />
-                  {errors.licenseNumber && (
-                    <p className={formStyles.errorText}>
-                      <AlertCircle size={14} />
-                      {errors.licenseNumber}
-                    </p>
-                  )}
-                </div>
-
-                <div className={formStyles.formGroup}>
-                  <label className={formStyles.label}>
-                    Specialization
-                  </label>
-                  <select
-                    name="specialization"
-                    value={formData.specialization}
-                    onChange={handleChange}
-                    className={`${formStyles.select} ${errors.specialization ? formStyles.error : ""}`}
-                  >
-                    <option value="">Select Specialization</option>
-                    {specializations.map((spec) => (
-                      <option key={spec} value={spec}>
-                        {spec}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.specialization && (
-                    <p className={formStyles.errorText}>
-                      <AlertCircle size={14} />
-                      {errors.specialization}
-                    </p>
-                  )}
-                </div>
-
-                <div className={formStyles.formGroup}>
-                  <label className={formStyles.label}>
-                    Years of Experience
-                  </label>
-                  <input
-                    type="number"
-                    name="experience"
-                    value={formData.experience}
-                    onChange={handleChange}
-                    placeholder="e.g. 10"
-                    min="0"
-                    className={`${formStyles.input} ${errors.experience ? formStyles.error : ""}`}
-                  />
-                  {errors.experience && (
-                    <p className={formStyles.errorText}>
-                      <AlertCircle size={14} />
-                      {errors.experience}
-                    </p>
-                  )}
-                </div>
-
-                <div className={formStyles.formGroup}>
-                  <label className={formStyles.label}>
-                    Hospital / Workplace
-                  </label>
-                  <input
-                    type="text"
-                    name="hospital"
-                    value={formData.hospital}
-                    onChange={handleChange}
-                    placeholder="Colombo National Hospital"
-                    className={formStyles.input}
-                  />
-                </div>
-              </div>
-
-              <div className={formStyles.formGroup} style={{ marginTop: "1.5rem" }}>
-                <label className={formStyles.label}>
-                  Qualifications
-                </label>
-                <textarea
-                  rows="3"
-                  name="qualifications"
-                  value={formData.qualifications}
-                  onChange={handleChange}
-                  placeholder="MBBS, MD, FRCS, etc."
-                  className={formStyles.textarea}
-                ></textarea>
-              </div>
-            </div>
-
-            {/* Submit */}
-            <motion.button
-              type="submit"
-              disabled={loading}
-              whileHover={{ scale: loading ? 1 : 1.02 }}
-              whileTap={{ scale: loading ? 1 : 0.98 }}
-              className={formStyles.submitButton}
-            >
-              {loading ? "Registering..." : "Register Doctor"}
-            </motion.button>
-          </form>
-        </motion.div>
+          {/* Submit */}
+          <button type="submit" className="reg-submit-btn" disabled={loading}>
+            <UserPlus size={18} /> {loading ? "Registering..." : "Register Doctor"}
+          </button>
+        </form>
       </div>
+
+      {/* Credentials Modal */}
+      {credentials && (
+        <div className="reg-modal-overlay" onClick={() => { setCredentials(null); navigate("/admin/doctors"); }}>
+          <div className="reg-modal" onClick={e => e.stopPropagation()}>
+            <div className="reg-modal-header">
+              <CheckCircle size={24} style={{ color: "#059669" }} />
+              <div>
+                <h3>Doctor Registered!</h3>
+                <p>{credentials.fullName}</p>
+              </div>
+              <button className="reg-modal-close" onClick={() => { setCredentials(null); navigate("/admin/doctors"); }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="reg-modal-body">
+              <p className="reg-modal-desc">Share these login credentials with the doctor:</p>
+              {[
+                { label: "Email",    value: credentials.email,    icon: Mail },
+                { label: "Password", value: credentials.password, icon: Key  },
+              ].map(({ label, value, icon: Icon }) => (
+                <div key={label} className="reg-cred-item">
+                  <div className="reg-cred-label"><Icon size={12} /> {label}</div>
+                  <div className="reg-cred-value">
+                    <code>{value}</code>
+                    <button className="reg-copy-btn" onClick={() => copy(value)}><Copy size={13} /></button>
+                  </div>
+                </div>
+              ))}
+              <div className="reg-warning">
+                <AlertCircle size={14} style={{ color: "#f59e0b", flexShrink: 0 }} />
+                <p><strong>Important:</strong> These credentials are shown only once. Share them with the doctor immediately.</p>
+              </div>
+            </div>
+
+            <div className="reg-modal-footer">
+              <button className="reg-copy-all-btn" onClick={() => copy(`Email: ${credentials.email}\nPassword: ${credentials.password}`)}>
+                <Copy size={14} /> Copy All
+              </button>
+              <button className="reg-continue-btn" onClick={() => { setCredentials(null); navigate("/admin/doctors"); }}>
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

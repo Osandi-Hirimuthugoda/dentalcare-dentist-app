@@ -1,26 +1,25 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard,
-  UserPlus,
-  Users,
-  Calendar,
-  Activity,
-  Settings,
-  LogOut,
-  Shield,
-  UserCircle,
-  Building2,
+  LayoutDashboard, UserPlus, Users, Calendar,
+  Activity, LogOut, Shield, UserCircle, Building2,
 } from "lucide-react";
 import NotificationBell from "../common/NotificationBell";
 import styles from "../../styles/components/DoctorSidebar.module.css";
 
+const NavLink = ({ to, icon: Icon, label, isActive }) => (
+  <li className={styles.navItem}>
+    <Link to={to} className={`${styles.navLink} ${isActive(to) ? styles.active : ""}`}>
+      <Icon size={16} className={styles.navIcon} />
+      {label}
+    </Link>
+  </li>
+);
+
 export default function AdminSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-
-  const currentPath = location.pathname;
-  const isActive = (path) => currentPath === path;
+  const isActive = (path) => location.pathname === path;
 
   const handleLogout = () => {
     localStorage.removeItem("admin");
@@ -30,97 +29,45 @@ export default function AdminSidebar() {
 
   return (
     <div className={styles.sidebarContainer}>
+      {/* Header */}
       <div className={styles.sidebarHeader}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Shield size={28} /> Admin Panel
-        </div>
+        <span className={styles.brandName}>
+          <Shield size={18} /> Admin Panel
+        </span>
         <NotificationBell />
       </div>
 
+      {/* Nav */}
       <nav className={styles.sidebarNav}>
-        <ul>
-          <li className={styles.navItem}>
-            <Link
-              to="/admin-dashboard"
-              className={`${styles.navLink} ${
-                isActive("/admin-dashboard") ? styles.active : ""
-              }`}
-            >
-              <LayoutDashboard size={20} className={styles.navIcon} /> Dashboard
-            </Link>
-          </li>
+        {/* Main */}
+        <div className={styles.navSection}>
+          <p className={styles.navSectionLabel}>Main</p>
+          <ul>
+            <NavLink to="/admin-dashboard"       icon={LayoutDashboard} label="Dashboard"        isActive={isActive} />
+            <NavLink to="/admin/appointments"    icon={Calendar}        label="Appointments"     isActive={isActive} />
+            <NavLink to="/admin/activity"        icon={Activity}        label="Activity"         isActive={isActive} />
+          </ul>
+        </div>
 
-          <li className={styles.navItem}>
-            <Link
-              to="/admin/register-doctor"
-              className={`${styles.navLink} ${
-                isActive("/admin/register-doctor") ? styles.active : ""
-              }`}
-            >
-              <UserPlus size={20} className={styles.navIcon} /> Register Doctor
-            </Link>
-          </li>
+        <div className={styles.navDivider} />
 
-          <li className={styles.navItem}>
-            <Link
-              to="/admin/doctors"
-              className={`${styles.navLink} ${
-                isActive("/admin/doctors") ? styles.active : ""
-              }`}
-            >
-              <Users size={20} className={styles.navIcon} /> Manage Doctors
-            </Link>
-          </li>
-
-          <li className={styles.navItem}>
-            <Link
-              to="/admin/patients"
-              className={`${styles.navLink} ${
-                isActive("/admin/patients") ? styles.active : ""
-              }`}
-            >
-              <UserCircle size={20} className={styles.navIcon} /> Patients
-            </Link>
-          </li>
-
-          <li className={styles.navItem}>
-            <Link
-              to="/admin/appointments"
-              className={`${styles.navLink} ${
-                isActive("/admin/appointments") ? styles.active : ""
-              }`}
-            >
-              <Calendar size={20} className={styles.navIcon} /> Appointments
-            </Link>
-          </li>
-
-          <li className={styles.navItem}>
-            <Link
-              to="/admin/activity"
-              className={`${styles.navLink} ${
-                isActive("/admin/activity") ? styles.active : ""
-              }`}
-            >
-              <Activity size={20} className={styles.navIcon} /> Activity
-            </Link>
-          </li>
-
-          <li className={styles.navItem}>
-            <Link
-              to="/admin/hospitals"
-              className={`${styles.navLink} ${
-                isActive("/admin/hospitals") ? styles.active : ""
-              }`}
-            >
-              <Building2 size={20} className={styles.navIcon} /> Hospitals
-            </Link>
-          </li>
-        </ul>
+        {/* Management */}
+        <div className={styles.navSection}>
+          <p className={styles.navSectionLabel}>Management</p>
+          <ul>
+            <NavLink to="/admin/doctors"         icon={Users}           label="Doctors"          isActive={isActive} />
+            <NavLink to="/admin/register-doctor" icon={UserPlus}        label="Register Doctor"  isActive={isActive} />
+            <NavLink to="/admin/patients"        icon={UserCircle}      label="Patients"         isActive={isActive} />
+            <NavLink to="/admin/hospitals"       icon={Building2}       label="Hospitals"        isActive={isActive} />
+          </ul>
+        </div>
       </nav>
 
-      <div className={styles.sidebarFooter}>
+      {/* Logout */}
+      <div className={styles.logoutItem}>
         <button onClick={handleLogout} className={styles.logoutButton}>
-          <LogOut size={18} /> Logout
+          <LogOut size={16} className={styles.navIcon} />
+          Logout
         </button>
       </div>
     </div>
