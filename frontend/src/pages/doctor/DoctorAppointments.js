@@ -1,762 +1,299 @@
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import axios from "axios";
-import { Calendar, Clock, User, Mail, Phone, Search, Filter, CheckCircle, XCircle, AlertCircle, Edit, Save, X, FileText, RefreshCw } from "lucide-react";
+import {
+  Calendar, Clock, Search, Filter, CheckCircle, XCircle,
+  AlertCircle, Edit, Save, X, RefreshCw, Users,
+} from "lucide-react";
 import DoctorSidebar from "../../components/layout/DoctorSidebar";
-import styles from "../../styles/pages/DoctorPages.module.css";
+import "../../styles/pages/DoctorAppointments.css";
 
-const DoctorAppointments = () => {
-  const [appointments, setAppointments] = useState([]);
-  const [filteredAppointments, setFilteredAppointments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [error, setError] = useState(null);
-  const [editingAppointment, setEditingAppointment] = useState(null);
-  const [editNotes, setEditNotes] = useState("");
-  const [updatingStatus, setUpdatingStatus] = useState(null);
-  const [message, setMessage] = useState({ type: "", text: "" });
+const API = "http://localhost:4000/api";
 
-  useEffect(() => {
-    fetchAppointments();
-  }, []);
+const fmtDate = (d) => d
+  ? new Date(d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })
+  : "N/A";
 
-  useEffect(() => {
-    filterAppointments();
-  }, [searchTerm, statusFilter, appointments]);
+const fmtTime = (d) => d
+  ? new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+  : "N/A";
+
+const StatusBadge = ({ status }) => {
+  const icons = { confirmed: CheckCircle, pending: AlertCircle, completed: CheckCircle, cancelled: XCircle };
+  const Icon = icons[status] || AlertCircle;
+  return (
+    <span className={`apt-status ${status || "pending"}`}>
+      <Icon size={11} /> {status || "pending"}
+    </span>
+  );
+};
+
+const STATS = [
+  { key: "all",       label: "Total",     color: "#6366f1", bg: "#eef2ff" },
+  { key: "pending",   label: "Pending",   color: "#f59e0b", bg: "#fffbeb" },
+  { key: "confirmed", label: "Confirmed", color: "#10b981", bg: "#f0fdf4" },
+  { key: "completed", label: "Completed", color: "#3b82f6", bg: "#eff6ff" },
+  { key: "cancelled", label: "Cancelled", color: "#ef4444", bg: "#fef2f2" },
+];
+
+export default function DoctorAppointments() {
+  const [appointments, setAppointments]   = useState([]);
+  const [loading, setLoading]             = useState(true);
+  const [search, setSearch]               = useState("");
+  const [statusFilter, setStatusFilter]   = useState("all");
+  const [toast, setToast]                 = useState({ type: "", text: "" });
+  const [editingId, setEditingId]         = useState(null);
+  const [editNotes, setEditNotes]         = useState("");
+  const [updating, setUpdating]           = useState(null);
+
+  useEffect(() => { fetchAppointments(); }, []);
+
+  const showToast = (type, text) => {
+    setToast({ type, text });
+    setTimeout(() => setToast({ type: "", text: "" }), 3000);
+  };
 
   const fetchAppointments = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const doctorData = JSON.parse(localStorage.getItem("doctor") || "{}");
-      
-      if (!doctorData._id) {
-        setError("Doctor not found. Please login again.");
-        setLoading(false);
-        return;
-      }
+      const doc = JSON.parse(localStorage.getItem("doctor") || "{}");
+      if (!doc._id) { showToast("error", "Doctor not found."); return; }
+      const res = await axios.get(`${API}/appointments/doctor/${doc._id}`);
+      setAppointments(res.data || []);
+    } catch { showToast("error", "Failed to load appointments."); }
+    finally { setLoading(false); }
+  };
 
-      const response = await axios.get(`http://localhost:4000/api/appointments/doctor/${doctorData._id}`);
-      setAppointments(response.data || []);
-      setFilteredAppointments(response.data || []);
+  const updateStatus = async (id, status) => {
+    setUpdating(id);
+    try {
+      await axios.put(`${API}/appointments/${id}`, { status });
+      showToast("success", `Appointment marked as ${status}.`);
+      await fetchAppointments();
     } catch (err) {
-      console.error("Error fetching appointments:", err);
-      setError("Failed to load appointments. Please try again.");
-      setAppointments([]);
-      setFilteredAppointments([]);
-    } finally {
-      setLoading(false);
-    }
+      showToast("error", err.response?.data?.message || "Failed to update.");
+    } finally { setUpdating(null); }
   };
 
-  const filterAppointments = () => {
-    let filtered = [...appointments];
-
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (apt) =>
-          apt.patient?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          apt.patient?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          apt.notes?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((apt) => apt.status === statusFilter);
-    }
-
-    filtered.sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
-    setFilteredAppointments(filtered);
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const formatTime = (dateString) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "confirmed":
-        return { bg: "#D1FAE5", text: "#065F46", icon: CheckCircle };
-      case "pending":
-        return { bg: "#FEF3C7", text: "#92400E", icon: AlertCircle };
-      case "completed":
-        return { bg: "#DBEAFE", text: "#1E40AF", icon: CheckCircle };
-      case "cancelled":
-        return { bg: "#FEE2E2", text: "#991B1B", icon: XCircle };
-      default:
-        return { bg: "#F3F4F6", text: "#374151", icon: AlertCircle };
-    }
-  };
-
-  const statusCounts = {
-    all: appointments.length,
-    pending: appointments.filter((a) => a.status === "pending").length,
-    confirmed: appointments.filter((a) => a.status === "confirmed").length,
-    completed: appointments.filter((a) => a.status === "completed").length,
-    cancelled: appointments.filter((a) => a.status === "cancelled").length,
-  };
-
-  const handleStatusChange = async (appointmentId, newStatus) => {
+  const saveNotes = async (id) => {
+    setUpdating(id);
     try {
-      setUpdatingStatus(appointmentId);
-      const response = await axios.put(
-        `http://localhost:4000/api/appointments/${appointmentId}`,
-        { status: newStatus }
+      await axios.put(`${API}/appointments/${id}`, { notes: editNotes });
+      showToast("success", "Notes saved.");
+      setEditingId(null);
+      await fetchAppointments();
+    } catch { showToast("error", "Failed to save notes."); }
+    finally { setUpdating(null); }
+  };
+
+  // Filter
+  const filtered = appointments
+    .filter(a => {
+      const q = search.toLowerCase();
+      return (
+        a.patient?.name?.toLowerCase().includes(q) ||
+        a.patient?.email?.toLowerCase().includes(q) ||
+        (a.notes || "").toLowerCase().includes(q)
       );
+    })
+    .filter(a => statusFilter === "all" || a.status === statusFilter)
+    .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
 
-      if (response.data) {
-        setMessage({ type: "success", text: "Appointment status updated successfully!" });
-        await fetchAppointments();
-        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
-      }
-    } catch (error) {
-      setMessage({
-        type: "error",
-        text: error.response?.data?.message || "Failed to update status. Please try again.",
-      });
-      setTimeout(() => setMessage({ type: "", text: "" }), 3000);
-    } finally {
-      setUpdatingStatus(null);
-    }
-  };
-
-  const handleEditNotes = (appointment) => {
-    setEditingAppointment(appointment._id);
-    setEditNotes(appointment.notes || "");
-  };
-
-  const handleSaveNotes = async (appointmentId) => {
-    try {
-      setUpdatingStatus(appointmentId);
-      const response = await axios.put(
-        `http://localhost:4000/api/appointments/${appointmentId}`,
-        { notes: editNotes }
-      );
-
-      if (response.data) {
-        setMessage({ type: "success", text: "Notes updated successfully!" });
-        setEditingAppointment(null);
-        setEditNotes("");
-        await fetchAppointments();
-        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
-      }
-    } catch (error) {
-      setMessage({
-        type: "error",
-        text: error.response?.data?.message || "Failed to update notes. Please try again.",
-      });
-      setTimeout(() => setMessage({ type: "", text: "" }), 3000);
-    } finally {
-      setUpdatingStatus(null);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditingAppointment(null);
-    setEditNotes("");
+  const counts = {
+    all:       appointments.length,
+    pending:   appointments.filter(a => a.status === "pending").length,
+    confirmed: appointments.filter(a => a.status === "confirmed").length,
+    completed: appointments.filter(a => a.status === "completed").length,
+    cancelled: appointments.filter(a => a.status === "cancelled").length,
   };
 
   if (loading) {
     return (
-      <div className={styles.pageWrapper}>
+      <div className="apts-wrapper">
         <DoctorSidebar />
-        <div className={styles.mainContent}>
-          <div className={styles.loading}>
-            <div className={styles.spinner}></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={styles.pageWrapper}>
-        <DoctorSidebar />
-        <div className={styles.mainContent}>
-          <div className={styles.contentCard}>
-            <div style={{ textAlign: "center", padding: "2rem", color: "#EF4444" }}>
-              <AlertCircle size={48} style={{ marginBottom: "1rem" }} />
-              <p>{error}</p>
-            </div>
-          </div>
+        <div className="apts-content">
+          <div className="apts-loading"><div className="apts-spinner" /><p>Loading appointments...</p></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={styles.pageWrapper}>
+    <div className="apts-wrapper">
       <DoctorSidebar />
 
-      <motion.div
-        className={styles.mainContent}
-        initial={{ opacity: 0, x: 50 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        {/* Page Header */}
-        <div className={styles.pageHeader}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-            <div>
-              <h1 className={styles.pageTitle}>
-                <Calendar size={32} style={{ marginRight: '0.5rem' }} />
-                Appointments
-              </h1>
-              <p className={styles.pageSubtitle}>
-                Manage and track your patient appointments ({filteredAppointments.length} total)
-              </p>
-            </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={fetchAppointments}
-              className={styles.buttonSecondary}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+      <div className="apts-content">
+        {/* Header */}
+        <div className="apts-header">
+          <div>
+            <h1><Calendar size={22} /> Appointments</h1>
+            <p>{filtered.length} appointment{filtered.length !== 1 ? "s" : ""} shown</p>
+          </div>
+          <button className="apts-refresh-btn" onClick={fetchAppointments}>
+            <RefreshCw size={13} /> Refresh
+          </button>
+        </div>
+
+        {toast.text && (
+          <div className={`apts-toast ${toast.type}`}>
+            {toast.type === "success" ? <CheckCircle size={15} /> : <AlertCircle size={15} />}
+            {toast.text}
+          </div>
+        )}
+
+        {/* Stats */}
+        <div className="apts-stats">
+          {STATS.map(s => (
+            <div
+              key={s.key}
+              className={`stat-chip ${statusFilter === s.key ? "active" : ""}`}
+              style={{ "--chip-color": s.color }}
+              onClick={() => setStatusFilter(s.key)}
             >
-              <RefreshCw size={18} />
-              Refresh
-            </motion.button>
-          </div>
-        </div>
-
-        {/* Success/Error Messages */}
-        {message.text && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{
-              padding: '1rem 1.5rem',
-              borderRadius: '0.875rem',
-              marginBottom: '1.5rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              backgroundColor: message.type === "success" ? 'rgba(74, 222, 128, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-              border: `1px solid ${message.type === "success" ? 'rgba(74, 222, 128, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
-              color: message.type === "success" ? '#4ADE80' : '#EF4444'
-            }}
-          >
-            {message.type === "success" ? (
-              <CheckCircle size={20} />
-            ) : (
-              <AlertCircle size={20} />
-            )}
-            <span style={{ fontWeight: '600' }}>{message.text}</span>
-          </motion.div>
-        )}
-
-        {/* Stats Cards */}
-        <div style={{ 
-          display: 'grid',
-          gridTemplateColumns: 'repeat(5, 1fr)',
-          gap: '1.25rem',
-          marginBottom: '2rem'
-        }}>
-          {[
-            { label: "Total", count: statusCounts.all, color: "#60A5FA", icon: Calendar },
-            { label: "Pending", count: statusCounts.pending, color: "#FBBF24", icon: Clock },
-            { label: "Confirmed", count: statusCounts.confirmed, color: "#4ADE80", icon: CheckCircle },
-            { label: "Completed", count: statusCounts.completed, color: "#A78BFA", icon: CheckCircle },
-            { label: "Cancelled", count: statusCounts.cancelled, color: "#EF4444", icon: XCircle },
-          ].map((stat, index) => {
-            const IconComponent = stat.icon;
-            return (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                style={{
-                  backgroundColor: 'white',
-                  borderRadius: '1rem',
-                  padding: '1.5rem 1rem',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                  border: '1px solid rgba(0, 0, 0, 0.05)',
-                  textAlign: 'center',
-                  transition: 'all 0.3s ease',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minHeight: '145px',
-                  flex: '1'
-                }}
-                whileHover={{ 
-                  y: -5, 
-                  boxShadow: '0 8px 16px rgba(0, 0, 0, 0.15)',
-                  borderColor: stat.color
-                }}
-              >
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'center', 
-                  marginBottom: '0.875rem' 
-                }}>
-                  <div style={{
-                    width: '3rem',
-                    height: '3rem',
-                    borderRadius: '50%',
-                    backgroundColor: `${stat.color}20`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <IconComponent size={24} style={{ color: stat.color }} />
-                  </div>
-                </div>
-                <div style={{ 
-                  fontSize: '0.85rem', 
-                  color: '#6B7280', 
-                  marginBottom: '0.625rem', 
-                  fontWeight: '600',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em'
-                }}>
-                  {stat.label}
-                </div>
-                <div style={{ 
-                  fontSize: '2rem', 
-                  fontWeight: '700', 
-                  color: '#1F2937',
-                  lineHeight: '1'
-                }}>
-                  {stat.count}
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-
-        {/* Search and Filter */}
-        <div className={styles.contentCard} style={{ marginBottom: '2rem' }}>
-          <div style={{
-            display: 'flex',
-            gap: '1rem',
-            flexWrap: 'wrap',
-            alignItems: 'center'
-          }}>
-            <div style={{ flex: '1', minWidth: '250px', position: 'relative' }}>
-              <Search
-                size={20}
-                style={{
-                  position: 'absolute',
-                  left: '1rem',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: '#9CA3AF',
-                  pointerEvents: 'none'
-                }}
-              />
-              <input
-                type="text"
-                placeholder="Search by patient name, email, or notes..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.875rem 1rem 0.875rem 2.75rem',
-                  background: 'white',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '0.75rem',
-                  color: '#1F2937',
-                  fontSize: '0.95rem',
-                  transition: 'all 0.3s ease',
-                  outline: 'none'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#60A5FA';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(96, 165, 250, 0.1)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#E5E7EB';
-                  e.target.style.boxShadow = 'none';
-                }}
-              />
+              <div className="stat-chip-icon" style={{ background: s.bg }}>
+                <Calendar size={18} style={{ color: s.color }} />
+              </div>
+              <div className="stat-chip-info">
+                <div className="stat-chip-label">{s.label}</div>
+                <div className="stat-chip-count">{counts[s.key]}</div>
+              </div>
             </div>
-
-            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-              <Filter size={20} style={{ color: '#6B7280' }} />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                style={{
-                  minWidth: '150px',
-                  padding: '0.875rem 1rem',
-                  background: 'white',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '0.75rem',
-                  color: '#1F2937',
-                  fontSize: '0.95rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  outline: 'none'
-                }}
-              >
-                <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* Appointment Cards */}
-        {filteredAppointments.length > 0 ? (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: '1.5rem'
-          }}>
-            {filteredAppointments.map((appt) => {
-              const statusStyle = getStatusColor(appt.status);
-              const StatusIcon = statusStyle.icon;
+        {/* Filters */}
+        <div className="apts-filters">
+          <div className="apts-search">
+            <Search size={14} />
+            <input
+              type="text"
+              placeholder="Search patient name, email, notes..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <select className="apts-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+            <option value="all">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
 
-              return (
-                <motion.div
-                  key={appt._id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  whileHover={{ y: -5, boxShadow: '0 12px 24px rgba(0, 0, 0, 0.15)' }}
-                  style={{
-                    backgroundColor: 'white',
-                    borderRadius: '1.25rem',
-                    padding: '1.5rem',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                    border: '1px solid rgba(0, 0, 0, 0.05)',
-                    transition: 'all 0.3s ease'
-                  }}
-                >
-                  {/* Patient Info */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
-                    <div
-                      style={{
-                        width: '3.5rem',
-                        height: '3.5rem',
-                        borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '1.5rem',
-                        fontWeight: '700',
-                        color: 'white',
-                        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
-                        flexShrink: 0
-                      }}
-                    >
-                      {appt.patient?.name?.charAt(0).toUpperCase() || 'P'}
-                    </div>
-                    <div style={{ flex: '1', minWidth: 0 }}>
-                      <h3 style={{ 
-                        margin: '0 0 0.25rem 0', 
-                        fontSize: '1.125rem', 
-                        fontWeight: '700', 
-                        color: '#1F2937',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {appt.patient?.name || 'Unknown Patient'}
-                      </h3>
-                      {appt.patient?.email && (
-                        <p style={{ 
-                          margin: '0', 
-                          fontSize: '0.875rem', 
-                          color: '#6B7280', 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: '0.375rem',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          <Mail size={14} />
-                          {appt.patient.email}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Appointment Details */}
-                  <div style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    gap: '0.875rem', 
-                    marginBottom: '1.25rem',
-                    padding: '1rem',
-                    backgroundColor: '#F9FAFB',
-                    borderRadius: '0.75rem'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', color: '#374151' }}>
-                      <Calendar size={18} style={{ color: '#60A5FA', flexShrink: 0 }} />
-                      <span style={{ fontSize: '0.9375rem', fontWeight: '500' }}>{formatDate(appt.startTime)}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', color: '#374151' }}>
-                      <Clock size={18} style={{ color: '#4ADE80', flexShrink: 0 }} />
-                      <span style={{ fontSize: '0.9375rem', fontWeight: '500' }}>{formatTime(appt.startTime)}</span>
-                    </div>
-                    {appt.patient?.phone && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', color: '#374151' }}>
-                        <Phone size={18} style={{ color: '#A78BFA', flexShrink: 0 }} />
-                        <span style={{ fontSize: '0.9375rem', fontWeight: '500' }}>{appt.patient.phone}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Notes Section */}
-                  <div style={{ marginBottom: '1.25rem' }}>
-                    {editingAppointment === appt._id ? (
-                      <div>
-                        <textarea
-                          value={editNotes}
-                          onChange={(e) => setEditNotes(e.target.value)}
-                          placeholder="Add notes about this appointment..."
-                          rows="3"
-                          style={{
-                            width: '100%',
-                            padding: '0.75rem',
-                            border: '1px solid #E5E7EB',
-                            borderRadius: '0.75rem',
-                            fontSize: '0.875rem',
-                            resize: 'vertical',
-                            outline: 'none',
-                            fontFamily: 'inherit'
-                          }}
-                        />
-                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => handleSaveNotes(appt._id)}
-                            disabled={updatingStatus === appt._id}
-                            style={{
-                              padding: '0.5rem 1rem',
-                              backgroundColor: '#4ADE80',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '0.5rem',
-                              fontSize: '0.875rem',
-                              fontWeight: '600',
-                              cursor: updatingStatus === appt._id ? 'not-allowed' : 'pointer',
-                              opacity: updatingStatus === appt._id ? 0.7 : 1,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.375rem'
-                            }}
-                          >
-                            <Save size={16} />
-                            Save
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={handleCancelEdit}
-                            style={{
-                              padding: '0.5rem 1rem',
-                              backgroundColor: '#6B7280',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '0.5rem',
-                              fontSize: '0.875rem',
-                              fontWeight: '600',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.375rem'
-                            }}
-                          >
-                            <X size={16} />
-                            Cancel
-                          </motion.button>
+        {/* Table */}
+        <div className="apts-card">
+          {filtered.length === 0 ? (
+            <div className="apts-empty">
+              <Calendar size={44} />
+              <h3>No appointments found</h3>
+              <p>{search ? "Try adjusting your search" : "Appointments will appear here"}</p>
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table className="apts-table">
+                <thead>
+                  <tr>
+                    <th>Patient</th>
+                    <th>Date & Time</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(apt => (
+                    <tr key={apt._id}>
+                      {/* Patient */}
+                      <td>
+                        <div className="apt-patient-cell">
+                          <div className="apt-avatar">
+                            {(apt.patient?.name || "P").charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="apt-patient-name">{apt.patient?.name || "Unknown"}</div>
+                            {apt.patient?.email && (
+                              <div className="apt-patient-email">{apt.patient.email}</div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'flex-start', 
-                        gap: '0.75rem',
-                        padding: '0.75rem',
-                        backgroundColor: '#F9FAFB',
-                        borderRadius: '0.75rem'
-                      }}>
-                        <FileText size={16} style={{ color: '#6B7280', flexShrink: 0, marginTop: '0.125rem' }} />
-                        {appt.notes ? (
-                          <p style={{ fontSize: '0.875rem', color: '#374151', fontStyle: 'italic', flex: 1, margin: 0 }}>
-                            {appt.notes}
-                          </p>
+                      </td>
+
+                      {/* Date & Time */}
+                      <td>
+                        <div className="apt-datetime">
+                          <div className="apt-date">{fmtDate(apt.startTime)}</div>
+                          <div className="apt-time"><Clock size={11} />{fmtTime(apt.startTime)}</div>
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td><StatusBadge status={apt.status} /></td>
+
+                      {/* Notes */}
+                      <td>
+                        {editingId === apt._id ? (
+                          <div className="notes-edit-wrap">
+                            <textarea
+                              value={editNotes}
+                              onChange={e => setEditNotes(e.target.value)}
+                              placeholder="Add notes..."
+                            />
+                            <div className="notes-edit-actions">
+                              <button className="apt-btn apt-btn-save" onClick={() => saveNotes(apt._id)} disabled={updating === apt._id}>
+                                <Save size={11} /> Save
+                              </button>
+                              <button className="apt-btn apt-btn-ghost" onClick={() => setEditingId(null)}>
+                                <X size={11} />
+                              </button>
+                            </div>
+                          </div>
                         ) : (
-                          <p style={{ fontSize: '0.875rem', color: '#9CA3AF', fontStyle: 'italic', flex: 1, margin: 0 }}>
-                            No notes added
-                          </p>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                            {apt.notes
+                              ? <span className="apt-notes-text" title={apt.notes}>{apt.notes}</span>
+                              : <span className="apt-notes-empty">No notes</span>
+                            }
+                            <button className="apt-btn apt-btn-edit" onClick={() => { setEditingId(apt._id); setEditNotes(apt.notes || ""); }}>
+                              <Edit size={11} />
+                            </button>
+                          </div>
                         )}
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleEditNotes(appt)}
-                          style={{
-                            padding: '0.25rem',
-                            backgroundColor: 'transparent',
-                            border: 'none',
-                            cursor: 'pointer',
-                            color: '#60A5FA',
-                            display: 'flex',
-                            alignItems: 'center'
-                          }}
-                          title="Edit notes"
-                        >
-                          <Edit size={16} />
-                        </motion.button>
-                      </div>
-                    )}
-                  </div>
+                      </td>
 
-                  {/* Status Badge */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
-                      backgroundColor: statusStyle.bg,
-                      color: statusStyle.text,
-                      padding: '0.75rem 1rem',
-                      borderRadius: '0.75rem',
-                      fontSize: '0.875rem',
-                      fontWeight: '700',
-                      textTransform: 'capitalize',
-                      marginBottom: '1rem'
-                    }}
-                  >
-                    <StatusIcon size={18} />
-                    {appt.status}
-                  </div>
-
-                  {/* Status Update Buttons */}
-                  {appt.status !== "completed" && appt.status !== "cancelled" && (
-                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                      {appt.status === "pending" && (
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => handleStatusChange(appt._id, "confirmed")}
-                          disabled={updatingStatus === appt._id}
-                          style={{
-                            flex: 1,
-                            padding: '0.75rem',
-                            backgroundColor: '#4ADE80',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '0.75rem',
-                            fontSize: '0.875rem',
-                            fontWeight: '600',
-                            cursor: updatingStatus === appt._id ? 'not-allowed' : 'pointer',
-                            opacity: updatingStatus === appt._id ? 0.7 : 1,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.375rem'
-                          }}
-                        >
-                          <CheckCircle size={16} />
-                          {updatingStatus === appt._id ? "Updating..." : "Confirm"}
-                        </motion.button>
-                      )}
-                      {appt.status !== "completed" && (
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => handleStatusChange(appt._id, "completed")}
-                          disabled={updatingStatus === appt._id}
-                          style={{
-                            flex: 1,
-                            padding: '0.75rem',
-                            backgroundColor: '#A78BFA',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '0.75rem',
-                            fontSize: '0.875rem',
-                            fontWeight: '600',
-                            cursor: updatingStatus === appt._id ? 'not-allowed' : 'pointer',
-                            opacity: updatingStatus === appt._id ? 0.7 : 1,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.375rem'
-                          }}
-                        >
-                          <CheckCircle size={16} />
-                          {updatingStatus === appt._id ? "Updating..." : "Complete"}
-                        </motion.button>
-                      )}
-                      {appt.status !== "cancelled" && (
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => handleStatusChange(appt._id, "cancelled")}
-                          disabled={updatingStatus === appt._id}
-                          style={{
-                            flex: 1,
-                            padding: '0.75rem',
-                            backgroundColor: '#EF4444',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '0.75rem',
-                            fontSize: '0.875rem',
-                            fontWeight: '600',
-                            cursor: updatingStatus === appt._id ? 'not-allowed' : 'pointer',
-                            opacity: updatingStatus === appt._id ? 0.7 : 1,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.375rem'
-                          }}
-                        >
-                          <XCircle size={16} />
-                          {updatingStatus === appt._id ? "Updating..." : "Cancel"}
-                        </motion.button>
-                      )}
-                    </div>
-                  )}
-                </motion.div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className={styles.emptyState}>
-            <div className={styles.emptyStateIcon}>
-              <Calendar size={64} style={{ color: '#9CA3AF' }} />
+                      {/* Actions */}
+                      <td>
+                        {apt.status === "completed" || apt.status === "cancelled" ? (
+                          <span style={{ fontSize: "0.75rem", color: "#d1d5db" }}>—</span>
+                        ) : (
+                          <div className="apt-action-row">
+                            {apt.status === "pending" && (
+                              <button className="apt-btn apt-btn-confirm"
+                                onClick={() => updateStatus(apt._id, "confirmed")}
+                                disabled={updating === apt._id}>
+                                <CheckCircle size={11} /> Confirm
+                              </button>
+                            )}
+                            <button className="apt-btn apt-btn-complete"
+                              onClick={() => updateStatus(apt._id, "completed")}
+                              disabled={updating === apt._id}>
+                              <CheckCircle size={11} /> Complete
+                            </button>
+                            <button className="apt-btn apt-btn-cancel"
+                              onClick={() => updateStatus(apt._id, "cancelled")}
+                              disabled={updating === apt._id}>
+                              <XCircle size={11} /> Cancel
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <p className={styles.emptyStateText}>No appointments found</p>
-            <p className={styles.emptyStateSubtext}>
-              {searchTerm || statusFilter !== 'all' 
-                ? 'Try adjusting your search or filter criteria' 
-                : 'Your appointments will appear here'}
-            </p>
-          </div>
-        )}
-      </motion.div>
+          )}
+        </div>
+      </div>
     </div>
   );
-};
-
-export default DoctorAppointments;
+}
