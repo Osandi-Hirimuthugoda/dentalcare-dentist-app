@@ -1,804 +1,320 @@
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { MessageSquare, Search, Send, User, Clock, Mail, ArrowLeft } from "lucide-react";
+import { io } from "socket.io-client";
+import { MessageSquare, Search, Send, Megaphone, X } from "lucide-react";
 import DoctorSidebar from "../../components/layout/DoctorSidebar";
 import "../../styles/pages/DoctorMessages.css";
 
-const DoctorMessages = () => {
-  const navigate = useNavigate();
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedPatient, setSelectedPatient] = useState(null);
-  const [selectedDoctor, setSelectedDoctor] = useState(null);
-  const [conversation, setConversation] = useState([]);
-  const [newMessage, setNewMessage] = useState("");
-  const [sendingMessage, setSendingMessage] = useState(false);
-  const [activeTab, setActiveTab] = useState("patients"); // 'patients' or 'doctors'
-  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
-  const [announcementText, setAnnouncementText] = useState("");
-  const [announcementType, setAnnouncementType] = useState("general");
-  const [allDoctors, setAllDoctors] = useState([]);
+const API          = "http://localhost:4000/api";
+const SOCKET_URL   = "http://localhost:4000";
+const getToken     = () => localStorage.getItem("token") || "";
+const getDoctor    = () => JSON.parse(localStorage.getItem("doctor") || "{}");
+
+const fmtTime = (d) => d
+  ? new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+  : "";
+
+const fmtDate = (d) => {
+  if (!d) return "";
+  const now  = new Date();
+  const date = new Date(d);
+  const diff = now - date;
+  if (diff < 86400000) return fmtTime(d);
+  if (diff < 604800000) return date.toLocaleDateString("en-US", { weekday: "short" });
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
+
+export default function DoctorMessages() {
+  const [tab, setTab]                   = useState("patients");
+  const [convs, setConvs]               = useState([]);
+  const [allDoctors, setAllDoctors]     = useState([]);
+  const [selected, setSelected]         = useState(null);
+  const [messages, setMessages]         = useState([]);
+  const [newMsg, setNewMsg]             = useState("");
+  const [sending, setSending]           = useState(false);
+  const [loading, setLoading]           = useState(true);
+  const [search, setSearch]             = useState("");
+  const [showModal, setShowModal]       = useState(false);
+  const [announce, setAnnounce]         = useState({ text: "", type: "general" });
+  const [announceSending, setAnnounceSending] = useState(false);
+
+  const bottomRef    = useRef(null);
+  const socketRef    = useRef(null);
+  const selectedRef  = useRef(null);
+
+  useEffect(() => { selectedRef.current = selected; }, [selected]);
+
+  // Socket setup
+  useEffect(() => {
+    const doc = getDoctor();
+    if (!doc._id) return;
+    const socket = io(SOCKET_URL, { transports: ["websocket"] });
+    socketRef.current = socket;
+    socket.on("connect", () => {
+      socket.emit("join", { userId: doc._id, userType: "Doctor" });
+    });
+    socket.on("new_message", (msg) => {
+      const cur = selectedRef.current;
+      const otherId = msg.senderModel === "Doctor"
+        ? msg.receiver?._id?.toString() || msg.receiver?.toString()
+        : msg.sender?._id?.toString() || msg.sender?.toString();
+      if (cur && (cur.id === otherId || cur.id === msg.sender?._id?.toString())) {
+        setMessages(prev => [...prev, msg]);
+        setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 80);
+      }
+      fetchConvs();
+    });
+    return () => socket.disconnect();
+  }, []);
+
+  useEffect(() => { fetchConvs(); }, [tab]);
 
   useEffect(() => {
-    fetchMessages();
-    if (activeTab === "doctors") {
-      fetchAllDoctors();
-    }
-  }, [activeTab]);
+    if (tab === "doctors") fetchAllDoctors();
+  }, [tab]);
 
-  const fetchMessages = async () => {
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const fetchConvs = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const doctorData = JSON.parse(localStorage.getItem("doctor") || "{}");
-      
-      if (!doctorData._id) {
-        setLoading(false);
-        return;
-      }
-
-      const type = activeTab === "patients" ? "patients" : activeTab === "doctors" ? "doctors" : "all";
-      const response = await axios.get(`http://localhost:4000/api/messages/doctor/${doctorData._id}?type=${type}`);
-      
-      // Transform the response to match the expected format
-      const transformedMessages = response.data.map(conv => ({
-        id: conv.id || conv.patientId,
-        sender: conv.name || conv.patientName,
-        senderEmail: conv.email || conv.patientEmail,
-        message: conv.lastMessage,
-        time: new Date(conv.lastMessageTime).toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-          timeZone: "Asia/Colombo"
-        }),
-        date: new Date(conv.lastMessageTime).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          timeZone: "Asia/Colombo"
-        }),
-        unread: conv.unreadCount > 0,
-        unreadCount: conv.unreadCount,
-        patientId: conv.id || conv.patientId,
-        type: conv.type || "patient", // 'patient' or 'doctor'
-      }));
-
-      setMessages(transformedMessages);
-    } catch (err) {
-      console.error("Error fetching messages:", err);
-      // Use empty array if API fails
-      setMessages([]);
-    } finally {
-      setLoading(false);
-    }
+      const doc = getDoctor();
+      if (!doc._id) return;
+      const res = await axios.get(`${API}/messages/doctor/${doc._id}?type=${tab}`);
+      setConvs(res.data || []);
+    } catch { setConvs([]); }
+    finally { setLoading(false); }
   };
 
   const fetchAllDoctors = async () => {
     try {
-      const response = await axios.get(`http://localhost:4000/api/messages/doctors`);
-      setAllDoctors(response.data || []);
-    } catch (err) {
-      console.error("Error fetching doctors:", err);
-      setAllDoctors([]);
-    }
+      const res = await axios.get(`${API}/messages/doctors`);
+      const myId = getDoctor()._id;
+      // Exclude self
+      setAllDoctors((res.data || []).filter(d => d._id !== myId));
+    } catch { setAllDoctors([]); }
   };
 
-  const filteredMessages = messages.filter(
-    (msg) =>
-      msg.sender.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      msg.message.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleSelectPatient = async (patientMsg) => {
-    if (patientMsg.type === "doctor") {
-      setSelectedDoctor(patientMsg);
-      setSelectedPatient(null);
-    } else {
-      setSelectedPatient(patientMsg);
-      setSelectedDoctor(null);
-    }
-    
+  const selectConv = async (conv) => {
+    setSelected(conv);
     try {
-      const doctorData = JSON.parse(localStorage.getItem("doctor") || "{}");
-      let response;
-      
-      if (patientMsg.type === "doctor") {
-        response = await axios.get(
-          `http://localhost:4000/api/messages/conversation/doctors/${doctorData._id}/${patientMsg.patientId}`
-        );
-      } else {
-        response = await axios.get(
-          `http://localhost:4000/api/messages/conversation/${doctorData._id}/${patientMsg.patientId}`
-        );
-      }
-      setConversation(response.data || []);
-    } catch (err) {
-      console.error("Error fetching conversation:", err);
-      setConversation([]);
-    }
+      const doc = getDoctor();
+      const url = conv.type === "doctor"
+        ? `${API}/messages/conversation/doctors/${doc._id}/${conv.id}`
+        : `${API}/messages/conversation/${doc._id}/${conv.id}`;
+      const res = await axios.get(url);
+      setMessages(res.data || []);
+    } catch { setMessages([]); }
   };
 
-  const handleSendMessage = async () => {
-    const currentSelection = selectedPatient || selectedDoctor;
-    if (!newMessage.trim() || !currentSelection) return;
-
+  const handleSend = async () => {
+    if (!newMsg.trim() || !selected) return;
+    setSending(true);
     try {
-      setSendingMessage(true);
-      const doctorData = JSON.parse(localStorage.getItem("doctor") || "{}");
-      
-      const receiverType = currentSelection.type === "doctor" ? "doctor" : "patient";
-      
-      await axios.post("http://localhost:4000/api/messages/", {
-        senderId: doctorData._id,
-        senderType: "doctor",
-        receiverId: currentSelection.patientId,
-        receiverType: receiverType,
-        message: newMessage.trim(),
-        patientId: currentSelection.type === "patient" ? currentSelection.patientId : null,
+      const doc = getDoctor();
+      await axios.post(`${API}/messages/`, {
+        senderId:     doc._id,
+        senderType:   "doctor",
+        receiverId:   selected.id,
+        receiverType: selected.type === "doctor" ? "doctor" : "patient",
+        message:      newMsg.trim(),
+        patientId:    selected.type === "patient" ? selected.id : null,
       });
-
-      setNewMessage("");
-      // Refresh conversation
-      await handleSelectPatient(currentSelection);
-      // Refresh messages list
-      await fetchMessages();
-    } catch (err) {
-      console.error("Error sending message:", err);
-      alert("Failed to send message. Please try again.");
-    } finally {
-      setSendingMessage(false);
-    }
+      setNewMsg("");
+      await selectConv(selected);
+      fetchConvs();
+    } catch { /* silent */ }
+    finally { setSending(false); }
   };
 
-  const handleSendAnnouncement = async () => {
-    if (!announcementText.trim()) {
-      alert("Please enter an announcement message.");
-      return;
-    }
-
+  const handleAnnounce = async () => {
+    if (!announce.text.trim()) return;
+    setAnnounceSending(true);
     try {
-      setSendingMessage(true);
-      const doctorData = JSON.parse(localStorage.getItem("doctor") || "{}");
-      
-      await axios.post("http://localhost:4000/api/messages/", {
-        senderId: doctorData._id,
-        senderType: "doctor",
-        message: announcementText.trim(),
-        isAnnouncement: true,
-        announcementType: announcementType,
+      const doc = getDoctor();
+      await axios.post(`${API}/messages/`, {
+        senderId:         doc._id,
+        senderType:       "doctor",
+        message:          announce.text.trim(),
+        isAnnouncement:   true,
+        announcementType: announce.type,
       });
-
-      alert("Announcement sent to all your patients!");
-      setAnnouncementText("");
-      setShowAnnouncementModal(false);
-      await fetchMessages();
-    } catch (err) {
-      console.error("Error sending announcement:", err);
-      alert("Failed to send announcement. Please try again.");
-    } finally {
-      setSendingMessage(false);
-    }
+      setShowModal(false);
+      setAnnounce({ text: "", type: "general" });
+      fetchConvs();
+    } catch { /* silent */ }
+    finally { setAnnounceSending(false); }
   };
+
+  // Doctors tab: show all doctors list; Patients tab: show conversations
+  const filtered = tab === "doctors"
+    ? allDoctors
+        .filter(d => (d.fullName || d.name || "").toLowerCase().includes(search.toLowerCase()))
+        .map(d => ({
+          id: d._id,
+          name: d.fullName || d.name || "Doctor",
+          email: d.email || "",
+          type: "doctor",
+          lastMessage: d.specialization || "",
+          lastMessageTime: null,
+          unreadCount: 0,
+        }))
+    : convs.filter(c =>
+        (c.name || "").toLowerCase().includes(search.toLowerCase())
+      );
+
+  const docId = getDoctor()._id;
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 50%, #CBD5E1 100%)" }}>
+    <div className="msg-wrapper">
       <DoctorSidebar />
-      <div style={{ flex: 1, marginLeft: "14rem", padding: "2rem 2.5rem", width: selectedPatient ? "60%" : "100%" }}>
-        <div style={{ 
-          background: "white", 
-          borderRadius: "1.25rem", 
-          padding: "1.5rem 2rem", 
-          marginBottom: "2rem", 
-          border: "1px solid rgba(0, 0, 0, 0.05)", 
-          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.05)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center"
-        }}>
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{ display: "flex", alignItems: "center", gap: "1rem" }}
-          >
-            <h2 style={{ 
-              margin: 0, 
-              fontSize: "2.5rem", 
-              fontWeight: "900", 
-              background: "linear-gradient(135deg, #2563EB 0%, #3B82F6 50%, #60A5FA 100%)", 
-              WebkitBackgroundClip: "text", 
-              WebkitTextFillColor: "transparent", 
-              backgroundClip: "text", 
-              display: "flex", 
-              alignItems: "center" 
-            }}>
-              <MessageSquare size={32} style={{ marginRight: "0.5rem", color: "#2563EB" }} />
-              Messages
-            </h2>
-          </motion.div>
-          {activeTab === "patients" && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowAnnouncementModal(true)}
-              style={{
-                padding: "0.75rem 1.5rem",
-                background: "linear-gradient(135deg, #10B981 0%, #059669 100%)",
-                color: "white",
-                border: "none",
-                borderRadius: "0.75rem",
-                cursor: "pointer",
-                fontSize: "0.9rem",
-                fontWeight: "600",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                boxShadow: "0 4px 15px rgba(16, 185, 129, 0.3)"
-              }}
-            >
-              Send Announcement
-            </motion.button>
+
+      <div className="msg-content">
+        {/* Top Bar */}
+        <div className="msg-topbar">
+          <h1><MessageSquare size={20} /> Messages</h1>
+          {tab === "patients" && (
+            <button className="announce-btn" onClick={() => setShowModal(true)}>
+              <Megaphone size={14} /> Announce
+            </button>
           )}
         </div>
 
-        {/* Tabs */}
-        <div style={{ 
-          background: "white", 
-          borderRadius: "1.25rem", 
-          padding: "0.5rem", 
-          marginBottom: "2rem", 
-          border: "1px solid rgba(0, 0, 0, 0.05)", 
-          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.05)",
-          display: "flex",
-          gap: "0.5rem"
-        }}>
-          <button
-            onClick={() => {
-              setActiveTab("patients");
-              setSelectedPatient(null);
-              setSelectedDoctor(null);
-            }}
-            style={{
-              flex: 1,
-              padding: "0.875rem 1.5rem",
-              border: "none",
-              background: activeTab === "patients" ? "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)" : "transparent",
-              color: activeTab === "patients" ? "white" : "#6B7280",
-              fontWeight: "600",
-              cursor: "pointer",
-              borderRadius: "0.75rem",
-              transition: "all 0.3s ease"
-            }}
-          >
-            Patients
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab("doctors");
-              setSelectedPatient(null);
-              setSelectedDoctor(null);
-            }}
-            style={{
-              flex: 1,
-              padding: "0.875rem 1.5rem",
-              border: "none",
-              background: activeTab === "doctors" ? "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)" : "transparent",
-              color: activeTab === "doctors" ? "white" : "#6B7280",
-              fontWeight: "600",
-              cursor: "pointer",
-              borderRadius: "0.75rem",
-              transition: "all 0.3s ease"
-            }}
-          >
-            Doctors
-          </button>
-        </div>
+        <div className="chat-shell">
+          {/* ── Conversations Panel ── */}
+          <div className="conv-panel">
+            {/* Tabs */}
+            <div className="conv-tabs">
+              <button className={`conv-tab ${tab === "patients" ? "active" : ""}`}
+                onClick={() => { setTab("patients"); setSelected(null); }}>Patients</button>
+              <button className={`conv-tab ${tab === "doctors" ? "active" : ""}`}
+                onClick={() => { setTab("doctors"); setSelected(null); }}>Doctors</button>
+            </div>
 
-        {/* Search Bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          style={{
-            background: "white",
-            borderRadius: "1.25rem",
-            padding: "1.5rem",
-            marginBottom: "2rem",
-            border: "1px solid rgba(0, 0, 0, 0.05)",
-            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.05)",
-            position: "relative"
-          }}
-        >
-          <Search
-            size={20}
-            style={{
-              position: "absolute",
-              left: "2.5rem",
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "#9CA3AF",
-              pointerEvents: "none"
-            }}
-          />
-          <input
-            type="text"
-            placeholder="Search messages..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "0.875rem 1rem 0.875rem 3rem",
-              border: "1px solid #E5E7EB",
-              borderRadius: "0.75rem",
-              fontSize: "0.95rem",
-              outline: "none",
-              backgroundColor: "white",
-              transition: "all 0.3s ease"
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = "#60A5FA";
-              e.target.style.boxShadow = "0 0 0 3px rgba(96, 165, 250, 0.1)";
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = "#E5E7EB";
-              e.target.style.boxShadow = "none";
-            }}
-          />
-        </motion.div>
+            {/* Search */}
+            <div className="conv-search">
+              <Search size={14} />
+              <input placeholder="Search..." value={search}
+                onChange={e => setSearch(e.target.value)} />
+            </div>
 
-        {/* Messages List */}
-        {loading ? (
-          <div style={{ 
-            background: "white", 
-            borderRadius: "1.25rem", 
-            padding: "3rem", 
-            textAlign: "center", 
-            border: "1px solid rgba(0, 0, 0, 0.05)", 
-            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.05)" 
-          }}>
-            <div style={{ 
-              width: "48px", 
-              height: "48px", 
-              border: "4px solid #E5E7EB", 
-              borderTopColor: "#2563EB", 
-              borderRadius: "50%", 
-              animation: "spin 1s linear infinite", 
-              margin: "0 auto 1rem" 
-            }}></div>
-            Loading messages...
-          </div>
-        ) : filteredMessages.length > 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            {filteredMessages.map((msg, idx) => (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: idx * 0.05 }}
-                whileHover={{ y: -2, boxShadow: "0 8px 16px rgba(0, 0, 0, 0.1)" }}
-                style={{
-                  backgroundColor: msg.unread || (selectedPatient && selectedPatient.id === msg.id) ? "#EFF6FF" : "white",
-                  borderLeft: msg.unread || (selectedPatient && selectedPatient.id === msg.id) ? "4px solid #2563EB" : "4px solid transparent",
-                  cursor: "pointer",
-                  padding: "1.5rem",
-                  borderRadius: "1.25rem",
-                  border: "1px solid rgba(0, 0, 0, 0.05)",
-                  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.05)",
-                  transition: "all 0.3s ease"
-                }}
-                onClick={() => handleSelectPatient(msg)}
-              >
-                <div style={{ display: "flex", gap: "1rem", flex: "1" }}>
-                  <div
-                    style={{
-                      width: "3rem",
-                      height: "3rem",
-                      borderRadius: "50%",
-                      backgroundColor: "#e0f2fe",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "1.25rem",
-                      fontWeight: "600",
-                      color: "#2563eb",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {msg.sender.charAt(0)}
+            {/* List */}
+            <div className="conv-list">
+              {loading ? (
+                <div className="conv-empty"><div className="msg-spinner" style={{ margin: "0 auto" }} /></div>
+              ) : filtered.length === 0 ? (
+                <div className="conv-empty">{tab === "doctors" ? "No doctors found" : "No conversations yet"}</div>
+              ) : filtered.map(conv => (
+                <div key={conv.id}
+                  className={`conv-item ${selected?.id === conv.id ? "active" : ""}`}
+                  onClick={() => selectConv(conv)}
+                >
+                  <div className={`conv-avatar ${conv.type === "doctor" ? "doctor-avatar" : ""}`}>
+                    {(conv.name || "?").charAt(0).toUpperCase()}
                   </div>
-                  <div style={{ flex: "1", minWidth: 0 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.25rem" }}>
-                      <p className="message-sender" style={{ fontWeight: msg.unread ? "700" : "600" }}>
-                        {msg.sender}
-                        {msg.unread && (
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "0.125rem 0.5rem",
-                              borderRadius: "1rem",
-                              backgroundColor: "#2563eb",
-                              color: "white",
-                              fontSize: "0.75rem",
-                              fontWeight: "600",
-                              marginLeft: "0.5rem",
-                            }}
-                          >
-                            {msg.unreadCount || "New"}
-                          </span>
-                        )}
-                      </p>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.25rem" }}>
-                        <span className="message-time">{msg.time}</span>
-                        <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{msg.date}</span>
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                      <Mail size={12} style={{ color: "#9ca3af" }} />
-                      <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>{msg.senderEmail}</span>
-                    </div>
-                    <p className="message-content">{msg.message}</p>
+                  <div className="conv-info">
+                    <div className="conv-name">{conv.name || "Unknown"}</div>
+                    <div className="conv-last">{conv.lastMessage || "No messages yet"}</div>
+                  </div>
+                  <div className="conv-meta">
+                    <span className="conv-time">{fmtDate(conv.lastMessageTime)}</span>
+                    {conv.unreadCount > 0 && (
+                      <span className="unread-badge">{conv.unreadCount}</span>
+                    )}
                   </div>
                 </div>
-              </motion.div>
-            ))}
+              ))}
+            </div>
           </div>
-        ) : (
-          <div style={{ 
-            background: "white", 
-            borderRadius: "1.25rem", 
-            padding: "3rem", 
-            textAlign: "center", 
-            border: "1px solid rgba(0, 0, 0, 0.05)", 
-            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.05)",
-            color: "#6B7280"
-          }}>
-            <MessageSquare size={48} style={{ marginBottom: "1rem", opacity: 0.5, color: "#9CA3AF" }} />
-            <p style={{ fontSize: "1.1rem", fontWeight: "600", color: "#374151", marginBottom: "0.5rem" }}>
-              {searchTerm ? "No messages found" : "No new messages"}
-            </p>
-            <p style={{ fontSize: "0.9rem", color: "#6B7280" }}>
-              {searchTerm ? "Try adjusting your search terms" : "You're all caught up!"}
-            </p>
-          </div>
-        )}
+
+          {/* ── Chat Window ── */}
+          {selected ? (
+            <div className="chat-window">
+              {/* Header */}
+              <div className="chat-header">
+                <div className={`chat-header-avatar ${selected.type === "doctor" ? "doctor-avatar" : ""}`}>
+                  {(selected.name || "?").charAt(0).toUpperCase()}
+                </div>
+                <div className="chat-header-info">
+                  <h3>{selected.name || "Unknown"}</h3>
+                  <p>{selected.email || (selected.type === "doctor" ? "Doctor" : "Patient")}</p>
+                </div>
+              </div>
+
+              {/* Messages */}
+              <div className="chat-messages">
+                {messages.map((msg, i) => {
+                  const mine = (msg.senderModel === "Doctor" && (msg.sender?._id?.toString() === docId || msg.sender?.toString() === docId))
+                    || msg.sender === "You";
+                  return (
+                    <div key={msg._id || i} className={`bubble-wrap ${mine ? "mine" : "theirs"}`}>
+                      <div className={`bubble ${mine ? "mine" : "theirs"}`}>
+                        {msg.message}
+                      </div>
+                      <span className="bubble-time">{fmtTime(msg.createdAt || msg.time)}</span>
+                    </div>
+                  );
+                })}
+                <div ref={bottomRef} />
+              </div>
+
+              {/* Input */}
+              <div className="chat-input-row">
+                <input
+                  type="text"
+                  placeholder="Type a message..."
+                  value={newMsg}
+                  onChange={e => setNewMsg(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                />
+                <button className="send-msg-btn" onClick={handleSend} disabled={sending || !newMsg.trim()}>
+                  <Send size={14} /> Send
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="chat-placeholder">
+              <MessageSquare size={40} style={{ opacity: 0.3 }} />
+              <p>Select a conversation to start messaging</p>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Announcement Modal */}
-      {showAnnouncementModal && (
-        <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: "rgba(0, 0, 0, 0.5)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 1000,
-        }}>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            style={{
-              backgroundColor: "white",
-              padding: "2rem",
-              borderRadius: "1.25rem",
-              width: "90%",
-              maxWidth: "500px",
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
-            }}
-          >
-            <h3 style={{ 
-              margin: "0 0 1.5rem 0", 
-              fontSize: "1.5rem", 
-              fontWeight: "700",
-              background: "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text"
-            }}>
-              Send Announcement to All Patients
-            </h3>
-            <select
-              value={announcementType}
-              onChange={(e) => setAnnouncementType(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "0.875rem 1rem",
-                marginBottom: "1rem",
-                border: "1px solid #E5E7EB",
-                borderRadius: "0.75rem",
-                fontSize: "0.95rem",
-                outline: "none",
-                cursor: "pointer",
-                transition: "all 0.3s ease"
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = "#60A5FA";
-                e.target.style.boxShadow = "0 0 0 3px rgba(96, 165, 250, 0.1)";
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = "#E5E7EB";
-                e.target.style.boxShadow = "none";
-              }}
-            >
-              <option value="general">General</option>
-              <option value="appointment">Appointment</option>
-              <option value="important">Important</option>
-              <option value="reminder">Reminder</option>
-            </select>
-            <textarea
-              value={announcementText}
-              onChange={(e) => setAnnouncementText(e.target.value)}
-              placeholder="Enter your announcement message..."
-              rows={5}
-              style={{
-                width: "100%",
-                padding: "0.875rem 1rem",
-                marginBottom: "1.5rem",
-                border: "1px solid #E5E7EB",
-                borderRadius: "0.75rem",
-                resize: "vertical",
-                fontSize: "0.95rem",
-                outline: "none",
-                fontFamily: "inherit",
-                transition: "all 0.3s ease"
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = "#60A5FA";
-                e.target.style.boxShadow = "0 0 0 3px rgba(96, 165, 250, 0.1)";
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = "#E5E7EB";
-                e.target.style.boxShadow = "none";
-              }}
-            />
-            <div style={{ display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  setShowAnnouncementModal(false);
-                  setAnnouncementText("");
-                }}
-                style={{
-                  padding: "0.75rem 1.5rem",
-                  backgroundColor: "#F3F4F6",
-                  color: "#374151",
-                  border: "1px solid #E5E7EB",
-                  borderRadius: "0.75rem",
-                  cursor: "pointer",
-                  fontWeight: "600",
-                  fontSize: "0.9375rem",
-                  transition: "all 0.3s ease"
-                }}
-              >
-                Cancel
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: sendingMessage || !announcementText.trim() ? 1 : 1.05 }}
-                whileTap={{ scale: sendingMessage || !announcementText.trim() ? 1 : 0.95 }}
-                onClick={handleSendAnnouncement}
-                disabled={sendingMessage || !announcementText.trim()}
-                style={{
-                  padding: "0.75rem 1.5rem",
-                  background: sendingMessage || !announcementText.trim() 
-                    ? "#E5E7EB" 
-                    : "linear-gradient(135deg, #10B981 0%, #059669 100%)",
-                  color: sendingMessage || !announcementText.trim() ? "#9CA3AF" : "white",
-                  border: "none",
-                  borderRadius: "0.75rem",
-                  cursor: sendingMessage || !announcementText.trim() ? "not-allowed" : "pointer",
-                  fontWeight: "600",
-                  fontSize: "0.9375rem",
-                  boxShadow: sendingMessage || !announcementText.trim() 
-                    ? "none" 
-                    : "0 4px 12px rgba(16, 185, 129, 0.3)",
-                  transition: "all 0.3s ease"
-                }}
-              >
-                {sendingMessage ? "Sending..." : "Send Announcement"}
-              </motion.button>
+      {/* ── Announcement Modal ── */}
+      {showModal && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
+          <div className="modal-box">
+            <h3>Send Announcement to All Patients</h3>
+            <div className="modal-field">
+              <label>Type</label>
+              <select value={announce.type} onChange={e => setAnnounce({ ...announce, type: e.target.value })}>
+                <option value="general">General</option>
+                <option value="appointment">Appointment</option>
+                <option value="important">Important</option>
+                <option value="reminder">Reminder</option>
+              </select>
             </div>
-          </motion.div>
+            <div className="modal-field">
+              <label>Message</label>
+              <textarea placeholder="Enter your announcement..." value={announce.text}
+                onChange={e => setAnnounce({ ...announce, text: e.target.value })} />
+            </div>
+            <div className="modal-actions">
+              <button className="announce-btn" style={{ background: "#f3f4f6", color: "#374151" }}
+                onClick={() => setShowModal(false)}>
+                <X size={13} /> Cancel
+              </button>
+              <button className="announce-btn" onClick={handleAnnounce}
+                disabled={announceSending || !announce.text.trim()}>
+                <Megaphone size={13} /> {announceSending ? "Sending..." : "Send"}
+              </button>
+            </div>
+          </div>
         </div>
-      )}
-
-      {/* Conversation View */}
-      {(selectedPatient || selectedDoctor) && (
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          style={{
-            width: "40%",
-            background: "white",
-            borderLeft: "1px solid rgba(0, 0, 0, 0.05)",
-            display: "flex",
-            flexDirection: "column",
-            height: "100vh",
-            boxShadow: "-4px 0 6px rgba(0, 0, 0, 0.05)"
-          }}
-        >
-          <div style={{
-            padding: "1.5rem",
-            borderBottom: "1px solid #E5E7EB",
-            display: "flex",
-            alignItems: "center",
-            gap: "1rem",
-            background: "white"
-          }}>
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => {
-                setSelectedPatient(null);
-                setSelectedDoctor(null);
-              }}
-              style={{
-                background: "rgba(37, 99, 235, 0.1)",
-                border: "none",
-                width: "2.5rem",
-                height: "2.5rem",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                color: "#2563EB",
-                fontSize: "1.5rem",
-                fontWeight: "700"
-              }}
-            >
-              ←
-            </motion.button>
-            <div
-              style={{
-                width: "3rem",
-                height: "3rem",
-                borderRadius: "50%",
-                background: "linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "1.25rem",
-                fontWeight: "700",
-                color: "white",
-                boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)"
-              }}
-            >
-              {(selectedPatient || selectedDoctor)?.sender?.charAt(0).toUpperCase() || "?"}
-            </div>
-            <div>
-              <h3 style={{ margin: 0, fontSize: "1.125rem", fontWeight: "700", color: "#1F2937" }}>
-                {(selectedPatient || selectedDoctor)?.sender || "Unknown"}
-              </h3>
-              <p style={{ margin: 0, fontSize: "0.875rem", color: "#6B7280" }}>
-                {(selectedPatient || selectedDoctor)?.senderEmail || ""}
-              </p>
-            </div>
-          </div>
-
-          <div style={{
-            flex: 1,
-            overflowY: "auto",
-            padding: "1.5rem",
-            display: "flex",
-            flexDirection: "column",
-            gap: "1rem",
-            background: "#F9FAFB"
-          }}>
-            {conversation.map((msg) => {
-              const isDoctor = msg.senderModel === "Doctor";
-              return (
-                <motion.div
-                  key={msg._id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  style={{
-                    alignSelf: isDoctor ? "flex-end" : "flex-start",
-                    maxWidth: "75%",
-                  }}
-                >
-                  <div
-                    style={{
-                      padding: "0.875rem 1.125rem",
-                      borderRadius: isDoctor ? "1.25rem 1.25rem 0.25rem 1.25rem" : "1.25rem 1.25rem 1.25rem 0.25rem",
-                      background: isDoctor ? "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)" : "white",
-                      color: isDoctor ? "white" : "#1F2937",
-                      boxShadow: isDoctor ? "0 4px 12px rgba(37, 99, 235, 0.3)" : "0 2px 8px rgba(0, 0, 0, 0.1)",
-                      border: isDoctor ? "none" : "1px solid #E5E7EB"
-                    }}
-                  >
-                    <p style={{ margin: 0, fontSize: "0.9375rem", lineHeight: "1.5" }}>{msg.message}</p>
-                    <span style={{
-                      fontSize: "0.75rem",
-                      opacity: 0.8,
-                      display: "block",
-                      marginTop: "0.375rem",
-                      textAlign: isDoctor ? "right" : "left"
-                    }}>
-                      {new Date(msg.createdAt).toLocaleTimeString("en-US", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        timeZone: "Asia/Colombo"
-                      })}
-                    </span>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-
-          <div style={{
-            padding: "1.5rem",
-            borderTop: "1px solid #E5E7EB",
-            display: "flex",
-            gap: "0.75rem",
-            background: "white"
-          }}>
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              placeholder={`Type a message to ${(selectedPatient || selectedDoctor)?.sender || "..."}...`}
-              style={{
-                flex: 1,
-                padding: "0.875rem 1rem",
-                border: "1px solid #E5E7EB",
-                borderRadius: "0.75rem",
-                fontSize: "0.9375rem",
-                outline: "none",
-                transition: "all 0.3s ease"
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = "#60A5FA";
-                e.target.style.boxShadow = "0 0 0 3px rgba(96, 165, 250, 0.1)";
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = "#E5E7EB";
-                e.target.style.boxShadow = "none";
-              }}
-            />
-            <motion.button
-              whileHover={{ scale: newMessage.trim() && !sendingMessage && (selectedPatient || selectedDoctor) ? 1.05 : 1 }}
-              whileTap={{ scale: newMessage.trim() && !sendingMessage && (selectedPatient || selectedDoctor) ? 0.95 : 1 }}
-              onClick={handleSendMessage}
-              disabled={!newMessage.trim() || sendingMessage || (!selectedPatient && !selectedDoctor)}
-              style={{
-                padding: "0.875rem 1.5rem",
-                background: newMessage.trim() && !sendingMessage && (selectedPatient || selectedDoctor) 
-                  ? "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)" 
-                  : "#E5E7EB",
-                color: newMessage.trim() && !sendingMessage && (selectedPatient || selectedDoctor) ? "white" : "#9CA3AF",
-                border: "none",
-                borderRadius: "0.75rem",
-                cursor: newMessage.trim() && !sendingMessage && (selectedPatient || selectedDoctor) ? "pointer" : "not-allowed",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                fontWeight: "600",
-                fontSize: "0.9375rem",
-                boxShadow: newMessage.trim() && !sendingMessage && (selectedPatient || selectedDoctor) 
-                  ? "0 4px 12px rgba(37, 99, 235, 0.3)" 
-                  : "none",
-                transition: "all 0.3s ease"
-              }}
-            >
-              <Send size={18} />
-              {sendingMessage ? "Sending..." : "Send"}
-            </motion.button>
-          </div>
-        </motion.div>
       )}
     </div>
   );
-};
-
-export default DoctorMessages;
+}
