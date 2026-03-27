@@ -1,354 +1,355 @@
-.doctor-reviews-container {
+/* DoctorReviews.css — Modern Clean Design */
+
+.rev-wrapper {
   display: flex;
   min-height: 100vh;
-  background-color: #f5f7fa;
+  background: #f8fafc;
 }
 
-.doctor-reviews-content {
+.rev-content {
   flex: 1;
-  margin-left: 280px;
-  padding: 2rem;
-  overflow-y: auto;
+  margin-left: 220px;
+  padding: 2rem 2.5rem;
+  box-sizing: border-box;
 }
 
-.reviews-header {
-  margin-bottom: 2rem;
+/* ── Header ── */
+.rev-header {
+  margin-bottom: 1.75rem;
 }
 
-.reviews-header h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 0.5rem;
-}
-
-.reviews-header p {
-  color: #6b7280;
-  font-size: 1rem;
-}
-
-/* Statistics Cards */
-.reviews-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
+.rev-header h1 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #111827;
+  margin: 0 0 0.25rem;
+  letter-spacing: -0.4px;
   display: flex;
   align-items: center;
+  gap: 0.5rem;
+}
+
+.rev-header p { color: #6b7280; font-size: 0.875rem; margin: 0; }
+
+/* ── Stats Row ── */
+.rev-stats {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
   gap: 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
+  margin-bottom: 1.75rem;
 }
 
-.stat-card:hover {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+.rev-stat-card {
+  background: #fff;
+  border-radius: 0.875rem;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  padding: 1.25rem 1rem;
+  text-align: center;
 }
 
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+.rev-stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.625rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  margin: 0 auto 0.75rem;
 }
 
-.stat-primary .stat-icon {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.stat-secondary .stat-icon {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-}
-
-.stat-rating .stat-icon {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-}
-
-.stat-content h3 {
+.rev-stat-value {
   font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.rev-stat-label {
+  font-size: 0.7rem;
   font-weight: 700;
-  color: #1f2937;
-  margin: 0;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.stat-content p {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin: 0.25rem 0 0 0;
-}
-
-/* Filters */
-.reviews-filters {
+/* ── Rating Bar ── */
+.rev-rating-bar-wrap {
+  background: #fff;
+  border-radius: 1rem;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
   display: flex;
-  gap: 1rem;
-  margin-bottom: 2rem;
+  align-items: center;
+  gap: 2rem;
   flex-wrap: wrap;
 }
 
-.search-box {
-  flex: 1;
-  min-width: 250px;
+.rev-avg-big {
+  text-align: center;
+  flex-shrink: 0;
 }
 
-.search-input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  transition: all 0.3s ease;
+.rev-avg-number {
+  font-size: 3rem;
+  font-weight: 900;
+  color: #f59e0b;
+  line-height: 1;
 }
 
-.search-input:focus {
-  outline: none;
-  border-color: #00897B; /* Teal - matching mobile app */
-  box-shadow: 0 0 0 3px rgba(0, 137, 123, 0.1);
-}
-
-.filter-group {
+.rev-avg-stars {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #6b7280;
+  gap: 2px;
+  justify-content: center;
+  margin: 0.375rem 0 0.25rem;
 }
 
-.filter-select {
-  padding: 0.75rem 1rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  background: white;
-  cursor: pointer;
-  transition: all 0.3s ease;
+.rev-avg-count {
+  font-size: 0.75rem;
+  color: #9ca3af;
 }
 
-.filter-select:focus {
-  outline: none;
-  border-color: #00897B; /* Teal - matching mobile app */
-  box-shadow: 0 0 0 3px rgba(0, 137, 123, 0.1);
-}
-
-/* Reviews List */
-.reviews-list {
+.rev-bars {
+  flex: 1;
+  min-width: 200px;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 0.5rem;
 }
 
-.review-card {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-.review-card:hover {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
-}
-
-.review-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1rem;
-}
-
-.review-patient {
+.rev-bar-row {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  flex: 1;
+  gap: 0.625rem;
+  font-size: 0.78rem;
 }
 
-.patient-avatar {
-  width: 48px;
-  height: 48px;
+.rev-bar-label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: #6b7280;
+  font-weight: 600;
+  min-width: 40px;
+}
+
+.rev-bar-track {
+  flex: 1;
+  height: 8px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.rev-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.rev-bar-count {
+  color: #9ca3af;
+  min-width: 20px;
+  text-align: right;
+}
+
+/* ── Filters ── */
+.rev-filters {
+  background: #fff;
+  border-radius: 0.875rem;
+  border: 1px solid #f0f0f0;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  gap: 0.875rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.rev-search {
+  flex: 1;
+  min-width: 220px;
+  position: relative;
+}
+
+.rev-search svg {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.rev-search input {
+  width: 100%;
+  padding: 0.6rem 0.875rem 0.6rem 2.5rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+  color: #111827;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.rev-search input:focus { border-color: #00897B; }
+
+.rev-select {
+  padding: 0.6rem 0.875rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+  color: #111827;
+  outline: none;
+  cursor: pointer;
+  background: #fff;
+  transition: border-color 0.15s;
+}
+
+.rev-select:focus { border-color: #00897B; }
+
+/* ── Review Cards ── */
+.rev-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.rev-card {
+  background: #fff;
+  border-radius: 1rem;
+  border: 1.5px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  padding: 1.25rem 1.5rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.rev-card:hover {
+  border-color: #fde68a;
+  box-shadow: 0 4px 16px rgba(245,158,11,0.1);
+}
+
+.rev-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.875rem;
+}
+
+.rev-patient {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.rev-avatar {
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #00897B 0%, #26A69A 100%);
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
   color: white;
+  flex-shrink: 0;
 }
 
-.review-patient h4 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0 0 0.25rem 0;
+.rev-patient-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #111827;
 }
 
-.review-date {
+.rev-date {
+  font-size: 0.75rem;
+  color: #9ca3af;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
+  gap: 3px;
+  margin-top: 2px;
+}
+
+.rev-stars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.rev-rating-num {
+  font-size: 0.8rem;
+  font-weight: 700;
   color: #6b7280;
-  margin: 0;
+  margin-left: 4px;
 }
 
-.review-rating {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.star-icon {
-  transition: all 0.2s ease;
-}
-
-.star-icon.filled {
-  color: #fbbf24;
-}
-
-.star-icon.empty {
-  color: #d1d5db;
-}
-
-.rating-number {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.review-comment {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
-}
-
-.review-comment p {
+.rev-comment {
+  font-size: 0.875rem;
   color: #4b5563;
   line-height: 1.6;
-  margin: 0;
+  padding: 0.75rem 1rem;
+  background: #f9fafb;
+  border-radius: 0.625rem;
+  border: 1px solid #f0f0f0;
+  margin-bottom: 0.625rem;
 }
 
-.review-badge {
-  margin-top: 1rem;
-  padding-top: 1rem;
-}
-
-.verified-badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  background: #d1fae5;
-  color: #065f46;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-/* Loading and Error States */
-.loading-container,
-.error-container {
-  display: flex;
-  flex-direction: column;
+.rev-verified {
+  display: inline-flex;
   align-items: center;
+  gap: 4px;
+  padding: 0.25rem 0.75rem;
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+/* ── Empty ── */
+.rev-empty {
+  text-align: center;
+  padding: 4rem 1rem;
+  color: #9ca3af;
+  background: #fff;
+  border-radius: 1rem;
+  border: 1px solid #f0f0f0;
+}
+
+.rev-empty svg { margin-bottom: 1rem; opacity: 0.3; }
+.rev-empty h3 { font-size: 1rem; font-weight: 700; color: #374151; margin: 0 0 0.25rem; }
+.rev-empty p  { font-size: 0.875rem; margin: 0; }
+
+/* ── Loading ── */
+.rev-loading {
+  display: flex;
   justify-content: center;
-  min-height: 400px;
-  text-align: center;
-}
-
-.loading-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid #e5e7eb;
-  border-top-color: #00897B; /* Teal - matching mobile app */
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 1rem;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.error-container p {
-  color: #ef4444;
-  margin-bottom: 1rem;
-}
-
-.retry-button {
-  padding: 0.75rem 1.5rem;
-  background: #00897B; /* Teal - matching mobile app */
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.retry-button:hover {
-  background: #00695C; /* Dark teal - matching mobile app */
-  transform: translateY(-2px);
-}
-
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.empty-icon {
-  color: #d1d5db;
-  margin-bottom: 1rem;
-}
-
-.empty-state h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 0.5rem;
-}
-
-.empty-state p {
+  align-items: center;
+  min-height: 60vh;
+  flex-direction: column;
+  gap: 1rem;
   color: #6b7280;
-  margin: 0;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .doctor-reviews-content {
-    margin-left: 0;
-    padding: 1rem;
-  }
-
-  .reviews-stats {
-    grid-template-columns: 1fr;
-  }
-
-  .reviews-filters {
-    flex-direction: column;
-  }
-
-  .search-box {
-    min-width: 100%;
-  }
-
-  .review-header {
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .review-rating {
-    align-self: flex-start;
-  }
+.rev-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #00897B;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* ── Responsive ── */
+@media (max-width: 1200px) { .rev-stats { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 768px)  { .rev-content { margin-left: 0; padding: 1rem; } .rev-stats { grid-template-columns: repeat(2, 1fr); } }

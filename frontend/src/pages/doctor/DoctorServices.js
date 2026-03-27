@@ -1,453 +1,260 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import DoctorSidebar from "../../components/layout/DoctorSidebar";
-import { motion } from "framer-motion";
-import { Plus, X, Save, Trash2, Edit, Check, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
+import { Plus, X, Save, Check, AlertCircle, CheckCircle, Stethoscope, Search, Clock } from "lucide-react";
 import axios from "axios";
 import "../../styles/pages/DoctorServices.css";
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:4000/api";
+const API = process.env.REACT_APP_API_URL || "http://localhost:4000/api";
+
+const CATEGORIES = ["General","Orthodontic","Surgical","Endodontic","Cosmetic","Restorative","Emergency","Pediatric","Periodontic"];
+
+const getToken = () => localStorage.getItem("token") || "";
 
 export default function DoctorServices() {
-  const navigate = useNavigate();
-  const [allServices, setAllServices] = useState([]);
-  const [doctorServices, setDoctorServices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState({ type: "", text: "" });
-  const [showAddService, setShowAddService] = useState(false);
-  const [newService, setNewService] = useState({
-    name: "",
-    description: "",
-    category: "General",
-  });
-  const [editingService, setEditingService] = useState(null);
-  const [doctorId, setDoctorId] = useState(null);
-
-  const categories = [
-    "General",
-    "Orthodontic",
-    "Surgical",
-    "Endodontic",
-    "Cosmetic",
-    "Restorative",
-    "Emergency",
-    "Pediatric",
-    "Periodontic",
-  ];
+  const [allServices, setAllServices]       = useState([]);
+  const [myServices, setMyServices]         = useState([]);
+  const [loading, setLoading]               = useState(true);
+  const [saving, setSaving]                 = useState(false);
+  const [creating, setCreating]             = useState(false);
+  const [toast, setToast]                   = useState({ type: "", text: "" });
+  const [showForm, setShowForm]             = useState(false);
+  const [search, setSearch]                 = useState("");
+  const [doctorId, setDoctorId]             = useState(null);
+  const [newSvc, setNewSvc]                 = useState({ name: "", description: "", category: "General", duration: 30 });
 
   useEffect(() => {
-    const doctor = JSON.parse(localStorage.getItem("doctor") || "{}");
-    if (doctor._id) {
-      setDoctorId(doctor._id);
-      fetchServices();
-      fetchDoctorServices(doctor._id);
-    } else {
-      setLoading(false);
-      setMessage({ type: "error", text: "Doctor not found. Please login again." });
-    }
+    const doc = JSON.parse(localStorage.getItem("doctor") || "{}");
+    if (!doc._id) { showToast("error", "Doctor not found. Please login again."); setLoading(false); return; }
+    setDoctorId(doc._id);
+    Promise.all([fetchAll(), fetchMine(doc._id)]).finally(() => setLoading(false));
   }, []);
 
-  const fetchServices = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/services`);
-      setAllServices(response.data || []);
-    } catch (error) {
-      console.error("Error fetching services:", error);
-      setMessage({ type: "error", text: "Failed to load available services" });
-    }
+  const showToast = (type, text) => {
+    setToast({ type, text });
+    setTimeout(() => setToast({ type: "", text: "" }), 3500);
   };
 
-  const fetchDoctorServices = async (id) => {
+  const fetchAll = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_BASE_URL}/doctors/profile/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await axios.get(`${API}/services`);
+      setAllServices(res.data || []);
+    } catch { showToast("error", "Failed to load services"); }
+  };
+
+  const fetchMine = async (id) => {
+    try {
+      const res = await axios.get(`${API}/doctors/profile/${id}`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
       });
-      setDoctorServices(response.data.doctor?.services || []);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching doctor services:", error);
-      setLoading(false);
-      setMessage({ type: "error", text: "Failed to load your services" });
-    }
+      setMyServices(res.data.doctor?.services || []);
+    } catch { showToast("error", "Failed to load your services"); }
   };
 
-  const handleAddService = () => {
-    if (!newService.name.trim()) {
-      setMessage({ type: "error", text: "Please enter a service name" });
-      return;
-    }
-
-    if (doctorServices.includes(newService.name)) {
-      setMessage({ type: "error", text: "Service already added" });
-      return;
-    }
-
-    setDoctorServices([...doctorServices, newService.name]);
-    setNewService({ name: "", description: "", category: "General" });
-    setShowAddService(false);
-    setMessage({ type: "success", text: "Service added (click Save to update)" });
-  };
-
-  const handleRemoveService = (serviceName) => {
-    setDoctorServices(doctorServices.filter((s) => s !== serviceName));
-    setMessage({ type: "success", text: "Service removed (click Save to update)" });
-  };
-
-  const handleSaveServices = async () => {
+  const handleSave = async () => {
     if (!doctorId) return;
-
     setSaving(true);
-    setMessage({ type: "", text: "" });
-
     try {
-      const token = localStorage.getItem("token");
-      await axios.put(
-        `${API_BASE_URL}/doctors/${doctorId}/services`,
-        { services: doctorServices },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+      await axios.put(`${API}/doctors/${doctorId}/services`,
+        { services: myServices },
+        { headers: { Authorization: `Bearer ${getToken()}` } }
       );
-
-      setMessage({ type: "success", text: "Services updated successfully!" });
-      
-      // Update localStorage doctor data
-      const doctor = JSON.parse(localStorage.getItem("doctor") || "{}");
-      doctor.services = doctorServices;
-      localStorage.setItem("doctor", JSON.stringify(doctor));
-    } catch (error) {
-      console.error("Error saving services:", error);
-      setMessage({
-        type: "error",
-        text: error.response?.data?.message || "Failed to save services",
-      });
+      // update localStorage
+      const doc = JSON.parse(localStorage.getItem("doctor") || "{}");
+      doc.services = myServices;
+      localStorage.setItem("doctor", JSON.stringify(doc));
+      showToast("success", "Services saved successfully.");
+    } catch (err) {
+      showToast("error", err.response?.data?.message || "Failed to save.");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleCreateNewService = async () => {
-    if (!newService.name.trim()) {
-      setMessage({ type: "error", text: "Please enter a service name" });
-      return;
-    }
-
-    setSaving(true);
+  const handleCreate = async () => {
+    if (!newSvc.name.trim()) { showToast("error", "Service name is required."); return; }
+    setCreating(true);
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.post(
-        `${API_BASE_URL}/services`,
-        {
-          name: newService.name,
-          description: newService.description,
-          category: newService.category,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      // Add the new service to doctor's services
-      if (!doctorServices.includes(newService.name)) {
-        setDoctorServices([...doctorServices, newService.name]);
-      }
-
-      // Refresh services list
-      await fetchServices();
-
-      setNewService({ name: "", description: "", category: "General" });
-      setShowAddService(false);
-      setMessage({ type: "success", text: "Service created and added successfully!" });
-    } catch (error) {
-      console.error("Error creating service:", error);
-      setMessage({
-        type: "error",
-        text: error.response?.data?.message || "Failed to create service",
+      await axios.post(`${API}/services`, newSvc, {
+        headers: { Authorization: `Bearer ${getToken()}` },
       });
+      if (!myServices.includes(newSvc.name)) setMyServices([...myServices, newSvc.name]);
+      await fetchAll();
+      setNewSvc({ name: "", description: "", category: "General", duration: 30 });
+      setShowForm(false);
+      showToast("success", "Service created and added.");
+    } catch (err) {
+      showToast("error", err.response?.data?.message || "Failed to create service.");
     } finally {
-      setSaving(false);
+      setCreating(false);
     }
   };
 
-  const getServicesByCategory = () => {
-    const categorized = {};
-    allServices.forEach((service) => {
-      const category = service.category || "General";
-      if (!categorized[category]) {
-        categorized[category] = [];
-      }
-      categorized[category].push(service);
+  const toggleService = (name) => {
+    if (myServices.includes(name)) {
+      setMyServices(myServices.filter(s => s !== name));
+    } else {
+      setMyServices([...myServices, name]);
+    }
+  };
+
+  // Group by category, filtered by search
+  const grouped = {};
+  allServices
+    .filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.category?.toLowerCase().includes(search.toLowerCase()))
+    .forEach(s => {
+      const cat = s.category || "General";
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(s);
     });
-    return categorized;
-  };
 
   if (loading) {
     return (
-      <div className="doctor-services-layout">
+      <div className="svc-wrapper">
         <DoctorSidebar />
-        <div className="doctor-services-content">
-          <div style={{ textAlign: "center", padding: "3rem" }}>Loading services...</div>
+        <div className="svc-content">
+          <div className="svc-loading"><div className="svc-spinner" /><p>Loading services...</p></div>
         </div>
       </div>
     );
   }
 
-  const categorizedServices = getServicesByCategory();
-
   return (
-    <div className="doctor-services-layout">
+    <div className="svc-wrapper">
       <DoctorSidebar />
-      <div className="doctor-services-content">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="doctor-services-container"
-        >
-          <div className="services-header">
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-              <button
-                onClick={() => navigate("/doctor/dashboard")}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  padding: "0.5rem",
-                  borderRadius: "50%",
-                  transition: "background-color 0.2s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f3f4f6")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                title="Back to Dashboard"
-              >
-                <ArrowLeft size={24} color="#1e3a8a" />
-              </button>
-              <div>
-                <h1>Manage Services</h1>
-                <p>Add and manage the services you offer to patients</p>
-              </div>
-            </div>
+
+      <div className="svc-content">
+        {/* Header */}
+        <div className="svc-header">
+          <h1>Services</h1>
+          <p>Manage the dental services you offer to patients</p>
+        </div>
+
+        {toast.text && (
+          <div className={`svc-toast ${toast.type}`}>
+            {toast.type === "success" ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+            {toast.text}
           </div>
+        )}
 
-          {message.text && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`message ${message.type}`}
-            >
-              {message.type === "success" ? (
-                <CheckCircle size={20} />
-              ) : (
-                <AlertCircle size={20} />
-              )}
-              <span>{message.text}</span>
-            </motion.div>
-          )}
-
-          {/* My Services Section */}
-          <div className="services-section">
-            <div className="section-header">
-              <h2>My Services ({doctorServices.length})</h2>
-              <button
-                className="btn-primary"
-                onClick={() => setShowAddService(!showAddService)}
-              >
-                <Plus size={18} /> {showAddService ? "Cancel" : "Add Service"}
+        <div className="svc-grid">
+          {/* ── Left: My Services ── */}
+          <div className="svc-card">
+            <div className="svc-card-header">
+              <h2><Stethoscope size={15} /> My Services ({myServices.length})</h2>
+              <button className="btn-teal" onClick={() => setShowForm(!showForm)}>
+                {showForm ? <><X size={13} /> Cancel</> : <><Plus size={13} /> New</>}
               </button>
             </div>
 
-            {showAddService && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                className="add-service-form"
-              >
-                <h3>Add New Service</h3>
-                <div className="form-group">
-                  <label>Service Name *</label>
-                  <input
-                    type="text"
-                    value={newService.name}
-                    onChange={(e) =>
-                      setNewService({ ...newService, name: e.target.value })
-                    }
-                    placeholder="e.g., Teeth Whitening"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Category</label>
-                  <select
-                    value={newService.category}
-                    onChange={(e) =>
-                      setNewService({ ...newService, category: e.target.value })
-                    }
-                  >
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Description (Optional)</label>
-                  <textarea
-                    value={newService.description}
-                    onChange={(e) =>
-                      setNewService({ ...newService, description: e.target.value })
-                    }
-                    placeholder="Brief description of the service..."
-                    rows={3}
-                  />
-                </div>
-                <div className="form-actions">
-                  <button
-                    className="btn-secondary"
-                    onClick={() => {
-                      setShowAddService(false);
-                      setNewService({ name: "", description: "", category: "General" });
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="btn-primary"
-                    onClick={handleCreateNewService}
-                    disabled={saving}
-                  >
-                    {saving ? "Creating..." : "Create & Add Service"}
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {doctorServices.length === 0 ? (
-              <div className="empty-state">
-                <p>No services added yet. Click "Add Service" to get started.</p>
-              </div>
-            ) : (
-              <div className="services-list">
-                {doctorServices.map((serviceName, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="service-item"
-                  >
-                    <div className="service-info">
-                      <span className="service-name">{serviceName}</span>
-                    </div>
-                    <button
-                      className="btn-icon"
-                      onClick={() => handleRemoveService(serviceName)}
-                      title="Remove service"
-                    >
-                      <X size={18} />
+            <div className="svc-card-body">
+              {/* Create Form */}
+              {showForm && (
+                <div className="add-svc-form">
+                  <h3>Create New Service</h3>
+                  <div className="form-field">
+                    <label>Name *</label>
+                    <input type="text" placeholder="e.g., Teeth Whitening" value={newSvc.name}
+                      onChange={e => setNewSvc({ ...newSvc, name: e.target.value })} />
+                  </div>
+                  <div className="form-field">
+                    <label>Category</label>
+                    <select value={newSvc.category} onChange={e => setNewSvc({ ...newSvc, category: e.target.value })}>
+                      {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-field">
+                    <label>Duration (min)</label>
+                    <input type="number" min="15" step="15" value={newSvc.duration}
+                      onChange={e => setNewSvc({ ...newSvc, duration: parseInt(e.target.value) || 30 })} />
+                  </div>
+                  <div className="form-field">
+                    <label>Description</label>
+                    <textarea placeholder="Brief description..." value={newSvc.description}
+                      onChange={e => setNewSvc({ ...newSvc, description: e.target.value })} />
+                  </div>
+                  <div className="form-actions">
+                    <button className="btn-ghost" onClick={() => setShowForm(false)}>Cancel</button>
+                    <button className="btn-teal" onClick={handleCreate} disabled={creating}>
+                      {creating ? "Creating..." : "Create & Add"}
                     </button>
-                  </motion.div>
-                ))}
-              </div>
-            )}
+                  </div>
+                </div>
+              )}
 
-            {doctorServices.length > 0 && (
-              <div className="save-section">
-                <button
-                  className="btn-save"
-                  onClick={handleSaveServices}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <>
-                      <div className="spinner" /> Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save size={18} /> Save Changes
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
+              {/* My Services List */}
+              {myServices.length === 0 ? (
+                <div className="svc-empty">
+                  No services added yet.<br />Browse the catalogue on the right to add.
+                </div>
+              ) : (
+                <div className="my-svc-list">
+                  {myServices.map((name, i) => (
+                    <div key={i} className="my-svc-item">
+                      <span>{name}</span>
+                      <button className="my-svc-remove" onClick={() => toggleService(name)}>
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Save */}
+              <button className="save-svc-btn" onClick={handleSave} disabled={saving}>
+                <Save size={17} /> {saving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
           </div>
 
-          {/* Available Services Section */}
-          <div className="services-section">
-            <div className="section-header">
-              <h2>Available Services by Category</h2>
-              <p className="section-subtitle">
-                Browse and add services from the available list
-              </p>
+          {/* ── Right: Browse Catalogue ── */}
+          <div className="svc-card">
+            <div className="svc-card-header">
+              <h2><Search size={15} /> Service Catalogue</h2>
             </div>
 
-            {Object.keys(categorizedServices).length === 0 ? (
-              <div className="empty-state">
-                <p>No services available. Create a new service above.</p>
-              </div>
-            ) : (
-              <div className="categorized-services">
-                {Object.keys(categorizedServices).map((category) => (
-                  <div key={category} className="category-group">
-                    <h3 className="category-title">{category}</h3>
-                    <div className="category-services">
-                      {categorizedServices[category].map((service) => {
-                        const isAdded = doctorServices.includes(service.name);
+            <div className="browse-search">
+              <input
+                type="text"
+                placeholder="Search services..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+
+            <div className="browse-body">
+              {Object.keys(grouped).length === 0 ? (
+                <div className="svc-empty">No services found.</div>
+              ) : (
+                Object.keys(grouped).sort().map(cat => (
+                  <div key={cat} className="cat-group">
+                    <div className="cat-label">{cat}</div>
+                    <div className="cat-services">
+                      {grouped[cat].map(svc => {
+                        const added = myServices.includes(svc.name);
                         return (
-                          <div
-                            key={service._id}
-                            className={`service-card ${isAdded ? "added" : ""}`}
-                          >
-                            <div className="service-card-content">
-                              <h4>{service.name}</h4>
-                              {service.description && (
-                                <p className="service-description">{service.description}</p>
-                              )}
-                              <div className="service-meta">
-                                <span className="service-duration">
-                                  Duration: {service.duration || 30} min
-                                </span>
-                              </div>
+                          <div key={svc._id} className={`svc-browse-item ${added ? "is-added" : ""}`}>
+                            <div className="svc-browse-info">
+                              <div className="svc-browse-name">{svc.name}</div>
+                              {svc.description && <div className="svc-browse-desc">{svc.description}</div>}
+                              <div className="svc-browse-dur"><Clock size={10} /> {svc.duration || 30} min</div>
                             </div>
                             <button
-                              className={`btn-add-service ${isAdded ? "added" : ""}`}
-                              onClick={() => {
-                                if (isAdded) {
-                                  handleRemoveService(service.name);
-                                } else {
-                                  setDoctorServices([...doctorServices, service.name]);
-                                  setMessage({
-                                    type: "success",
-                                    text: "Service added (click Save to update)",
-                                  });
-                                }
-                              }}
-                              disabled={saving}
+                              className={`svc-toggle-btn ${added ? "remove" : "add"}`}
+                              onClick={() => toggleService(svc.name)}
                             >
-                              {isAdded ? (
-                                <>
-                                  <Check size={16} /> Added
-                                </>
-                              ) : (
-                                <>
-                                  <Plus size={16} /> Add
-                                </>
-                              )}
+                              {added ? <><Check size={12} /> Added</> : <><Plus size={12} /> Add</>}
                             </button>
                           </div>
                         );
                       })}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                ))
+              )}
+            </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );
 }
-

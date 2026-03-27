@@ -1,378 +1,264 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import DoctorSidebar from "../../components/layout/DoctorSidebar";
 import axios from "axios";
-import { 
-  Camera, MessageSquare, CheckCircle, Clock, User, 
-  Send, X, AlertCircle, Image as ImageIcon, RefreshCw,
-  Eye, Calendar, FileText
+import {
+  Camera, MessageSquare, CheckCircle, Clock, Send, X,
+  AlertCircle, RefreshCw, FileDown, ExternalLink, Brain,
 } from "lucide-react";
 import "../../styles/pages/DoctorScanQA.css";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:4000/api";
 
+const getAuthHeader = () => {
+  const doctor = JSON.parse(localStorage.getItem("doctor") || "{}");
+  const token = localStorage.getItem("token") || localStorage.getItem("doctorToken") || doctor.token || "";
+  return { Authorization: `Bearer ${token}` };
+};
+
+const StatusBadge = ({ status }) => {
+  const map = {
+    pending_qa:    { cls: "badge-orange", icon: Clock,         label: "Pending Q&A" },
+    qa_completed:  { cls: "badge-green",  icon: CheckCircle,   label: "Completed" },
+    results_shown: { cls: "badge-blue",   icon: CheckCircle,   label: "Results Shown" },
+  };
+  const { cls, icon: Icon, label } = map[status] || map.pending_qa;
+  return (
+    <span className={`badge ${cls}`}>
+      <Icon size={11} /> {label}
+    </span>
+  );
+};
+
 export default function DoctorScanQA() {
-  const navigate = useNavigate();
-  const [scans, setScans] = useState([]);
+  const [scans, setScans]               = useState([]);
   const [selectedScan, setSelectedScan] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [newQuestion, setNewQuestion] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [filter, setFilter] = useState("all");
-  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState(null);
+  const [newQuestion, setNewQuestion]   = useState("");
+  const [submitting, setSubmitting]     = useState(false);
+  const [refreshing, setRefreshing]     = useState(false);
 
   useEffect(() => {
-    fetchPendingScans();
-    // Poll every 5 seconds for new scans
-    const interval = setInterval(fetchPendingScans, 5000);
+    fetchScans();
+    const interval = setInterval(fetchScans, 8000);
     return () => clearInterval(interval);
   }, []);
 
-  const fetchPendingScans = async (showRefresh = false) => {
+  const fetchScans = async (manual = false) => {
     try {
-      if (showRefresh) setRefreshing(true);
-      
-      const doctor = JSON.parse(localStorage.getItem("doctor") || "{}");
-      const token = localStorage.getItem("doctorToken") || doctor.token;
-
-      const response = await axios.get(`${API_URL}/scan-qa/dentist/pending`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      if (response.data.success) {
-        setScans(response.data.scans || []);
-      }
-      setLoading(false);
-      setRefreshing(false);
+      if (manual) setRefreshing(true);
+      const res = await axios.get(`${API_URL}/scan-qa/pending`, { headers: getAuthHeader() });
+      if (res.data.success) setScans(res.data.scans || []);
+      setError(null);
     } catch (err) {
-      console.error("Error fetching scans:", err);
       setError(err.response?.data?.message || "Failed to fetch scans");
+    } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const fetchScanDetails = async (scanId) => {
+  const fetchDetail = async (scanId) => {
     try {
-      const doctor = JSON.parse(localStorage.getItem("doctor") || "{}");
-      const token = localStorage.getItem("doctorToken") || doctor.token;
-
-      const response = await axios.get(`${API_URL}/scan-qa/${scanId}/dentist`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      if (response.data.success) {
-        setSelectedScan(response.data.scanQA);
-      }
+      const res = await axios.get(`${API_URL}/scan-qa/dentist/${scanId}`, { headers: getAuthHeader() });
+      if (res.data.success) setSelectedScan(res.data.scanQA);
     } catch (err) {
-      console.error("Error fetching scan details:", err);
-      alert(err.response?.data?.message || "Failed to fetch scan details");
+      setError(err.response?.data?.message || "Failed to load scan details");
     }
   };
 
-  const handleAddQuestion = async () => {
+  const handleSendQuestion = async () => {
     if (!newQuestion.trim() || !selectedScan) return;
-
     setSubmitting(true);
     try {
-      const doctor = JSON.parse(localStorage.getItem("doctor") || "{}");
-      const token = localStorage.getItem("doctorToken") || doctor.token;
-
       await axios.post(
         `${API_URL}/scan-qa/${selectedScan.scanId}/question`,
         { question: newQuestion.trim() },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+        { headers: getAuthHeader() }
       );
-
       setNewQuestion("");
-      await fetchScanDetails(selectedScan.scanId);
-      await fetchPendingScans();
+      await fetchDetail(selectedScan.scanId);
+      await fetchScans();
     } catch (err) {
-      console.error("Error adding question:", err);
-      alert(err.response?.data?.message || "Failed to add question");
+      setError(err.response?.data?.message || "Failed to send question");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleCompleteQA = async () => {
+  const handleComplete = async () => {
     if (!selectedScan) return;
-
-    if (!window.confirm("Are you sure you want to complete this Q&A session? The patient will be able to see the results.")) {
-      return;
-    }
-
+    if (!window.confirm("Mark this Q&A session as complete? The patient will be able to see the results.")) return;
     try {
-      const doctor = JSON.parse(localStorage.getItem("doctor") || "{}");
-      const token = localStorage.getItem("doctorToken") || doctor.token;
-
       await axios.post(
         `${API_URL}/scan-qa/${selectedScan.scanId}/complete`,
         {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+        { headers: getAuthHeader() }
       );
-
-      alert("Q&A session completed! Patient can now see the results.");
       setSelectedScan(null);
-      await fetchPendingScans();
+      await fetchScans();
     } catch (err) {
-      console.error("Error completing Q&A:", err);
-      alert(err.response?.data?.message || "Failed to complete Q&A");
+      setError(err.response?.data?.message || "Failed to complete session");
     }
   };
 
-  const getStatusBadge = (status) => {
-    const badges = {
-      pending_qa: { color: "orange", text: "Pending Q&A", icon: Clock },
-      qa_completed: { color: "green", text: "Q&A Completed", icon: CheckCircle },
-      results_shown: { color: "blue", text: "Results Shown", icon: CheckCircle }
-    };
-
-    const badge = badges[status] || badges.pending_qa;
-    const Icon = badge.icon;
-
-    return (
-      <span style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "4px",
-        padding: "4px 12px",
-        borderRadius: "12px",
-        backgroundColor: `${badge.color}20`,
-        color: badge.color,
-        fontSize: "12px",
-        fontWeight: "500"
-      }}>
-        <Icon size={14} />
-        {badge.text}
-      </span>
-    );
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleString();
-  };
+  const fmt = (d) => d ? new Date(d).toLocaleString("en-US", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 
   if (loading) {
     return (
-      <div style={{ display: "flex", minHeight: "100vh" }}>
+      <div className="scanqa-wrapper">
         <DoctorSidebar />
-        <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
-          <div>Loading scans...</div>
+        <div className="scanqa-content">
+          <div className="scanqa-loading">
+            <div className="spinner" />
+            <p>Loading scans...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "#f5f5f5" }}>
+    <div className="scanqa-wrapper">
       <DoctorSidebar />
-      
-      <div style={{ flex: 1, padding: "24px", marginLeft: "250px" }}>
-        <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
-          <div style={{ marginBottom: "24px" }}>
-            <h1 style={{ fontSize: "28px", fontWeight: "bold", marginBottom: "8px" }}>
-              Scan Q&A Review
-            </h1>
-            <p style={{ color: "#666" }}>
-              Review patient scans and ask questions before providing results
-            </p>
+
+      <div className="scanqa-content">
+        {/* Header */}
+        <div className="scanqa-header">
+          <h1>Scan Q&amp;A Review</h1>
+          <p>Review patient scans and ask questions before providing results</p>
+        </div>
+
+        {error && (
+          <div className="scanqa-error">
+            <AlertCircle size={16} /> {error}
           </div>
+        )}
 
-          {error && (
-            <div style={{
-              padding: "12px 16px",
-              backgroundColor: "#fee",
-              border: "1px solid #fcc",
-              borderRadius: "8px",
-              color: "#c33",
-              marginBottom: "24px"
-            }}>
-              {error}
+        <div className={`scanqa-grid ${!selectedScan ? "no-detail" : ""}`}>
+          {/* ── Scans List ── */}
+          <div className="scanqa-card">
+            <div className="scanqa-card-header">
+              <h2><Camera size={16} /> Pending Scans ({scans.length})</h2>
+              <button className="refresh-btn" onClick={() => fetchScans(true)}>
+                <RefreshCw size={13} className={refreshing ? "spin" : ""} />
+                Refresh
+              </button>
             </div>
-          )}
 
-          <div style={{ display: "grid", gridTemplateColumns: selectedScan ? "1fr 1fr" : "1fr", gap: "24px" }}>
-            {/* Scans List */}
-            <div>
-              <div style={{
-                backgroundColor: "white",
-                borderRadius: "12px",
-                padding: "20px",
-                boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-              }}>
-                <h2 style={{ fontSize: "20px", fontWeight: "600", marginBottom: "16px" }}>
-                  Pending Scans ({scans.length})
-                </h2>
-
-                {scans.length === 0 ? (
-                  <div style={{
-                    textAlign: "center",
-                    padding: "40px",
-                    color: "#999"
-                  }}>
-                    <Camera size={48} style={{ marginBottom: "16px", opacity: 0.5 }} />
-                    <p>No pending scans</p>
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                    {scans.map((scan) => (
-                      <div
-                        key={scan.id}
-                        onClick={() => fetchScanDetails(scan.scanId)}
-                        style={{
-                          padding: "16px",
-                          border: selectedScan?.scanId === scan.scanId 
-                            ? "2px solid #00897B" 
-                            : "1px solid #e0e0e0",
-                          borderRadius: "8px",
-                          cursor: "pointer",
-                          backgroundColor: selectedScan?.scanId === scan.scanId ? "#f0f9f8" : "white",
-                          transition: "all 0.2s"
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: "8px" }}>
-                          <div>
-                            <div style={{ fontWeight: "600", marginBottom: "4px" }}>
-                              {scan.patient?.name || "Unknown Patient"}
-                            </div>
-                            <div style={{ fontSize: "12px", color: "#666" }}>
-                              {formatDate(scan.createdAt)}
-                            </div>
-                          </div>
-                          {getStatusBadge(scan.status)}
-                        </div>
-                        <div style={{ fontSize: "12px", color: "#666", marginTop: "8px" }}>
-                          Questions: {scan.questions?.length || 0}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+            {scans.length === 0 ? (
+              <div className="empty-state">
+                <Camera size={40} />
+                <p>No pending scans</p>
               </div>
-            </div>
-
-            {/* Scan Details */}
-            {selectedScan && (
-              <div style={{
-                backgroundColor: "white",
-                borderRadius: "12px",
-                padding: "20px",
-                boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                maxHeight: "calc(100vh - 120px)",
-                overflowY: "auto"
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: "20px" }}>
-                  <div>
-                    <h2 style={{ fontSize: "20px", fontWeight: "600", marginBottom: "8px" }}>
-                      Scan Details
-                    </h2>
-                    <div style={{ fontSize: "14px", color: "#666" }}>
-                      Patient: {selectedScan.patient?.name || "Unknown"}
+            ) : (
+              <div className="scan-list">
+                {scans.map((scan) => (
+                  <div
+                    key={scan.id}
+                    className={`scan-item ${selectedScan?.scanId === scan.scanId ? "selected" : ""}`}
+                    onClick={() => fetchDetail(scan.scanId)}
+                  >
+                    <div className="scan-item-top">
+                      <div>
+                        <div className="scan-patient-name">{scan.patient?.name || "Unknown Patient"}</div>
+                        <div className="scan-date">{fmt(scan.createdAt)}</div>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "flex-end" }}>
+                        <StatusBadge status={scan.status} />
+                        {scan.reportType === "pdf_report" && (
+                          <span className="badge badge-pdf"><FileDown size={10} /> PDF</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="scan-meta">
+                      <MessageSquare size={12} />
+                      {scan.questions?.length || 0} question{scan.questions?.length !== 1 ? "s" : ""}
                     </div>
                   </div>
-                  <button
-                    onClick={() => setSelectedScan(null)}
-                    style={{
-                      padding: "8px",
-                      border: "none",
-                      background: "none",
-                      cursor: "pointer"
-                    }}
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
+                ))}
+              </div>
+            )}
+          </div>
 
-                {/* Image */}
-                {selectedScan.imageUrl && (
-                  <div style={{ marginBottom: "20px" }}>
+          {/* ── Detail Panel ── */}
+          {selectedScan && (
+            <div className="detail-panel">
+              {/* Detail Header */}
+              <div className="detail-header">
+                <div className="detail-header-info">
+                  <h2>Scan Details</h2>
+                  <p>Patient: {selectedScan.patient?.name || "Unknown"} &nbsp;·&nbsp; <StatusBadge status={selectedScan.status} /></p>
+                </div>
+                <button className="close-btn" onClick={() => setSelectedScan(null)}>
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="detail-body">
+                {/* PDF Report */}
+                {selectedScan.imageUrl && selectedScan.reportType === "pdf_report" ? (
+                  <div className="pdf-report-card">
+                    <div className="pdf-report-info">
+                      <FileDown size={28} color="#2563EB" />
+                      <div>
+                        <h4>AI Scan PDF Report</h4>
+                        <p>Sent by patient · {fmt(selectedScan.createdAt)}</p>
+                        {selectedScan.patientNote && (
+                          <p className="note">"{selectedScan.patientNote}"</p>
+                        )}
+                      </div>
+                    </div>
+                    <a
+                      href={`${API_URL}/scan-qa/report-file/${selectedScan.scanId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="open-report-btn"
+                    >
+                      <ExternalLink size={14} /> Open Report
+                    </a>
+                  </div>
+                ) : selectedScan.imageUrl ? (
+                  <div className="scan-image-container">
                     <img
                       src={`http://localhost:4000${selectedScan.imageUrl}`}
-                      alt="Scan"
-                      style={{
-                        width: "100%",
-                        borderRadius: "8px",
-                        border: "1px solid #e0e0e0"
-                      }}
-                      onError={(e) => {
-                        e.target.src = "https://via.placeholder.com/400x300?text=Image+Not+Found";
-                      }}
+                      alt="Dental Scan"
+                      onError={(e) => { e.target.src = "https://via.placeholder.com/400x300?text=Image+Not+Found"; }}
                     />
                   </div>
-                )}
+                ) : null}
 
-                {/* Analysis Results */}
-                {selectedScan.analysisResults && (
-                  <div style={{
-                    padding: "16px",
-                    backgroundColor: "#f9f9f9",
-                    borderRadius: "8px",
-                    marginBottom: "20px"
-                  }}>
-                    <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px" }}>
-                      AI Analysis Results
-                    </h3>
-                    {selectedScan.analysisResults.detectedConditions?.map((condition, idx) => (
-                      <div key={idx} style={{
-                        padding: "12px",
-                        backgroundColor: "white",
-                        borderRadius: "6px",
-                        marginBottom: "8px"
-                      }}>
-                        <div style={{ fontWeight: "600", marginBottom: "4px" }}>
-                          {condition.name}
+                {/* AI Analysis */}
+                {selectedScan.analysisResults?.detectedConditions?.length > 0 && (
+                  <div className="detail-section">
+                    <h3><Brain size={15} /> AI Analysis Results</h3>
+                    <div className="analysis-list">
+                      {selectedScan.analysisResults.detectedConditions.map((c, i) => (
+                        <div key={i} className="analysis-item">
+                          <div className="analysis-item-name">{c.name}</div>
+                          <div className="analysis-item-meta">
+                            Confidence: {c.confidence} &nbsp;·&nbsp; Severity: {c.severity}
+                          </div>
                         </div>
-                        <div style={{ fontSize: "12px", color: "#666" }}>
-                          Confidence: {condition.confidence} | Severity: {condition.severity}
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
 
-                {/* Questions & Answers */}
-                <div style={{ marginBottom: "20px" }}>
-                  <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px" }}>
-                    Questions & Answers
-                  </h3>
-                  
-                  {selectedScan.questions?.length === 0 ? (
-                    <p style={{ color: "#999", fontSize: "14px" }}>No questions yet</p>
+                {/* Q&A */}
+                <div className="detail-section">
+                  <h3><MessageSquare size={15} /> Questions &amp; Answers</h3>
+                  {!selectedScan.questions?.length ? (
+                    <p style={{ color: "#9ca3af", fontSize: "0.875rem" }}>No questions yet. Ask one below.</p>
                   ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                      {selectedScan.questions?.map((qa, idx) => (
-                        <div key={idx} style={{
-                          padding: "12px",
-                          backgroundColor: qa.answer ? "#f0f9f8" : "#fff3e0",
-                          borderRadius: "6px",
-                          border: `1px solid ${qa.answer ? "#4caf50" : "#ff9800"}`
-                        }}>
-                          <div style={{ fontWeight: "600", marginBottom: "8px" }}>
-                            Q: {qa.question}
-                          </div>
+                    <div className="qa-list">
+                      {selectedScan.questions.map((qa, i) => (
+                        <div key={i} className={`qa-item ${qa.answer ? "answered" : "unanswered"}`}>
+                          <div className="qa-question">Q: {qa.question}</div>
                           {qa.answer ? (
-                            <div style={{ color: "#2e7d32", marginTop: "8px" }}>
-                              A: {qa.answer}
-                            </div>
+                            <div className="qa-answer">A: {qa.answer}</div>
                           ) : (
-                            <div style={{ color: "#f57c00", fontSize: "14px", marginTop: "8px" }}>
-                              Waiting for patient answer...
-                            </div>
+                            <div className="qa-waiting"><Clock size={13} /> Waiting for patient answer...</div>
                           )}
                         </div>
                       ))}
@@ -380,96 +266,44 @@ export default function DoctorScanQA() {
                   )}
                 </div>
 
-                {/* Add Question */}
-                <div style={{ marginBottom: "20px" }}>
-                  <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px" }}>
-                    Ask a Question
-                  </h3>
-                  <div style={{ display: "flex", gap: "8px" }}>
+                {/* Ask Question */}
+                <div className="detail-section">
+                  <h3><Send size={15} /> Ask a Question</h3>
+                  <div className="ask-question-row">
                     <input
                       type="text"
                       value={newQuestion}
                       onChange={(e) => setNewQuestion(e.target.value)}
-                      placeholder="Type your question..."
-                      style={{
-                        flex: 1,
-                        padding: "10px 12px",
-                        border: "1px solid #e0e0e0",
-                        borderRadius: "6px",
-                        fontSize: "14px"
-                      }}
-                      onKeyPress={(e) => {
-                        if (e.key === "Enter" && !submitting) {
-                          handleAddQuestion();
-                        }
-                      }}
+                      placeholder="Type your question to the patient..."
+                      onKeyDown={(e) => { if (e.key === "Enter" && !submitting) handleSendQuestion(); }}
                     />
                     <button
-                      onClick={handleAddQuestion}
+                      className="send-btn"
+                      onClick={handleSendQuestion}
                       disabled={!newQuestion.trim() || submitting}
-                      style={{
-                        padding: "10px 20px",
-                        backgroundColor: "#00897B",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "6px",
-                        cursor: submitting || !newQuestion.trim() ? "not-allowed" : "pointer",
-                        opacity: submitting || !newQuestion.trim() ? 0.5 : 1,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px"
-                      }}
                     >
-                      <Send size={16} />
-                      Send
+                      <Send size={14} /> Send
                     </button>
                   </div>
                 </div>
 
-                {/* Complete Q&A Button */}
+                {/* Complete / Status */}
                 {selectedScan.status === "pending_qa" && (
-                  <button
-                    onClick={handleCompleteQA}
-                    style={{
-                      width: "100%",
-                      padding: "12px",
-                      backgroundColor: "#4caf50",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "6px",
-                      fontSize: "16px",
-                      fontWeight: "600",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "8px"
-                    }}
-                  >
-                    <CheckCircle size={20} />
-                    Complete Q&A Session
+                  <button className="complete-btn" onClick={handleComplete}>
+                    <CheckCircle size={18} /> Complete Q&amp;A Session
                   </button>
                 )}
 
                 {selectedScan.status === "qa_completed" && (
-                  <div style={{
-                    padding: "12px",
-                    backgroundColor: "#e8f5e9",
-                    borderRadius: "6px",
-                    color: "#2e7d32",
-                    textAlign: "center",
-                    fontWeight: "600"
-                  }}>
-                    Q&A Completed - Patient can see results
+                  <div className="completed-banner">
+                    <CheckCircle size={16} /> Q&amp;A Completed — Patient can see results
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-
-
