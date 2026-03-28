@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Stethoscope, User, Mail, Phone, Lock, Award, Briefcase, FileText, CheckCircle, AlertCircle } from "lucide-react";
 import PasswordInput from "../../components/common/PasswordInput";
+import { DENTAL_SPECIALIZATIONS } from "../../utils/constants";
 
 
 const DoctorRegister = () => {
@@ -133,19 +134,7 @@ const DoctorRegister = () => {
     }
   };
 
-  const specializations = [
-    "Orthodontist",
-    "Periodontist",
-    "Endodontist",
-    "Oral Surgeon",
-    "Prosthodontist",
-    "Pediatric Dentist",
-    "Oral Pathologist",
-    "General Dentist",
-    "Cosmetic Dentist",
-    "Implantologist",
-    "Other",
-  ];
+  const specializations = DENTAL_SPECIALIZATIONS;
 
   // Fetch available services from backend
   useEffect(() => {

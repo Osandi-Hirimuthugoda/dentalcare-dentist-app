@@ -1,564 +1,255 @@
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import axios from "axios";
 import DoctorSidebar from "../../components/layout/DoctorSidebar";
 import PasswordInput from "../../components/common/PasswordInput";
-import "../../styles/pages/DoctorSettings.css"; // Import your new CSS file
+import { DENTAL_SPECIALIZATIONS } from "../../utils/constants";
+import { Settings, User, Lock, Bell, AlertTriangle, CheckCircle, AlertCircle, Save } from "lucide-react";
+import "../../styles/pages/DoctorSettings.css";
 
-const DoctorSettings = () => {
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
-    specialization: "",
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-    profilePicture: "https://via.placeholder.com/100/0891b2/FFFFFF?text=JD",
-  });
-  const [notificationSettings, setNotificationSettings] = useState({
-    emailNotifications: true,
-    smsNotifications: false,
-  });
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: "", text: "" });
+const API = "http://localhost:4000/api";
+const getToken = () => localStorage.getItem("token") || "";
+
+export default function DoctorSettings() {
+  const [profile, setProfile] = useState({ fullName: "", phone: "", specialization: "" });
+  const [email, setEmail]     = useState("");
+  const [pwd, setPwd]         = useState({ current: "", newPwd: "", confirm: "" });
+  const [notifs, setNotifs]   = useState({ email: true, sms: false });
+  const [saving, setSaving]   = useState(false);
+  const [toast, setToast]     = useState({ type: "", text: "" });
+  const [doctorId, setDoctorId] = useState(null);
 
   useEffect(() => {
-    // Load doctor data from localStorage
-    const doctorData = JSON.parse(localStorage.getItem("doctor") || "{}");
-    if (doctorData._id) {
-      setFormData((prev) => ({
-        ...prev,
-        fullName: doctorData.fullName || "",
-        email: doctorData.email || "",
-        phone: doctorData.phone || "",
-        specialization: doctorData.specialization || "",
-      }));
+    const doc = JSON.parse(localStorage.getItem("doctor") || "{}");
+    if (doc._id) {
+      setDoctorId(doc._id);
+      setEmail(doc.email || "");
+      setProfile({
+        fullName:       doc.fullName       || "",
+        phone:          doc.phone          || "",
+        specialization: doc.specialization || "",
+      });
     }
   }, []);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const showToast = (type, text) => {
+    setToast({ type, text });
+    setTimeout(() => setToast({ type: "", text: "" }), 3500);
   };
 
-  const handleNotificationChange = (e) => {
-    setNotificationSettings({
-      ...notificationSettings,
-      [e.target.name]: e.target.checked,
-    });
-  };
-
-  const handleProfilePictureUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData({ ...formData, profilePicture: reader.result });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSubmit = async (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setMessage({ type: "", text: "" });
+    if (!doctorId) { showToast("error", "Doctor not found."); return; }
 
+    // Password validation
+    if (pwd.newPwd) {
+      if (!pwd.current) { showToast("error", "Current password is required."); return; }
+      if (pwd.newPwd !== pwd.confirm) { showToast("error", "New passwords do not match."); return; }
+      if (pwd.newPwd.length < 6) { showToast("error", "New password must be at least 6 characters."); return; }
+    }
+
+    setSaving(true);
     try {
-      const doctorData = JSON.parse(localStorage.getItem("doctor") || "{}");
-      const doctorId = doctorData._id;
-
-      if (!doctorId) {
-        setMessage({ type: "error", text: "Doctor not found. Please login again." });
-        return;
-      }
-
       // Update profile
-      if (formData.fullName || formData.phone || formData.specialization) {
-        await axios.put(`http://localhost:4000/api/doctors/${doctorId}/profile`, {
-          fullName: formData.fullName,
-          phone: formData.phone,
-          specialization: formData.specialization,
-        });
-      }
+      const res = await axios.put(`${API}/doctors/${doctorId}/profile`, profile, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      const updated = { ...JSON.parse(localStorage.getItem("doctor") || "{}"), ...res.data.doctor };
+      localStorage.setItem("doctor", JSON.stringify(updated));
 
       // Change password if provided
-      if (formData.newPassword) {
-        if (formData.newPassword !== formData.confirmPassword) {
-          setMessage({ type: "error", text: "New passwords do not match!" });
-          setLoading(false);
-          return;
-        }
-
-        if (!formData.currentPassword) {
-          setMessage({ type: "error", text: "Current password is required to change password!" });
-          setLoading(false);
-          return;
-        }
-
-        await axios.put(`http://localhost:4000/api/doctors/${doctorId}/change-password`, {
-          currentPassword: formData.currentPassword,
-          newPassword: formData.newPassword,
-        });
-
-        // Clear password fields after successful change
-        setFormData({
-          ...formData,
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: "",
-        });
+      if (pwd.newPwd) {
+        await axios.put(`${API}/doctors/${doctorId}/change-password`, {
+          currentPassword: pwd.current,
+          newPassword: pwd.newPwd,
+        }, { headers: { Authorization: `Bearer ${getToken()}` } });
+        setPwd({ current: "", newPwd: "", confirm: "" });
       }
 
-      setMessage({ type: "success", text: "Settings saved successfully!" });
-      
-      // Update localStorage with new data
-      const updatedDoctor = { ...doctorData, ...formData };
-      localStorage.setItem("doctor", JSON.stringify(updatedDoctor));
-    } catch (error) {
-      setMessage({
-        type: "error",
-        text: error.response?.data?.message || "Failed to save settings. Please try again.",
-      });
+      showToast("success", "Settings saved successfully.");
+    } catch (err) {
+      showToast("error", err.response?.data?.message || "Failed to save settings.");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  const handleDeleteAccount = () => {
-    if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
-      // Implement account deletion logic here (e.g., API call)
-      alert("Account deleted.");
+  const handleDelete = () => {
+    if (window.confirm("Are you sure you want to delete your account? This cannot be undone.")) {
+      alert("Account deletion is not yet implemented.");
     }
   };
+
+  const doc = JSON.parse(localStorage.getItem("doctor") || "{}");
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 50%, #CBD5E1 100%)" }}>
+    <div className="set-wrapper">
       <DoctorSidebar />
 
-      <div style={{ flex: 1, marginLeft: "14rem", padding: "2rem 2.5rem" }}>
-        <div style={{ 
-          background: "white", 
-          borderRadius: "1.25rem", 
-          padding: "1.5rem 2rem", 
-          marginBottom: "2rem", 
-          border: "1px solid rgba(0, 0, 0, 0.05)", 
-          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.05)"
-        }}>
-          <motion.h2
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{ 
-              margin: 0, 
-              fontSize: "2.5rem", 
-              fontWeight: "900", 
-              background: "linear-gradient(135deg, #2563EB 0%, #3B82F6 50%, #60A5FA 100%)", 
-              WebkitBackgroundClip: "text", 
-              WebkitTextFillColor: "transparent", 
-              backgroundClip: "text", 
-              display: "flex", 
-              alignItems: "center" 
-            }}
-          >
-            Account Settings
-          </motion.h2>
+      <div className="set-content">
+        {/* Header */}
+        <div className="set-header">
+          <h1><Settings size={22} /> Settings</h1>
+          <p>Manage your account preferences and security</p>
         </div>
 
-        <div style={{
-          background: "white",
-          borderRadius: "1.25rem",
-          padding: "2rem",
-          border: "1px solid rgba(0, 0, 0, 0.05)",
-          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.05)"
-        }}>
-          {message.text && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              style={{
-                padding: "1rem 1.5rem",
-                borderRadius: "0.875rem",
-                marginBottom: "1.5rem",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.75rem",
-                backgroundColor: message.type === "success" ? 'rgba(74, 222, 128, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                border: `1px solid ${message.type === "success" ? 'rgba(74, 222, 128, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
-                color: message.type === "success" ? '#4ADE80' : '#EF4444',
-                textAlign: "center",
-                fontWeight: "600"
-              }}
-            >
-              {message.text}
-            </motion.div>
-          )}
-
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-
-            {/* Profile Picture Section */}
-            <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
-              <img
-                src={formData.profilePicture}
-                alt="Profile"
-                style={{
-                  width: "100px",
-                  height: "100px",
-                  borderRadius: "50%",
-                  objectFit: "cover",
-                  marginBottom: "1rem",
-                  border: "4px solid #E5E7EB"
-                }}
-              />
-              <label htmlFor="profilePictureInput" style={{
-                display: "inline-block",
-                padding: "0.75rem 1.5rem",
-                background: "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)",
-                color: "white",
-                borderRadius: "0.75rem",
-                cursor: "pointer",
-                fontWeight: "600",
-                fontSize: "0.9rem",
-                boxShadow: "0 4px 15px rgba(37, 99, 235, 0.3)",
-                transition: "all 0.3s ease"
-              }}>
-                Upload New Picture
-              </label>
-              <input
-                id="profilePictureInput"
-                type="file"
-                accept="image/*"
-                onChange={handleProfilePictureUpload}
-                style={{ display: "none" }}
-              />
-            </div>
-
-            {/* General Information */}
-            <div>
-              <label style={{ display: "block", fontSize: "0.9rem", fontWeight: "600", color: "#374151", marginBottom: "0.5rem" }}>
-                Full Name
-              </label>
-              <input
-                type="text"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                style={{
-                  width: "100%",
-                  padding: "0.875rem 1rem",
-                  background: "white",
-                  border: "1px solid #E5E7EB",
-                  borderRadius: "0.75rem",
-                  color: "#1F2937",
-                  fontSize: "0.95rem",
-                  transition: "all 0.3s ease",
-                  outline: "none"
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = "#60A5FA";
-                  e.target.style.boxShadow = "0 0 0 3px rgba(96, 165, 250, 0.1)";
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = "#E5E7EB";
-                  e.target.style.boxShadow = "none";
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: "0.9rem", fontWeight: "600", color: "#374151", marginBottom: "0.5rem" }}>
-                Email
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                style={{
-                  width: "100%",
-                  padding: "0.875rem 1rem",
-                  background: "white",
-                  border: "1px solid #E5E7EB",
-                  borderRadius: "0.75rem",
-                  color: "#1F2937",
-                  fontSize: "0.95rem",
-                  transition: "all 0.3s ease",
-                  outline: "none"
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = "#60A5FA";
-                  e.target.style.boxShadow = "0 0 0 3px rgba(96, 165, 250, 0.1)";
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = "#E5E7EB";
-                  e.target.style.boxShadow = "none";
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: "0.9rem", fontWeight: "600", color: "#374151", marginBottom: "0.5rem" }}>
-                Phone
-              </label>
-              <input
-                type="text"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                style={{
-                  width: "100%",
-                  padding: "0.875rem 1rem",
-                  background: "white",
-                  border: "1px solid #E5E7EB",
-                  borderRadius: "0.75rem",
-                  color: "#1F2937",
-                  fontSize: "0.95rem",
-                  transition: "all 0.3s ease",
-                  outline: "none"
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = "#60A5FA";
-                  e.target.style.boxShadow = "0 0 0 3px rgba(96, 165, 250, 0.1)";
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = "#E5E7EB";
-                  e.target.style.boxShadow = "none";
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: "0.9rem", fontWeight: "600", color: "#374151", marginBottom: "0.5rem" }}>
-                Specialization
-              </label>
-              <input
-                type="text"
-                name="specialization"
-                value={formData.specialization}
-                onChange={handleChange}
-                style={{
-                  width: "100%",
-                  padding: "0.875rem 1rem",
-                  background: "white",
-                  border: "1px solid #E5E7EB",
-                  borderRadius: "0.75rem",
-                  color: "#1F2937",
-                  fontSize: "0.95rem",
-                  transition: "all 0.3s ease",
-                  outline: "none"
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = "#60A5FA";
-                  e.target.style.boxShadow = "0 0 0 3px rgba(96, 165, 250, 0.1)";
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = "#E5E7EB";
-                  e.target.style.boxShadow = "none";
-                }}
-              />
-            </div>
-
-            <hr style={{ border: "none", borderTop: "1px solid #E5E7EB", margin: "1rem 0" }} />
-
-            {/* Password Section */}
-            <h3 style={{ fontSize: "1.25rem", fontWeight: "700", color: "#1F2937", marginBottom: "1rem" }}>Change Password</h3>
-            
-            <div>
-              <label style={{ display: "block", fontSize: "0.9rem", fontWeight: "600", color: "#374151", marginBottom: "0.5rem" }}>
-                Current Password
-              </label>
-              <PasswordInput
-                name="currentPassword"
-                value={formData.currentPassword}
-                onChange={handleChange}
-                placeholder="Enter current password"
-                style={{
-                  width: "100%",
-                  padding: "0.875rem 1rem",
-                  background: "white",
-                  border: "1px solid #E5E7EB",
-                  borderRadius: "0.75rem",
-                  color: "#1F2937",
-                  fontSize: "0.95rem",
-                  transition: "all 0.3s ease",
-                  outline: "none"
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: "0.9rem", fontWeight: "600", color: "#374151", marginBottom: "0.5rem" }}>
-                New Password
-              </label>
-              <PasswordInput
-                name="newPassword"
-                value={formData.newPassword}
-                onChange={handleChange}
-                placeholder="Enter new password"
-                style={{
-                  width: "100%",
-                  padding: "0.875rem 1rem",
-                  background: "white",
-                  border: "1px solid #E5E7EB",
-                  borderRadius: "0.75rem",
-                  color: "#1F2937",
-                  fontSize: "0.95rem",
-                  transition: "all 0.3s ease",
-                  outline: "none"
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: "0.9rem", fontWeight: "600", color: "#374151", marginBottom: "0.5rem" }}>
-                Confirm New Password
-              </label>
-              <PasswordInput
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                placeholder="Confirm new password"
-                style={{
-                  width: "100%",
-                  padding: "0.875rem 1rem",
-                  background: "white",
-                  border: "1px solid #E5E7EB",
-                  borderRadius: "0.75rem",
-                  color: "#1F2937",
-                  fontSize: "0.95rem",
-                  transition: "all 0.3s ease",
-                  outline: "none"
-                }}
-              />
-            </div>
-
-            <hr style={{ border: "none", borderTop: "1px solid #E5E7EB", margin: "1rem 0" }} />
-
-            {/* Notification Preferences */}
-            <h3 style={{ fontSize: "1.25rem", fontWeight: "700", color: "#1F2937", marginBottom: "1rem" }}>Notification Preferences</h3>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem", background: "#F9FAFB", borderRadius: "0.75rem", marginBottom: "1rem" }}>
-              <label style={{ fontSize: "0.95rem", fontWeight: "600", color: "#374151" }}>Email Notifications</label>
-              <label style={{ position: "relative", display: "inline-block", width: "50px", height: "24px" }}>
-                <input
-                  type="checkbox"
-                  name="emailNotifications"
-                  checked={notificationSettings.emailNotifications}
-                  onChange={handleNotificationChange}
-                  style={{ opacity: 0, width: 0, height: 0 }}
-                />
-                <span style={{
-                  position: "absolute",
-                  cursor: "pointer",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: notificationSettings.emailNotifications ? "#2563EB" : "#CBD5E1",
-                  transition: "0.4s",
-                  borderRadius: "24px"
-                }}>
-                  <span style={{
-                    position: "absolute",
-                    content: "",
-                    height: "18px",
-                    width: "18px",
-                    left: notificationSettings.emailNotifications ? "28px" : "3px",
-                    bottom: "3px",
-                    backgroundColor: "white",
-                    transition: "0.4s",
-                    borderRadius: "50%"
-                  }}></span>
-                </span>
-              </label>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem", background: "#F9FAFB", borderRadius: "0.75rem" }}>
-              <label style={{ fontSize: "0.95rem", fontWeight: "600", color: "#374151" }}>SMS Notifications</label>
-              <label style={{ position: "relative", display: "inline-block", width: "50px", height: "24px" }}>
-                <input
-                  type="checkbox"
-                  name="smsNotifications"
-                  checked={notificationSettings.smsNotifications}
-                  onChange={handleNotificationChange}
-                  style={{ opacity: 0, width: 0, height: 0 }}
-                />
-                <span style={{
-                  position: "absolute",
-                  cursor: "pointer",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: notificationSettings.smsNotifications ? "#2563EB" : "#CBD5E1",
-                  transition: "0.4s",
-                  borderRadius: "24px"
-                }}>
-                  <span style={{
-                    position: "absolute",
-                    content: "",
-                    height: "18px",
-                    width: "18px",
-                    left: notificationSettings.smsNotifications ? "28px" : "3px",
-                    bottom: "3px",
-                    backgroundColor: "white",
-                    transition: "0.4s",
-                    borderRadius: "50%"
-                  }}></span>
-                </span>
-              </label>
-            </div>
-
-            <motion.button
-              whileHover={{ scale: loading ? 1 : 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              type="submit"
-              disabled={loading}
-              style={{
-                width: "100%",
-                padding: "1rem 2rem",
-                background: loading ? "#9CA3AF" : "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)",
-                color: "white",
-                border: "none",
-                borderRadius: "0.875rem",
-                fontSize: "1rem",
-                fontWeight: "600",
-                cursor: loading ? "not-allowed" : "pointer",
-                boxShadow: loading ? "none" : "0 4px 15px rgba(37, 99, 235, 0.3)",
-                transition: "all 0.3s ease",
-                marginTop: "1rem"
-              }}
-            >
-              {loading ? "Saving..." : "Save Changes"}
-            </motion.button>
-          </form>
-
-          {/* Delete Account Section */}
-          <div style={{ marginTop: "2rem", padding: "1.5rem", background: "rgba(239, 68, 68, 0.05)", borderRadius: "0.875rem", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
-            <h3 style={{ fontSize: "1.125rem", fontWeight: "700", color: "#EF4444", marginBottom: "0.5rem" }}>Danger Zone</h3>
-            <p style={{ fontSize: "0.875rem", color: "#6B7280", marginBottom: "1rem" }}>
-              Once you delete your account, there is no going back. Please be certain.
-            </p>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleDeleteAccount}
-              style={{
-                padding: "0.75rem 1.5rem",
-                background: "linear-gradient(135deg, #EF4444 0%, #DC2626 100%)",
-                color: "white",
-                border: "none",
-                borderRadius: "0.75rem",
-                fontSize: "0.9rem",
-                fontWeight: "600",
-                cursor: "pointer",
-                boxShadow: "0 4px 15px rgba(239, 68, 68, 0.3)"
-              }}
-            >
-              Delete Account
-            </motion.button>
+        {toast.text && (
+          <div className={`set-toast ${toast.type}`}>
+            {toast.type === "success" ? <CheckCircle size={15} /> : <AlertCircle size={15} />}
+            {toast.text}
           </div>
-        </div>
+        )}
+
+        <form onSubmit={handleSave}>
+          <div className="set-grid">
+            {/* ── Left: Profile Card ── */}
+            <div>
+              <div className="set-card" style={{ marginBottom: "1.5rem" }}>
+                <div className="profile-avatar-wrap">
+                  <div className="profile-avatar-circle">
+                    {(doc.fullName || "D").charAt(0).toUpperCase()}
+                  </div>
+                  <div className="profile-name">{doc.fullName || "Doctor"}</div>
+                  {doc.specialization && <div className="profile-spec">{doc.specialization}</div>}
+                  <div className="profile-email">{doc.email}</div>
+                </div>
+              </div>
+
+              {/* Notifications */}
+              <div className="set-card">
+                <div className="set-card-header">
+                  <Bell size={15} />
+                  <h2>Notifications</h2>
+                </div>
+                <div className="set-card-body">
+                  <div className="set-toggle-row">
+                    <div>
+                      <div className="set-toggle-label">Email Notifications</div>
+                      <div className="set-toggle-sub">Appointment reminders</div>
+                    </div>
+                    <label className="toggle">
+                      <input type="checkbox" checked={notifs.email}
+                        onChange={e => setNotifs({ ...notifs, email: e.target.checked })} />
+                      <span className="toggle-slider" />
+                    </label>
+                  </div>
+                  <div className="set-toggle-row">
+                    <div>
+                      <div className="set-toggle-label">SMS Notifications</div>
+                      <div className="set-toggle-sub">Text message alerts</div>
+                    </div>
+                    <label className="toggle">
+                      <input type="checkbox" checked={notifs.sms}
+                        onChange={e => setNotifs({ ...notifs, sms: e.target.checked })} />
+                      <span className="toggle-slider" />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Right: Forms ── */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+
+              {/* Profile Info */}
+              <div className="set-card">
+                <div className="set-card-header">
+                  <User size={15} />
+                  <h2>Profile Information</h2>
+                </div>
+                <div className="set-card-body">
+                  <div className="set-form">
+                    <div className="set-row">
+                      <div className="set-field">
+                        <label>Full Name</label>
+                        <input type="text" value={profile.fullName}
+                          onChange={e => setProfile({ ...profile, fullName: e.target.value })}
+                          placeholder="Dr. John Smith" />
+                      </div>
+                      <div className="set-field">
+                        <label>Phone</label>
+                        <input type="text" value={profile.phone}
+                          onChange={e => setProfile({ ...profile, phone: e.target.value })}
+                          placeholder="+94 77 123 4567" />
+                      </div>
+                    </div>
+                    <div className="set-field">
+                      <label>Email</label>
+                      <input type="email" value={email} disabled />
+                    </div>
+                    <div className="set-field">
+                      <label>Specialization</label>
+                      <select value={profile.specialization}
+                        onChange={e => setProfile({ ...profile, specialization: e.target.value })}>
+                        <option value="">Select Specialization</option>
+                        {DENTAL_SPECIALIZATIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Change Password */}
+              <div className="set-card">
+                <div className="set-card-header">
+                  <Lock size={15} />
+                  <h2>Change Password</h2>
+                </div>
+                <div className="set-card-body">
+                  <div className="set-form">
+                    <div className="set-field">
+                      <label>Current Password</label>
+                      <PasswordInput
+                        name="currentPassword"
+                        value={pwd.current}
+                        onChange={e => setPwd({ ...pwd, current: e.target.value })}
+                        placeholder="Enter current password"
+                        className="set-field input"
+                        style={{ padding: "0.625rem 2.75rem 0.625rem 0.875rem", border: "1.5px solid #e5e7eb", borderRadius: "0.625rem", fontSize: "0.875rem", width: "100%", boxSizing: "border-box", outline: "none" }}
+                      />
+                    </div>
+                    <div className="set-row">
+                      <div className="set-field">
+                        <label>New Password</label>
+                        <PasswordInput
+                          name="newPassword"
+                          value={pwd.newPwd}
+                          onChange={e => setPwd({ ...pwd, newPwd: e.target.value })}
+                          placeholder="Min 6 characters"
+                          style={{ padding: "0.625rem 2.75rem 0.625rem 0.875rem", border: "1.5px solid #e5e7eb", borderRadius: "0.625rem", fontSize: "0.875rem", width: "100%", boxSizing: "border-box", outline: "none" }}
+                        />
+                      </div>
+                      <div className="set-field">
+                        <label>Confirm Password</label>
+                        <PasswordInput
+                          name="confirmPassword"
+                          value={pwd.confirm}
+                          onChange={e => setPwd({ ...pwd, confirm: e.target.value })}
+                          placeholder="Repeat new password"
+                          style={{ padding: "0.625rem 2.75rem 0.625rem 0.875rem", border: "1.5px solid #e5e7eb", borderRadius: "0.625rem", fontSize: "0.875rem", width: "100%", boxSizing: "border-box", outline: "none" }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Save */}
+              <button type="submit" className="set-save-btn" disabled={saving}>
+                <Save size={17} /> {saving ? "Saving..." : "Save Changes"}
+              </button>
+
+              {/* Danger Zone */}
+              <div className="set-danger">
+                <h3><AlertTriangle size={14} style={{ display: "inline", marginRight: "4px" }} /> Danger Zone</h3>
+                <p>Once you delete your account, there is no going back. Please be certain.</p>
+                <button type="button" className="set-delete-btn" onClick={handleDelete}>
+                  Delete Account
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
       </div>
     </div>
   );
-};
-
-export default DoctorSettings;
+}

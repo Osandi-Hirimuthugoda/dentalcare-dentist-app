@@ -1,27 +1,29 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard,
-  Calendar,
-  Users,
-  MessageSquare,
-  Settings,
-  LogOut,
-  Stethoscope,
-  FileText,
-  User,
-  Star,
-  Camera,
+  LayoutDashboard, Calendar, Users, MessageSquare,
+  Settings, LogOut, Stethoscope, FileText, User,
+  Star, Camera, Clock,
 } from "lucide-react";
 import NotificationBell from "../common/NotificationBell";
 import styles from "../../styles/components/DoctorSidebar.module.css";
 
+const NavLink = ({ to, icon: Icon, label, isActive }) => (
+  <li className={styles.navItem}>
+    <Link
+      to={to}
+      className={`${styles.navLink} ${isActive(to) ? styles.active : ""}`}
+    >
+      <Icon size={16} className={styles.navIcon} />
+      {label}
+    </Link>
+  </li>
+);
+
 export default function DoctorSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-
-  const currentPath = location.pathname;
-  const isActive = (path) => currentPath === path;
+  const isActive = (path) => location.pathname === path;
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -31,141 +33,58 @@ export default function DoctorSidebar() {
 
   return (
     <div className={styles.sidebarContainer}>
+      {/* Header */}
       <div className={styles.sidebarHeader}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Stethoscope size={28} /> DentalCare+
-        </div>
+        <span className={styles.brandName}>
+          <Stethoscope size={18} /> DentalCare+
+        </span>
         <NotificationBell />
       </div>
 
+      {/* Nav */}
       <nav className={styles.sidebarNav}>
-        <ul>
-          <li className={styles.navItem}>
-            <Link
-              to="/doctor-dashboard"
-              className={`${styles.navLink} ${
-                isActive("/doctor-dashboard") ? styles.active : ""
-              }`}
-            >
-              <LayoutDashboard size={20} className={styles.navIcon} /> Dashboard
-            </Link>
-          </li>
+        {/* Main */}
+        <div className={styles.navSection}>
+          <p className={styles.navSectionLabel}>Main</p>
+          <ul>
+            <NavLink to="/doctor-dashboard" icon={LayoutDashboard} label="Dashboard" isActive={isActive} />
+            <NavLink to="/doctor/appointments" icon={Calendar} label="Appointments" isActive={isActive} />
+            <NavLink to="/doctor/patients" icon={Users} label="Patients" isActive={isActive} />
+            <NavLink to="/doctor/messages" icon={MessageSquare} label="Messages" isActive={isActive} />
+          </ul>
+        </div>
 
-          <li className={styles.navItem}>
-            <Link
-              to="/doctor/appointments"
-              className={`${styles.navLink} ${
-                isActive("/doctor/appointments") ? styles.active : ""
-              }`}
-            >
-              <Calendar size={20} className={styles.navIcon} /> Appointments
-            </Link>
-          </li>
+        <div className={styles.navDivider} />
 
-          <li className={styles.navItem}>
-            <Link
-              to="/doctor/patients"
-              className={`${styles.navLink} ${
-                isActive("/doctor/patients") ? styles.active : ""
-              }`}
-            >
-              <Users size={20} className={styles.navIcon} /> Patients
-            </Link>
-          </li>
+        {/* Clinical */}
+        <div className={styles.navSection}>
+          <p className={styles.navSectionLabel}>Clinical</p>
+          <ul>
+            <NavLink to="/doctor/reports" icon={FileText} label="Reports" isActive={isActive} />
+            <NavLink to="/doctor/scan-qa" icon={Camera} label="Scan Q&A" isActive={isActive} />
+            <NavLink to="/doctor/availability" icon={Clock} label="Availability" isActive={isActive} />
+            <NavLink to="/doctor/services" icon={Stethoscope} label="Services" isActive={isActive} />
+          </ul>
+        </div>
 
-          <li className={styles.navItem}>
-            <Link
-              to="/doctor/messages"
-              className={`${styles.navLink} ${
-                isActive("/doctor/messages") ? styles.active : ""
-              }`}
-            >
-              <MessageSquare size={20} className={styles.navIcon} /> Messages
-            </Link>
-          </li>
+        <div className={styles.navDivider} />
 
-          <li className={styles.navItem}>
-            <Link
-              to="/doctor/reports"
-              className={`${styles.navLink} ${
-                isActive("/doctor/reports") ? styles.active : ""
-              }`}
-            >
-              <FileText size={20} className={styles.navIcon} /> Reports
-            </Link>
-          </li>
-
-          <li className={styles.navItem}>
-            <Link
-              to="/doctor/scan-qa"
-              className={`${styles.navLink} ${
-                isActive("/doctor/scan-qa") ? styles.active : ""
-              }`}
-            >
-              <Camera size={20} className={styles.navIcon} /> Scan Q&A
-            </Link>
-          </li>
-
-          <li className={styles.navItem}>
-            <Link
-              to="/doctor/profile"
-              className={`${styles.navLink} ${
-                isActive("/doctor/profile") ? styles.active : ""
-              }`}
-            >
-              <User size={20} className={styles.navIcon} /> Profile
-            </Link>
-          </li>
-
-          <li className={styles.navItem}>
-            <Link
-              to="/doctor/availability"
-              className={`${styles.navLink} ${
-                isActive("/doctor/availability") ? styles.active : ""
-              }`}
-            >
-              <Calendar size={20} className={styles.navIcon} /> Availability
-            </Link>
-          </li>
-
-          <li className={styles.navItem}>
-            <Link
-              to="/doctor/services"
-              className={`${styles.navLink} ${
-                isActive("/doctor/services") ? styles.active : ""
-              }`}
-            >
-              <Stethoscope size={20} className={styles.navIcon} /> Services
-            </Link>
-          </li>
-
-          <li className={styles.navItem}>
-            <Link
-              to="/doctor/reviews"
-              className={`${styles.navLink} ${
-                isActive("/doctor/reviews") ? styles.active : ""
-              }`}
-            >
-              <Star size={20} className={styles.navIcon} /> Reviews
-            </Link>
-          </li>
-
-          <li className={styles.navItem}>
-            <Link
-              to="/doctor/settings"
-              className={`${styles.navLink} ${
-                isActive("/doctor/settings") ? styles.active : ""
-              }`}
-            >
-              <Settings size={20} className={styles.navIcon} /> Settings
-            </Link>
-          </li>
-        </ul>
+        {/* Account */}
+        <div className={styles.navSection}>
+          <p className={styles.navSectionLabel}>Account</p>
+          <ul>
+            <NavLink to="/doctor/profile" icon={User} label="Profile" isActive={isActive} />
+            <NavLink to="/doctor/reviews" icon={Star} label="Reviews" isActive={isActive} />
+            <NavLink to="/doctor/settings" icon={Settings} label="Settings" isActive={isActive} />
+          </ul>
+        </div>
       </nav>
 
-      <div className={styles.sidebarFooter}>
+      {/* Logout */}
+      <div className={styles.logoutItem}>
         <button onClick={handleLogout} className={styles.logoutButton}>
-          <LogOut size={18} /> Logout
+          <LogOut size={16} className={styles.navIcon} />
+          Logout
         </button>
       </div>
     </div>

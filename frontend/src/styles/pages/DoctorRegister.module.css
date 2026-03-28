@@ -19,7 +19,7 @@
 }
 
 .header {
-  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  background: linear-gradient(135deg, #26A69A 0%, #00897B 100%);
   color: white;
   padding: 3rem 2rem;
   text-align: center;
@@ -115,8 +115,8 @@
 }
 
 .input:focus {
-  border-color: #3B82F6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #26A69A;
+  box-shadow: 0 0 0 3px rgba(38, 166, 154, 0.1);
 }
 
 .input.error {
@@ -140,8 +140,8 @@
 }
 
 .select:focus {
-  border-color: #3B82F6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #26A69A;
+  box-shadow: 0 0 0 3px rgba(38, 166, 154, 0.1);
 }
 
 .textarea {
@@ -158,8 +158,8 @@
 }
 
 .textarea:focus {
-  border-color: #3B82F6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #26A69A;
+  box-shadow: 0 0 0 3px rgba(38, 166, 154, 0.1);
 }
 
 .errorText {
@@ -193,13 +193,13 @@
 }
 
 .serviceCheckbox:hover {
-  border-color: #3B82F6;
-  background: #EFF6FF;
+  border-color: #26A69A;
+  background: #E0F2F1;
 }
 
 .serviceCheckbox.selected {
-  border-color: #3B82F6;
-  background: #EFF6FF;
+  border-color: #26A69A;
+  background: #E0F2F1;
 }
 
 .serviceCheckbox input[type="checkbox"] {
@@ -219,7 +219,7 @@
 .submitButton {
   width: 100%;
   padding: 1rem 2rem;
-  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  background: linear-gradient(135deg, #26A69A 0%, #00897B 100%);
   color: white;
   font-size: 1.125rem;
   font-weight: 600;
@@ -227,13 +227,13 @@
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(38, 166, 154, 0.3);
   margin-top: 1rem;
 }
 
 .submitButton:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 8px 20px rgba(38, 166, 154, 0.4);
 }
 
 .submitButton:active:not(:disabled) {
@@ -253,14 +253,14 @@
 }
 
 .loginLink a {
-  color: #3B82F6;
+  color: #26A69A;
   font-weight: 600;
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
 .loginLink a:hover {
-  color: #2563EB;
+  color: #00897B;
   text-decoration: underline;
 }
 
