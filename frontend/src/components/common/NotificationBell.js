@@ -83,7 +83,13 @@ export default function NotificationBell() {
     
     // Navigate to action URL if exists
     if (notification.actionUrl) {
-      window.location.href = notification.actionUrl;
+      // Map generic paths to role-specific paths
+      let url = notification.actionUrl;
+      if (url === '/messages') {
+        const isDoctor = !!localStorage.getItem('doctor');
+        url = isDoctor ? '/doctor/messages' : '/messages';
+      }
+      window.location.href = url;
     }
   };
 

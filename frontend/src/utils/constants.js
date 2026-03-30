@@ -100,3 +100,19 @@ export const API_ENDPOINTS = {
   AI_SCAN: '/ai-scan',
   SCAN_QA: '/scan-qa'
 };
+
+// Dental Specializations - consistent list used across all forms
+export const DENTAL_SPECIALIZATIONS = [
+  "General Dentist",
+  "Orthodontist",
+  "Periodontist",
+  "Endodontist",
+  "Oral Surgeon",
+  "Prosthodontist",
+  "Pediatric Dentist",
+  "Oral Pathologist",
+  "Cosmetic Dentist",
+  "Implantologist",
+  "Oral Medicine Specialist",
+  "Maxillofacial Surgeon",
+];

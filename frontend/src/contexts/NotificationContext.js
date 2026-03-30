@@ -18,6 +18,30 @@ export const NotificationProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
 
+  const getIcon = (type) => {
+    const icons = { appointment: '📅', message: '💬', payment: '💳', scan: '📸', review: '⭐', reminder: '⏰', system: '🔔' };
+    return icons[type] || '🔔';
+  };
+
+  const showToast = (notification) => {
+    if (!notification?.title) return;
+    toast(`${getIcon(notification.type)} ${notification.title}: ${notification.message}`, {
+      position: 'top-right',
+      autoClose: 6000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      style: {
+        background: 'white',
+        borderRadius: '14px',
+        borderLeft: '4px solid #00897B',
+        boxShadow: '0 10px 30px rgba(0, 137, 123, 0.18)',
+      },
+      progressStyle: { background: 'linear-gradient(90deg, #00695C, #4DB6AC)' },
+    });
+  };
+
   useEffect(() => {
     // Initialize socket connection
     const newSocket = io('http://localhost:4000', {
@@ -66,22 +90,7 @@ export const NotificationProvider = ({ children }) => {
         setUnreadCount(prev => prev + 1);
         
         // Show toast notification
-        toast.info(
-          <div>
-            <strong>{notification.title}</strong>
-            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem' }}>
-              {notification.message}
-            </p>
-          </div>,
-          {
-            position: "top-right",
-            autoClose: 5000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-          }
-        );
+        showToast(notification);
       });
 
       // Disconnect event
@@ -106,8 +115,22 @@ export const NotificationProvider = ({ children }) => {
       const response = await fetch(`http://localhost:4000/api/notifications/${userType}/${userId}`);
       const data = await response.json();
       
-      setNotifications(data.notifications || []);
+      const notifs = data.notifications || [];
+      setNotifications(notifs);
       setUnreadCount(data.unreadCount || 0);
+
+      // Show toast for latest unread notification on load
+      const latestUnread = notifs.find(n => !n.read);
+      if (latestUnread && latestUnread.title && latestUnread.message) {
+        setTimeout(() => showToast(latestUnread), 1500);
+      } else if (notifs.length === 0) {
+        // Demo toast so UI is visible — remove in production
+        setTimeout(() => showToast({
+          type: 'system',
+          title: 'Welcome to DentalCare+',
+          message: 'You have no new notifications right now.',
+        }), 1500);
+      }
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }

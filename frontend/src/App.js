@@ -66,6 +66,10 @@ const App = () => {
           draggable
           pauseOnHover
           theme="light"
+          toastStyle={{
+            borderRadius: '12px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          }}
         />
         <Routes>
         {/* Public routes */}
