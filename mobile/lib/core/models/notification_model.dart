@@ -5,6 +5,7 @@ class NotificationModel {
   final DateTime date;
   final bool isRead;
   final NotificationType type;
+  final String? actionUrl;
 
   NotificationModel({
     required this.id,
@@ -13,6 +14,7 @@ class NotificationModel {
     required this.date,
     this.isRead = false,
     required this.type,
+    this.actionUrl,
   });
 
   String get timeAgo {

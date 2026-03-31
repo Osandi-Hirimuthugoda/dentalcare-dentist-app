@@ -80,6 +80,7 @@ extension NotificationModelExtension on NotificationModel {
     DateTime? date,
     bool? isRead,
     NotificationType? type,
+    String? actionUrl,
   }) {
     return NotificationModel(
       id: id ?? this.id,
@@ -88,6 +89,7 @@ extension NotificationModelExtension on NotificationModel {
       date: date ?? this.date,
       isRead: isRead ?? this.isRead,
       type: type ?? this.type,
+      actionUrl: actionUrl ?? this.actionUrl,
     );
   }
 }

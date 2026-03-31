@@ -25,4 +25,20 @@ class AppConstants {
   // Get it from: https://console.cloud.google.com/google/maps-apis
   static const String googleMapsApiKey = 'YOUR_GOOGLE_MAPS_API_KEY';
   static const String googlePlacesApiKey = 'YOUR_GOOGLE_PLACES_API_KEY';
+
+  // Dental Specializations - consistent with backend and web app
+  static const List<String> dentalSpecializations = [
+    'General Dentist',
+    'Orthodontist',
+    'Periodontist',
+    'Endodontist',
+    'Oral Surgeon',
+    'Prosthodontist',
+    'Pediatric Dentist',
+    'Oral Pathologist',
+    'Cosmetic Dentist',
+    'Implantologist',
+    'Oral Medicine Specialist',
+    'Maxillofacial Surgeon',
+  ];
 }
