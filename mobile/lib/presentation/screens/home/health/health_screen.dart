@@ -5,6 +5,7 @@ import 'package:flutter_application_1/core/constants/route_names.dart';
 import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
 import 'package:flutter_application_1/injection_container.dart' as di;
 import 'package:flutter_application_1/presentation/widgets/common/bottom_navigation_bar_widget.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HealthScreen extends StatefulWidget {
   const HealthScreen({super.key});
@@ -18,12 +19,28 @@ class _HealthScreenState extends State<HealthScreen> {
   List<dynamic> _recentActivities = [];
   bool _isLoadingActivities = true;
   String? _errorMessage;
+  int _healthScore = 85;
 
   @override
   void initState() {
     super.initState();
     _dentalDataSource = di.getIt<DentalRemoteDataSource>();
     _loadRecentActivities();
+    _loadHealthScore();
+  }
+
+  Future<void> _loadHealthScore() async {
+    try {
+      final appointments = await _dentalDataSource.getAppointments();
+      final completed = appointments.where((a) =>
+          (a['status'] ?? '').toString().toLowerCase() == 'completed').length;
+      final total = appointments.length;
+      int score = 70;
+      if (total > 0) {
+        score = (70 + (completed / total * 30)).round().clamp(0, 100);
+      }
+      if (mounted) setState(() => _healthScore = score);
+    } catch (_) {}
   }
 
   Future<void> _loadRecentActivities() async {
@@ -51,13 +68,17 @@ class _HealthScreenState extends State<HealthScreen> {
     }
   }
 
-  void _showSnackBar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+  Future<void> _callEmergency() async {
+    final uri = Uri(scheme: 'tel', path: '1990'); // Sri Lanka dental emergency
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch phone dialer')),
+        );
+      }
+    }
   }
 
   @override
@@ -99,6 +120,17 @@ class _HealthScreenState extends State<HealthScreen> {
   }
 
   Widget _buildHealthScore() {
+    final scoreColor = _healthScore >= 80
+        ? AppColors.success
+        : _healthScore >= 60
+            ? AppColors.warning
+            : AppColors.error;
+    final scoreLabel = _healthScore >= 80
+        ? 'Good'
+        : _healthScore >= 60
+            ? 'Fair'
+            : 'Needs Attention';
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -116,20 +148,20 @@ class _HealthScreenState extends State<HealthScreen> {
                   width: 150,
                   height: 150,
                   child: CircularProgressIndicator(
-                    value: 0.85,
+                    value: _healthScore / 100,
                     strokeWidth: 10,
                     backgroundColor: AppColors.grey300,
-                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.success),
+                    valueColor: AlwaysStoppedAnimation<Color>(scoreColor),
                   ),
                 ),
                 Column(
                   children: [
                     Text(
-                      '85%',
-                      style: TextStyles.heading1.copyWith(color: AppColors.success),
+                      '$_healthScore%',
+                      style: TextStyles.heading1.copyWith(color: scoreColor),
                     ),
                     Text(
-                      'Good',
+                      scoreLabel,
                       style: TextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
                     ),
                   ],
@@ -138,7 +170,11 @@ class _HealthScreenState extends State<HealthScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Keep up the good work! Your dental hygiene is excellent.',
+              _healthScore >= 80
+                  ? 'Keep up the good work! Your dental hygiene is excellent.'
+                  : _healthScore >= 60
+                      ? 'Good progress! Consider scheduling a checkup soon.'
+                      : 'Please schedule a dental appointment as soon as possible.',
               textAlign: TextAlign.center,
               style: TextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
             ),
@@ -303,9 +339,7 @@ class _HealthScreenState extends State<HealthScreen> {
               title: Text('Emergency Dental Care', style: TextStyles.bodyMedium),
               subtitle: Text('24/7 emergency service', style: TextStyles.bodySmall),
               trailing: ElevatedButton(
-                onPressed: () {
-                  _showSnackBar(context, "Emergency call feature coming soon");
-                },
+                onPressed: _callEmergency,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.error,
                   foregroundColor: AppColors.white,

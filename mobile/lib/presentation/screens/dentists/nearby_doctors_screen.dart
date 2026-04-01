@@ -5,6 +5,8 @@ import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
+import 'package:flutter_application_1/injection_container.dart';
 
 class NearbyDoctorsScreen extends StatefulWidget {
   const NearbyDoctorsScreen({Key? key}) : super(key: key);
@@ -282,6 +284,21 @@ class _NearbyDoctorsScreenState extends State<NearbyDoctorsScreen> {
                       label: const Text('Call'),
                     ),
                   ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _showMessageDialog(doctor);
+                    },
+                    icon: const Icon(Icons.message),
+                    label: const Text('Message'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
               ],
             ),
           ],
@@ -303,6 +320,79 @@ class _NearbyDoctorsScreenState extends State<NearbyDoctorsScreen> {
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url));
     }
+  }
+
+  void _showMessageDialog(dynamic doctor) {
+    final controller = TextEditingController();
+    bool sending = false;
+    final doctorId = doctor['_id']?.toString() ?? '';
+    final doctorName = doctor['fullName']?.toString() ?? 'Doctor';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.teal.withOpacity(0.15),
+                child: Text(
+                  doctorName[0].toUpperCase(),
+                  style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(doctorName, style: const TextStyle(fontSize: 16), overflow: TextOverflow.ellipsis),
+              ),
+            ],
+          ),
+          content: TextField(
+            controller: controller,
+            maxLines: 4,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: 'Type your message...',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton.icon(
+              onPressed: sending
+                  ? null
+                  : () async {
+                      final msg = controller.text.trim();
+                      if (msg.isEmpty) return;
+                      setDialogState(() => sending = true);
+                      try {
+                        await getIt<DentalRemoteDataSource>().sendMessage(doctorId, msg);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Message sent to $doctorName'), backgroundColor: Colors.teal),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() => sending = false);
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            const SnackBar(content: Text('Failed to send message.')),
+                          );
+                        }
+                      }
+                    },
+              icon: sending
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.send, size: 16),
+              label: Text(sending ? 'Sending...' : 'Send'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, foregroundColor: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override

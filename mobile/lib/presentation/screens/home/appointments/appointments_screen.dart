@@ -298,6 +298,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   }
 
   void _showAppointmentDetails(Map<String, dynamic> appointment) {
+    final isUpcoming = _upcomingAppointments.any((a) => a['id'] == appointment['id']);
+    final status = appointment['status'] ?? 'scheduled';
+    final canCancel = isUpcoming && status != 'cancelled' && status != 'completed';
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -345,9 +349,24 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             _buildDetailRow(
               Icons.info_outline,
               'Status',
-              (appointment['status'] ?? 'scheduled').toString().toUpperCase(),
+              status.toString().toUpperCase(),
             ),
             const SizedBox(height: 20),
+            if (canCancel) ...[
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _confirmCancelAppointment(context, appointment),
+                  icon: const Icon(Icons.cancel_outlined, color: Colors.red),
+                  label: const Text('Cancel Appointment', style: TextStyle(color: Colors.red)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.red),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -363,6 +382,52 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmCancelAppointment(BuildContext sheetContext, Map<String, dynamic> appointment) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancel Appointment'),
+        content: const Text('Are you sure you want to cancel this appointment?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('No'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Yes, Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _dentalDataSource.cancelAppointment(appointment['id'] as String);
+      if (mounted) {
+        Navigator.pop(sheetContext); // close bottom sheet
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Appointment cancelled successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _loadAppointments(); // refresh list
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to cancel: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildDetailRow(IconData icon, String label, String value) {

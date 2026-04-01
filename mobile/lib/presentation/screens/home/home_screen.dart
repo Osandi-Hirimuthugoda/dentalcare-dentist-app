@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/constants/route_names.dart';
+import 'package:flutter_application_1/core/services/socket_service.dart';
 import 'package:flutter_application_1/core/utils/helpers.dart';
 import 'package:flutter_application_1/core/utils/theme_notifier.dart';
+import 'package:flutter_application_1/data/data_sources/local/shared_prefs.dart';
 import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
 import 'package:flutter_application_1/injection_container.dart' as di;
 import 'package:flutter_application_1/presentation/widgets/home/appointments_section.dart';
@@ -11,6 +13,7 @@ import 'package:flutter_application_1/presentation/widgets/home/quick_actions_gr
 import 'package:flutter_application_1/presentation/widgets/home/welcome_section.dart';
 import 'package:flutter_application_1/core/themes/colors.dart';
 import 'package:flutter_application_1/presentation/screens/home/profile/settings_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -37,6 +40,55 @@ class _HomeScreenState extends State<HomeScreen> {
     _dentalDataSource = di.getIt<DentalRemoteDataSource>();
     _loadNotificationCount();
     _loadStats();
+    _initSocket();
+  }
+
+  void _initSocket() {
+    final socketService = di.getIt<SocketService>();
+    final localData = di.getIt<LocalDataSource>();
+    socketService.connect(localData);
+    socketService.addNotificationListener(_onSocketNotification);
+  }
+
+  void _onSocketNotification(Map<String, dynamic> notif) {
+    if (!mounted) return;
+    setState(() => _unreadNotificationCount++);
+    final title = notif['title']?.toString() ?? 'New notification';
+    final message = notif['message']?.toString() ?? '';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Text('💬 ', style: TextStyle(fontSize: 18)),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                  if (message.isNotEmpty)
+                    Text(message, style: const TextStyle(fontSize: 12, color: Colors.white70),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                ],
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.primary,
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'View',
+          textColor: Colors.white,
+          onPressed: () => Navigator.pushNamed(context, '/messages'),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    di.getIt<SocketService>().removeNotificationListener(_onSocketNotification);
+    super.dispose();
   }
 
   @override
@@ -454,8 +506,18 @@ class _HomeScreenState extends State<HomeScreen> {
               Icons.logout,
               color: theme.colorScheme.onPrimary,
             ),
-            onPressed: () {
-              Navigator.pushReplacementNamed(context, RouteNames.login);
+            onPressed: () async {
+              final sp = await SharedPreferences.getInstance();
+              await sp.remove('auth_token');
+              await sp.remove('user_data');
+              await sp.remove('is_logged_in');
+              if (mounted) {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  RouteNames.login,
+                  (route) => false,
+                );
+              }
             },
           ),
         ],

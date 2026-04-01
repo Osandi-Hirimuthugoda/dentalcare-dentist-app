@@ -234,6 +234,91 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
     );
   }
 
+  void _showMessageDialog(Map<String, dynamic> dentist) {
+    final controller = TextEditingController();
+    bool sending = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.teal.withOpacity(0.15),
+                child: Text(
+                  (dentist['name'] as String).split(' ').map((e) => e[0]).join(),
+                  style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  dentist['name'] as String,
+                  style: const TextStyle(fontSize: 16),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          content: TextField(
+            controller: controller,
+            maxLines: 4,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: 'Type your message...',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton.icon(
+              onPressed: sending
+                  ? null
+                  : () async {
+                      final msg = controller.text.trim();
+                      if (msg.isEmpty) return;
+                      setDialogState(() => sending = true);
+                      try {
+                        await getIt<DentalRemoteDataSource>()
+                            .sendMessage(dentist['id'] as String, msg);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Message sent to ${dentist['name']}'),
+                              backgroundColor: Colors.teal,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() => sending = false);
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            const SnackBar(content: Text('Failed to send message. Please try again.')),
+                          );
+                        }
+                      }
+                    },
+              icon: sending
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.send, size: 16),
+              label: Text(sending ? 'Sending...' : 'Send'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -638,7 +723,20 @@ class _FindDentistsScreenState extends State<FindDentistsScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _showMessageDialog(dentist),
+                    icon: const Icon(Icons.message, size: 18),
+                    label: const Text('Message'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.teal,
+                      side: const BorderSide(color: Colors.teal),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   flex: 2,
               child: ElevatedButton(

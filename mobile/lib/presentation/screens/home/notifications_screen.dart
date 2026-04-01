@@ -72,6 +72,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             type = NotificationType.general;
         }
         
+        // Parse actionUrl — used for navigation on tap
+        final actionUrl = data['actionUrl']?.toString() ??
+            (typeString == 'message' ? '/messages' : null);
+
         return NotificationModel(
           id: id,
           title: title,
@@ -79,6 +83,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           date: date,
           isRead: isRead,
           type: type,
+          actionUrl: actionUrl,
         );
       }).toList();
       
@@ -301,6 +306,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           onTap: () {
             if (!notification.isRead) {
               _markAsRead(notification.id);
+            }
+            // Navigate based on actionUrl or notification type
+            final url = notification.actionUrl;
+            if (url != null && url.isNotEmpty) {
+              Navigator.pushNamed(context, url);
+            } else if (notification.type == NotificationType.appointment) {
+              Navigator.pushNamed(context, '/appointments');
             }
           },
         ),
