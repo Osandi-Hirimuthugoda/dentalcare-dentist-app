@@ -8,7 +8,10 @@ import 'package:flutter_application_1/injection_container.dart';
 import 'package:intl/intl.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
-  const BookAppointmentScreen({super.key});
+  final Map<String, dynamic>? scanReportData; // optional AI scan results to attach
+  final Map<String, dynamic>? preSelectedDentist; // optional pre-selected dentist from Find Dentists
+
+  const BookAppointmentScreen({super.key, this.scanReportData, this.preSelectedDentist});
 
   @override
   State<BookAppointmentScreen> createState() => _BookAppointmentScreenState();
@@ -29,6 +32,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   String? _selectedCategory;
   final TextEditingController _symptomsController = TextEditingController();
   bool _isBooking = false;
+  bool _attachScanReport = true; // default attach if scan data available
 
   late final DentalRemoteDataSource _dentalDataSource;
   late final BookAppointmentUseCase _bookAppointmentUseCase;
@@ -40,6 +44,16 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     _bookAppointmentUseCase = getIt<BookAppointmentUseCase>();
     _loadServices();
     _loadDentists();
+    // Pre-select dentist if passed from Find Dentists screen
+    if (widget.preSelectedDentist != null) {
+      _selectedDentist = widget.preSelectedDentist;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final id = widget.preSelectedDentist!['id'] as String?;
+        if (id != null && id.isNotEmpty) {
+          _loadDoctorAvailability(id);
+        }
+      });
+    }
   }
 
   Future<void> _loadServices() async {
@@ -130,6 +144,20 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             'availableSlots': _generateTimeSlots(), // Default slots until availability is loaded
           };
         }).toList();
+        
+        // If a dentist was pre-selected, make sure it's in the list and selected
+        if (widget.preSelectedDentist != null) {
+          final preId = widget.preSelectedDentist!['id']?.toString() ?? '';
+          final exists = _dentists.any((d) => d['id'] == preId);
+          if (!exists && preId.isNotEmpty) {
+            _dentists.insert(0, widget.preSelectedDentist!);
+          }
+          _selectedDentist = _dentists.firstWhere(
+            (d) => d['id'] == preId,
+            orElse: () => widget.preSelectedDentist!,
+          );
+        }
+        
         _isLoadingDentists = false;
       });
     } catch (e) {
@@ -302,9 +330,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         doctorId: _selectedDentist!['id'],
         dateTime: dateTime,
         service: _selectedService!,
-        notes: _symptomsController.text.isNotEmpty 
-            ? '${_selectedService!}: ${_symptomsController.text}'
-            : _selectedService!,
+        notes: _buildNotesWithReport(),
       );
 
       result.fold(
@@ -412,6 +438,8 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             const SizedBox(height: 20),
             _buildDateTimeSelection(),
             const SizedBox(height: 20),
+            _buildScanReportAttachment(),
+            if (widget.scanReportData != null) const SizedBox(height: 20),
             _buildSymptomsInput(),
             const SizedBox(height: 30),
             _buildBookButton(),
@@ -467,43 +495,74 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     );
   }
 
-  // Get filtered dentists based on selected service
+  // Get filtered dentists based on selected service AND category
   List<Map<String, dynamic>> get _filteredDentists {
-    if (_selectedService == null || _selectedService!.isEmpty) {
+    if (_selectedService == null && _selectedCategory == null) {
       return _dentists;
     }
-    
-    // Filter dentists who offer the selected service
+
     return _dentists.where((dentist) {
-      // Check if doctor's services array includes the selected service
-      final doctorServices = dentist['services'] as List<dynamic>?;
-      if (doctorServices != null && doctorServices.isNotEmpty) {
-        return doctorServices.any((service) => 
-          service.toString().toLowerCase() == _selectedService!.toLowerCase()
-        );
-      }
-      
-      // Fallback: Check specialization match if services not available
+      final doctorServices = (dentist['services'] as List<dynamic>? ?? [])
+          .map((s) => s.toString().toLowerCase())
+          .toList();
       final dentistSpecialty = (dentist['specialty'] ?? '').toString().toLowerCase();
-      final serviceName = _selectedService!.toLowerCase();
-      
-      // Basic matching logic based on service name and specialization
-      if (serviceName.contains('orthodont') || serviceName.contains('braces')) {
-        return dentistSpecialty.contains('orthodont');
-      } else if (serviceName.contains('extraction') || serviceName.contains('surgery')) {
-        return dentistSpecialty.contains('surgeon') || dentistSpecialty.contains('surgery');
-      } else if (serviceName.contains('root canal') || serviceName.contains('endodontic')) {
-        return dentistSpecialty.contains('endodont');
-      } else if (serviceName.contains('crown') || serviceName.contains('prosthodont')) {
-        return dentistSpecialty.contains('prosthodont');
-      } else if (serviceName.contains('whitening') || serviceName.contains('cosmetic')) {
-        return dentistSpecialty.contains('cosmetic');
-      } else if (serviceName.contains('cleaning') || serviceName.contains('periodont')) {
-        return dentistSpecialty.contains('periodont') || dentistSpecialty.contains('general');
-      } else {
-        // For general services, show all dentists with general specialties
-        return dentistSpecialty.contains('general') || dentistSpecialty.isEmpty;
+
+      // 1. If service selected, try exact match in doctor's services list first
+      if (_selectedService != null && _selectedService!.isNotEmpty) {
+        final svcLower = _selectedService!.toLowerCase();
+
+        // Exact match in services array
+        if (doctorServices.any((s) => s == svcLower || s.contains(svcLower) || svcLower.contains(s))) {
+          return true;
+        }
+
+        // Get the category of the selected service
+        final svcCategory = _services
+            .firstWhere((s) => s['name'] == _selectedService, orElse: () => {})['category']
+            ?.toString()
+            .toLowerCase() ?? '';
+
+        // Match by category → specialization
+        final categorySpecMap = {
+          'orthodontic': ['orthodont'],
+          'surgical':    ['surgeon', 'surgery', 'oral'],
+          'endodontic':  ['endodont'],
+          'restorative': ['prosthodont', 'restorat', 'general'],
+          'cosmetic':    ['cosmetic', 'general'],
+          'periodontic': ['periodont', 'general'],
+          'pediatric':   ['pediatric', 'paediatric', 'general'],
+          'emergency':   ['general', 'emergency'],
+          'general':     ['general'],
+        };
+
+        final matchSpecs = categorySpecMap[svcCategory] ?? ['general'];
+        if (matchSpecs.any((spec) => dentistSpecialty.contains(spec))) return true;
+
+        // If doctor has no services set, show them for general/fallback
+        if (doctorServices.isEmpty) return true;
+
+        return false;
       }
+
+      // 2. If only category selected (no service), filter by category → specialization
+      if (_selectedCategory != null) {
+        final catLower = _selectedCategory!.toLowerCase();
+        final categorySpecMap = {
+          'orthodontic': ['orthodont'],
+          'surgical':    ['surgeon', 'surgery', 'oral'],
+          'endodontic':  ['endodont'],
+          'restorative': ['prosthodont', 'restorat', 'general'],
+          'cosmetic':    ['cosmetic', 'general'],
+          'periodontic': ['periodont', 'general'],
+          'pediatric':   ['pediatric', 'paediatric', 'general'],
+          'emergency':   ['general', 'emergency'],
+          'general':     ['general'],
+        };
+        final matchSpecs = categorySpecMap[catLower] ?? ['general'];
+        return matchSpecs.any((spec) => dentistSpecialty.contains(spec)) || doctorServices.isEmpty;
+      }
+
+      return true;
     }).toList();
   }
 
@@ -895,6 +954,110 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                   ),
                 ],
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _buildNotesWithReport() {
+    final parts = <String>[];
+    if (_symptomsController.text.isNotEmpty) {
+      parts.add(_symptomsController.text);
+    }
+    if (_attachScanReport && widget.scanReportData != null) {
+      final conditions = widget.scanReportData!['detectedConditions'] as List<dynamic>? ?? [];
+      final hasOralCancer = widget.scanReportData!['hasOralCancer'] ?? false;
+      final summary = StringBuffer('[AI Scan Report Attached]\n');
+      if (hasOralCancer) summary.write('⚠ Oral cancer indicators detected.\n');
+      for (final c in conditions) {
+        final cm = c as Map<String, dynamic>;
+        final name = cm['name'] ?? cm['modelClassName'] ?? '';
+        final severity = cm['severity'] ?? '';
+        if (name.isNotEmpty) summary.write('• $name (Severity: $severity)\n');
+      }
+      parts.add(summary.toString().trim());
+    }
+    return parts.isNotEmpty ? parts.join('\n\n') : _selectedService ?? '';
+  }
+
+  Widget _buildScanReportAttachment() {
+    if (widget.scanReportData == null) return const SizedBox.shrink();
+    final conditions = widget.scanReportData!['detectedConditions'] as List<dynamic>? ?? [];
+    final hasOralCancer = widget.scanReportData!['hasOralCancer'] ?? false;
+
+    return Card(
+      color: hasOralCancer
+          ? const Color(0xFFFEE2E2)
+          : const Color(0xFFEFF6FF),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: hasOralCancer ? const Color(0xFFEF4444) : const Color(0xFF3B82F6),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.document_scanner,
+                  color: hasOralCancer ? const Color(0xFFEF4444) : const Color(0xFF2563EB),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'AI Scan Report',
+                    style: TextStyles.heading4.copyWith(
+                      color: hasOralCancer ? const Color(0xFF991B1B) : const Color(0xFF1E3A8A),
+                    ),
+                  ),
+                ),
+                Switch(
+                  value: _attachScanReport,
+                  onChanged: (v) => setState(() => _attachScanReport = v),
+                  activeColor: const Color(0xFF2563EB),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _attachScanReport
+                  ? 'Scan report will be attached to this appointment'
+                  : 'Scan report will NOT be attached',
+              style: TextStyle(
+                fontSize: 12,
+                color: _attachScanReport
+                    ? const Color(0xFF1D4ED8)
+                    : Colors.grey,
+              ),
+            ),
+            if (_attachScanReport && conditions.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              ...conditions.map((c) {
+                final cm = c as Map<String, dynamic>;
+                final name = cm['name'] ?? cm['modelClassName'] ?? 'Unknown';
+                final severity = cm['severity'] ?? '';
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.circle, size: 8, color: Color(0xFF6B7280)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '$name${severity.isNotEmpty ? ' — $severity' : ''}',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
           ],
         ),
       ),

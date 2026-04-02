@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_application_1/core/services/report_storage_service.dart';
 import 'package:flutter_application_1/core/themes/colors.dart';
 import 'package:flutter_application_1/core/themes/text_styles.dart';
 import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
 import 'package:flutter_application_1/injection_container.dart' as di;
 import 'package:image_picker/image_picker.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'dart:typed_data';
 
 class TeethScanScreen extends StatefulWidget {
   const TeethScanScreen({super.key});
@@ -768,14 +774,53 @@ class _TeethScanScreenState extends State<TeethScanScreen> {
       children: [
         SizedBox(
           width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _showDoctorRecommendation,
+          child: ElevatedButton.icon(
+            onPressed: _generateAndDownloadReport,
+            icon: const Icon(Icons.picture_as_pdf),
+            label: const Text('Download PDF Report'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.success,
+              foregroundColor: AppColors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _sendReportToDoctor,
+            icon: const Icon(Icons.send),
+            label: const Text('Send Report to Doctor'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: AppColors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 14),
             ),
-            child: const Text('Consult Recommended Doctor'),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                '/book-appointment',
+                arguments: {'scanReportData': _analysisResults},
+              );
+            },
+            icon: const Icon(Icons.calendar_today),
+            label: const Text('Book Appointment with Report'),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _showDoctorRecommendation,
+            icon: const Icon(Icons.medical_services),
+            label: const Text('Consult Recommended Doctor'),
           ),
         ),
         const SizedBox(height: 10),
@@ -785,6 +830,295 @@ class _TeethScanScreenState extends State<TeethScanScreen> {
         ),
       ],
     );
+  }
+
+  Future<Uint8List> _buildPdfBytes() async {
+    final pdf = pw.Document();
+    final conditions = _analysisResults['detectedConditions'] as List<dynamic>? ?? [];
+    final hasOralCancer = _analysisResults['hasOralCancer'] ?? false;
+    final now = DateTime.now();
+    final dateStr = '${now.day}/${now.month}/${now.year}';
+
+    // Load scan image bytes
+    Uint8List? imageBytes;
+    if (_selectedImage != null) {
+      imageBytes = await _selectedImage!.readAsBytes();
+    }
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        build: (pw.Context context) => [
+          // Header
+          pw.Container(
+            padding: const pw.EdgeInsets.all(16),
+            decoration: pw.BoxDecoration(
+              color: PdfColor.fromHex('1E3A8A'),
+              borderRadius: pw.BorderRadius.circular(8),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('DentalCare+',
+                        style: pw.TextStyle(
+                            color: PdfColors.white,
+                            fontSize: 22,
+                            fontWeight: pw.FontWeight.bold)),
+                    pw.Text('AI Teeth Scan Report',
+                        style: const pw.TextStyle(
+                            color: PdfColors.white, fontSize: 13)),
+                  ],
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Text('Date: $dateStr',
+                        style: const pw.TextStyle(
+                            color: PdfColors.white, fontSize: 11)),
+                    pw.Text('Generated by AI Model',
+                        style: const pw.TextStyle(
+                            color: PdfColors.white, fontSize: 10)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 20),
+
+          // Scan image
+          if (imageBytes != null) ...[
+            pw.Text('Scanned Image',
+                style: pw.TextStyle(
+                    fontSize: 14, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 8),
+            pw.Center(
+              child: pw.Image(pw.MemoryImage(imageBytes),
+                  height: 180, fit: pw.BoxFit.contain),
+            ),
+            pw.SizedBox(height: 20),
+          ],
+
+          // Diagnosis summary
+          pw.Container(
+            padding: const pw.EdgeInsets.all(14),
+            decoration: pw.BoxDecoration(
+              color: hasOralCancer
+                  ? PdfColor.fromHex('FEE2E2')
+                  : PdfColor.fromHex('DBEAFE'),
+              borderRadius: pw.BorderRadius.circular(8),
+              border: pw.Border.all(
+                color: hasOralCancer
+                    ? PdfColor.fromHex('EF4444')
+                    : PdfColor.fromHex('3B82F6'),
+              ),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('Diagnosis Summary',
+                    style: pw.TextStyle(
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                        color: hasOralCancer
+                            ? PdfColor.fromHex('991B1B')
+                            : PdfColor.fromHex('1E3A8A'))),
+                pw.SizedBox(height: 8),
+                if (hasOralCancer)
+                  pw.Text(
+                      '⚠ URGENT: Oral cancer indicators detected. Immediate specialist consultation required.',
+                      style: pw.TextStyle(
+                          color: PdfColor.fromHex('DC2626'),
+                          fontWeight: pw.FontWeight.bold)),
+                ...conditions.map((c) {
+                  final cm = c as Map<String, dynamic>;
+                  return pw.Padding(
+                    padding: const pw.EdgeInsets.only(top: 6),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                            '• ${cm['name'] ?? _getDiseaseNameFromClass(cm['modelClassName']?.toString() ?? '')}',
+                            style: pw.TextStyle(
+                                fontWeight: pw.FontWeight.bold,
+                                fontSize: 13)),
+                        pw.Text(
+                            '  Severity: ${cm['severity'] ?? 'N/A'}',
+                            style: const pw.TextStyle(fontSize: 11)),
+                        pw.Text(
+                            '  ${cm['description'] ?? ''}',
+                            style: const pw.TextStyle(fontSize: 11)),
+                        pw.Text(
+                            '  Recommendation: ${cm['recommendation'] ?? ''}',
+                            style: const pw.TextStyle(
+                                fontSize: 11,
+                                color: PdfColors.blueGrey700)),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 20),
+
+          // Disclaimer
+          pw.Container(
+            padding: const pw.EdgeInsets.all(10),
+            decoration: pw.BoxDecoration(
+              color: PdfColor.fromHex('F3F4F6'),
+              borderRadius: pw.BorderRadius.circular(6),
+            ),
+            child: pw.Text(
+              'Disclaimer: This report is generated by an AI model for preliminary screening purposes only. '
+              'It does not replace professional medical diagnosis. Please consult a qualified dental professional '
+              'for accurate diagnosis and treatment.',
+              style: const pw.TextStyle(
+                  fontSize: 9, color: PdfColors.grey700),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  static const _shareChannel = MethodChannel('com.dentalcare.share');
+
+  Future<void> _generateAndDownloadReport() async {
+    try {
+      _showSnackBar('Generating PDF report...');
+      final bytes = await _buildPdfBytes();
+
+      // Save to app documents directory (persistent)
+      final conditions = _analysisResults['detectedConditions'] as List<dynamic>? ?? [];
+      final firstName = conditions.isNotEmpty
+          ? ((conditions[0] as Map<String, dynamic>)['name'] ??
+              (conditions[0] as Map<String, dynamic>)['modelClassName'] ??
+              'Scan')
+          : 'Scan';
+      final title = '$firstName Report - ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}';
+
+      await ReportStorageService.saveReport(
+        title: title,
+        pdfBytes: bytes,
+        analysisResults: _analysisResults,
+      );
+
+      // Also share via Android share sheet
+      final tempDir = await getTemporaryDirectory();
+      final fileName = 'DentalCare_Report_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final file = File('${tempDir.path}/$fileName');
+      await file.writeAsBytes(bytes);
+
+      try {
+        await _shareChannel.invokeMethod('sharePdf', {'path': file.path});
+      } on MissingPluginException {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Report saved to My Reports'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      _showSnackBar('Failed to generate report: $e');
+    }
+  }
+
+  Future<void> _sendReportToDoctor() async {
+    final conditions = _analysisResults['detectedConditions'] as List<dynamic>? ?? [];
+    if (conditions.isEmpty) {
+      _showSnackBar('No scan results to send.');
+      return;
+    }
+
+    // Show confirmation dialog with note option
+    final noteController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.send, color: Color(0xFF2563EB)),
+            SizedBox(width: 8),
+            Text('Send Report to Doctor'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'This will attach your AI scan report to your next appointment and notify your doctor.',
+              style: TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: noteController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Add a note (optional)',
+                border: OutlineInputBorder(),
+                hintText: 'e.g. I have been experiencing pain...',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white),
+            child: const Text('Send'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      _showSnackBar('Generating and sending report...');
+      final pdfBytes = await _buildPdfBytes();
+
+      // Save PDF to temp file
+      final tempDir = await getTemporaryDirectory();
+      final pdfFile = File(
+          '${tempDir.path}/dental_report_${DateTime.now().millisecondsSinceEpoch}.pdf');
+      await pdfFile.writeAsBytes(pdfBytes);
+
+      // Send to backend
+      await _dentalDataSource.sendScanReportToDoctor(
+        pdfPath: pdfFile.path,
+        scanResults: _analysisResults,
+        note: noteController.text.trim(),
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Report sent to your doctor successfully!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      _showSnackBar('Failed to send report: ${e.toString().replaceAll('Exception: ', '')}');
+    }
   }
 
   Widget _buildScanInstructions() {
