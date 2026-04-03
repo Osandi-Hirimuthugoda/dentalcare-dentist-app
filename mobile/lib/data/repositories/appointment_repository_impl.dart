@@ -107,8 +107,7 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
   @override
   Future<Either<Failure, void>> cancelAppointment(String appointmentId) async {
     try {
-      // This would typically call cancel appointment API
-      await Future.delayed(const Duration(milliseconds: 500));
+      await remoteDataSource.cancelAppointment(appointmentId);
       return const Right(null);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message, e.statusCode));

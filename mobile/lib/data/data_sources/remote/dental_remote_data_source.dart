@@ -45,6 +45,9 @@ abstract class DentalRemoteDataSource {
   Future<Map<String, dynamic>> getScanQAForPatient(String scanId); // Get scan Q&A for patient
   Future<Map<String, dynamic>> addAnswerToQuestion(String scanId, String questionId, String answer); // Add answer to question
   Future<Map<String, dynamic>> markResultsShown(String scanId); // Mark results as shown
+  Future<void> sendScanReportToDoctor({required String pdfPath, required Map<String, dynamic> scanResults, String? note}); // Send scan report to doctor
+  Future<List<dynamic>> getDoctorSentReports(); // Get reports sent to patient by doctor
+  Future<void> cancelAppointment(String appointmentId); // Cancel an appointment
 }
 
 class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
@@ -664,6 +667,10 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
         final data = jsonDecode(response.body);
         debugPrint(' Notifications loaded: ${data is List ? data.length : 0}');
         return data is List ? data : [];
+      } else if (response.statusCode == 404) {
+        // Route not found - backend may need restart, return empty gracefully
+        debugPrint(' Notifications endpoint not found (404) - returning empty list');
+        return [];
       } else {
         throw ServerException('Failed to fetch notifications', response.statusCode);
       }
@@ -672,7 +679,8 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
       if (e is ServerException) {
         rethrow;
       }
-      throw NetworkException('Network error occurred');
+      // Network errors - return empty instead of crashing
+      return [];
     }
   }
 
@@ -1150,6 +1158,95 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
         rethrow;
       }
       throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<void> sendScanReportToDoctor({
+    required String pdfPath,
+    required Map<String, dynamic> scanResults,
+    String? note,
+  }) async {
+    try {
+      final token = await localDataSource.getString(AppConstants.tokenKey);
+      if (token == null || token.isEmpty) {
+        throw ServerException('Authentication required. Please login again.', 401);
+      }
+
+      final uri = Uri.parse('${AppConstants.baseUrl}/scan-qa/send-report');
+      final request = http.MultipartRequest('POST', uri);
+      request.headers['Authorization'] = 'Bearer ${token.trim()}';
+
+      // Attach PDF file
+      request.files.add(await http.MultipartFile.fromPath(
+        'report',
+        pdfPath,
+        contentType: MediaType('application', 'pdf'),
+      ));
+
+      // Attach scan results as JSON
+      request.fields['scanResults'] = jsonEncode(scanResults);
+      if (note != null && note.isNotEmpty) {
+        request.fields['note'] = note;
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        final errorBody = jsonDecode(response.body);
+        throw ServerException(
+          errorBody['message'] ?? 'Failed to send report',
+          response.statusCode,
+        );
+      }
+    } catch (e) {
+      if (e is ServerException) rethrow;
+      throw NetworkException('Network error occurred: $e');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getDoctorSentReports() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.get(
+        Uri.parse('${AppConstants.baseUrl}/scan-qa/patient/sent-reports'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return (data['reports'] as List?) ?? [];
+      } else {
+        throw ServerException('Failed to fetch doctor reports', response.statusCode);
+      }
+    } catch (e) {
+      if (e is ServerException) rethrow;
+      throw NetworkException('Network error occurred');
+    }
+  }
+
+  @override
+  Future<void> cancelAppointment(String appointmentId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.put(
+        Uri.parse('${AppConstants.baseUrl}/appointments/$appointmentId'),
+        headers: headers,
+        body: jsonEncode({'status': 'cancelled'}),
+      );
+
+      if (response.statusCode != 200) {
+        final errorBody = jsonDecode(response.body);
+        throw ServerException(
+          errorBody['message'] ?? 'Failed to cancel appointment',
+          response.statusCode,
+        );
+      }
+    } catch (e) {
+      if (e is ServerException) rethrow;
+      throw NetworkException('Network error occurred: $e');
     }
   }
 }

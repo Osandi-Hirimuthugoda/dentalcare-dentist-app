@@ -1,3 +1,4 @@
+import 'package:flutter_application_1/core/services/socket_service.dart';
 import 'package:flutter_application_1/data/data_sources/local/shared_prefs.dart';
 import 'package:flutter_application_1/data/data_sources/remote/auth_remote_data_source.dart';
 import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
@@ -26,6 +27,7 @@ Future<void> init() async {
   final sharedPreferences = await SharedPreferences.getInstance();
   getIt.registerLazySingleton(() => sharedPreferences);
   getIt.registerLazySingleton(() => http.Client());
+  getIt.registerLazySingleton(() => SocketService());
 
   // Data sources
   getIt.registerLazySingleton<AuthRemoteDataSource>(
@@ -53,7 +55,7 @@ Future<void> init() async {
   );
   getIt.registerLazySingleton<UserRepository>(
     () => UserRepositoryImpl(
-      remoteDataSource: getIt(),
+      authRemoteDataSource: getIt(),
       localDataSource: getIt(),
     ),
   );

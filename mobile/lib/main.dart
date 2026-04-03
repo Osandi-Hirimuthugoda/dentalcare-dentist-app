@@ -26,6 +26,7 @@ import 'package:flutter_application_1/presentation/screens/onboarding/splashscre
 import 'package:flutter_application_1/presentation/screens/treatments/my_treatments_screen.dart';
 import 'package:flutter_application_1/features/payment/card_payment_screen.dart';
 import 'package:flutter_application_1/presentation/screens/messages/messages_screen.dart';
+import 'package:flutter_application_1/presentation/screens/reports/my_reports_screen.dart';
 import 'package:flutter_application_1/presentation/widgets/auth/protected_route.dart';
 import 'package:flutter_application_1/core/utils/theme_notifier.dart';
 
@@ -133,14 +134,34 @@ class _DentalCareAppState extends State<DentalCareApp> {
         '/teeth-scan': (context) => const ProtectedRoute(
           child: TeethScanScreen(),
         ),
-        '/book-appointment': (context) => const ProtectedRoute(
-          child: BookAppointmentScreen(),
-        ),
+        '/book-appointment': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          Map<String, dynamic>? scanReportData;
+          Map<String, dynamic>? preSelectedDentist;
+          if (args is Map<String, dynamic>) {
+            scanReportData = args['scanReportData'] as Map<String, dynamic>?;
+            // If args has 'id' key, it's a dentist object passed directly from Find Dentists
+            if (args.containsKey('id') && args.containsKey('name')) {
+              preSelectedDentist = args;
+            } else {
+              preSelectedDentist = args['preSelectedDentist'] as Map<String, dynamic>?;
+            }
+          }
+          return ProtectedRoute(
+            child: BookAppointmentScreen(
+              scanReportData: scanReportData,
+              preSelectedDentist: preSelectedDentist,
+            ),
+          );
+        },
         '/my-treatments': (context) => const ProtectedRoute(
           child: MyTreatmentsScreen(),
         ),
         '/my-bills': (context) => const ProtectedRoute(
           child: MyBillsScreen(),
+        ),
+        '/my-reports': (context) => const ProtectedRoute(
+          child: MyReportsScreen(),
         ),
         '/find-dentists': (context) => const ProtectedRoute(
           child: FindDentistsScreen(),
@@ -160,8 +181,7 @@ class _DentalCareAppState extends State<DentalCareApp> {
         '/emergency-help': (context) => const ProtectedRoute(
           child: EmergencyHelpScreen(),
         ),
-        '/messages': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+        '/messages': (context) {          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
           return ProtectedRoute(
             child: MessagesScreen(filterType: args?['filter']),
           );
