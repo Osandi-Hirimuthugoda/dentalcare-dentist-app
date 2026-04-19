@@ -3,9 +3,12 @@ import Appointment from "../models/Appointment.js";
 import Patient from "../models/Patient.js";
 import Doctor from "../models/doctorModel.js";
 import Payment from "../models/Payment.js";
+import { Wallet, WalletTransaction } from "../models/Wallet.js";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dentalcare_secret_key_change_in_production";
+
+
 
 // Helper function to extract user from token
 const getUserFromToken = (req) => {
@@ -284,7 +287,33 @@ export const processPayment = async (req, res) => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       payment.status = 'completed';
       payment.gatewayTransactionId = `GW${Date.now()}`;
+    } else if (paymentMethod === 'wallet') {
+      // Process wallet payment
+      const wallet = await Wallet.findOne({ patient: user.id });
+      if (!wallet || wallet.balance < bill.total) {
+        return res.status(400).json({ message: "Insufficient wallet balance" });
+      }
+
+      // Deduct from wallet
+      wallet.balance -= bill.total;
+      await wallet.save();
+
+      // Create wallet transaction record
+      const walletTx = new WalletTransaction({
+        wallet: wallet._id,
+        patient: user.id,
+        type: "payment",
+        amount: bill.total,
+        status: "completed",
+        bill: bill._id,
+        description: `Payment for bill ${bill.billNumber}`
+      });
+      await walletTx.save();
+
+      payment.status = 'completed';
+      payment.transactionId = walletTx.transactionId;
     }
+
     
     await payment.save();
     

@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import Patient from "../models/Patient.js";
+import { sendEmail, sendSMS } from "../services/notificationService.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dentalcare_secret_key_change_in_production";
 
@@ -70,6 +71,23 @@ export const registerPatient = async (req, res) => {
       createdAt: patient.createdAt,
       updatedAt: patient.updatedAt,
     };
+
+    // Send Welcome Notifications (Don't await to avoid blocking response)
+    const welcomeSubject = "Welcome to DentalCare+";
+    const welcomeText = `Hello ${patient.name}, thank you for registering with DentalCare+! Your account has been successfully created.`;
+    const welcomeHtml = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #e11d48;">Welcome to DentalCare+!</h2>
+        <p>Hello <strong>${patient.name}</strong>,</p>
+        <p>Thank you for joining DentalCare+. Your account has been successfully created using this email address.</p>
+        <p>You can now book appointments, view your dental history, and chat with our specialists through our mobile app or web portal.</p>
+        <br/>
+        <p>Best regards,<br/>The DentalCare+ Team</p>
+      </div>
+    `;
+
+    sendEmail(patient.email, welcomeSubject, welcomeText, welcomeHtml);
+    sendSMS(patient.phone, `Welcome to DentalCare+! Hello ${patient.name}, your account is now active. Thank you for registering.`);
 
     console.log(`New patient registered: ${patient.email}`);
 

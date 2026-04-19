@@ -2,7 +2,9 @@ import Appointment from "../models/Appointment.js";
 import Patient from "../models/Patient.js";
 import Doctor from "../models/doctorModel.js";
 import { sendNotification } from "./notificationController.js";
+import { sendEmail, sendSMS } from "../services/notificationService.js";
 import jwt from "jsonwebtoken";
+
 
 const JWT_SECRET = process.env.JWT_SECRET || "dentalcare_secret_key_change_in_production";
 
@@ -382,7 +384,31 @@ export const createAppointment = async (req, res) => {
       );
       
       console.log(` Notification sent to doctor for appointment: ${appt._id}`);
+
+      // Send real email and SMS to patient
+      if (appt.patient && appt.patient.email) {
+        const emailSubject = `Appointment Booked - DentalCare+`;
+        const emailText = notificationMessage;
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+            <h2 style="color: #2c3e50;">${notificationTitle}</h2>
+            <p>${notificationMessage}</p>
+            <hr />
+            <p><strong>Doctor:</strong> ${doctorName}</p>
+            <p><strong>Date:</strong> ${formattedDate}</p>
+            <p><strong>Time:</strong> ${formattedTime}</p>
+            <br />
+            <p>Thank you for choosing DentalCare+!</p>
+          </div>
+        `;
+        await sendEmail(appt.patient.email, emailSubject, emailText, emailHtml);
+      }
+
+      if (appt.patient && appt.patient.phone) {
+        await sendSMS(appt.patient.phone, notificationMessage);
+      }
     } catch (notifError) {
+
       // Don't fail the appointment creation if notification creation fails
       console.error(" Error creating notification:", notifError);
     }
@@ -435,6 +461,47 @@ export const updateAppointment = async (req, res) => {
         if (req.body.status === "confirmed" && oldAppt.status !== "confirmed") {
           notificationTitle = "Appointment Confirmed";
           notificationMessage = `Your appointment with ${doctorName} has been confirmed for ${formattedDate} at ${formattedTime}.`;
+
+          // Auto-generate bill when appointment is confirmed
+          try {
+            const Bill = (await import("../models/Bill.js")).default;
+            const existingBill = await Bill.findOne({ appointment: appt._id });
+            if (!existingBill) {
+              const SERVICE_COSTS = {
+                'Dental Checkups': 2500, 'Teeth Cleaning': 3000, 'Cavity Filling': 4500,
+                'Tooth Extraction': 5000, 'Root Canal': 12000, 'Braces': 5000,
+                'Teeth Whitening': 8000, 'Crowns': 15000, 'Implants': 50000, 'Emergency': 4000,
+              };
+              let serviceName = 'Dental Checkups & Consultations';
+              if (appt.notes) {
+                const parts = appt.notes.split(':');
+                if (parts.length > 0) serviceName = parts[0].trim();
+              }
+              let cost = 3000;
+              for (const [key, val] of Object.entries(SERVICE_COSTS)) {
+                if (serviceName.toLowerCase().includes(key.toLowerCase())) { cost = val; break; }
+              }
+              const dueDate = new Date(appt.startTime || Date.now());
+              dueDate.setDate(dueDate.getDate() + 30);
+              const bill = new Bill({
+                patient: appt.patient._id,
+                appointment: appt._id,
+                doctor: appt.doctor._id,
+                service: serviceName,
+                amount: cost,
+                subtotal: cost,
+                tax: 0,
+                discount: 0,
+                total: cost,
+                dueDate,
+                items: [{ description: serviceName, quantity: 1, price: cost, subtotal: cost }],
+              });
+              await bill.save();
+              console.log(`✅ Auto-generated bill ${bill.billNumber} for confirmed appointment ${appt._id}`);
+            }
+          } catch (billErr) {
+            console.error('⚠️ Auto bill generation failed:', billErr.message);
+          }
         } else if (req.body.status === "cancelled" && oldAppt.status !== "cancelled") {
           notificationTitle = "Appointment Cancelled";
           notificationMessage = `Your appointment with ${doctorName} scheduled for ${formattedDate} at ${formattedTime} has been cancelled.`;
@@ -444,6 +511,46 @@ export const updateAppointment = async (req, res) => {
         } else if (req.body.status === "completed" && oldAppt.status !== "completed") {
           notificationTitle = "Appointment Completed";
           notificationMessage = `Your appointment with ${doctorName} on ${formattedDate} has been completed. Thank you for visiting!`;
+
+          // Auto-generate bill when appointment is completed
+          try {
+            const Bill = (await import("../models/Bill.js")).default;
+            const existingBill = await Bill.findOne({ appointment: appt._id });
+            if (!existingBill) {
+              const SERVICE_COSTS = {
+                'Dental Checkups': 2500, 'Teeth Cleaning': 3000, 'Cavity Filling': 4500,
+                'Tooth Extraction': 5000, 'Root Canal': 12000, 'Braces': 5000,
+                'Teeth Whitening': 8000, 'Crowns': 15000, 'Implants': 50000, 'Emergency': 4000,
+              };
+              let serviceName = 'Dental Checkups & Consultations';
+              if (appt.notes) {
+                const parts = appt.notes.split(':');
+                if (parts.length > 0) serviceName = parts[0].trim();
+              }
+              let cost = 3000;
+              for (const [key, val] of Object.entries(SERVICE_COSTS)) {
+                if (serviceName.toLowerCase().includes(key.toLowerCase())) { cost = val; break; }
+              }
+              const dueDate = new Date(); dueDate.setDate(dueDate.getDate() + 30);
+              const bill = new Bill({
+                patient: appt.patient._id,
+                appointment: appt._id,
+                doctor: appt.doctor._id,
+                service: serviceName,
+                amount: cost,
+                subtotal: cost,
+                tax: 0,
+                discount: 0,
+                total: cost,
+                dueDate,
+                items: [{ description: serviceName, quantity: 1, price: cost, subtotal: cost }],
+              });
+              await bill.save();
+              console.log(`✅ Auto-generated bill ${bill.billNumber} for completed appointment ${appt._id}`);
+            }
+          } catch (billErr) {
+            console.error('⚠️ Auto bill generation failed:', billErr.message);
+          }
         }
         
         if (notificationTitle) {
@@ -463,8 +570,40 @@ export const updateAppointment = async (req, res) => {
           );
           
           console.log(` Notification sent for appointment status change: ${appt._id} - ${req.body.status}`);
+
+          // Send real email and SMS to patient
+          console.log(`🔍 Attempting to send notifications. Patient email: ${appt.patient?.email}, phone: ${appt.patient?.phone}`);
+          
+          if (appt.patient && appt.patient.email) {
+            const emailSubject = `Appointment ${req.body.status.charAt(0).toUpperCase() + req.body.status.slice(1)} - DentalCare+`;
+            const emailHtml = `
+              <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                <h2 style="color: #2c3e50;">${notificationTitle}</h2>
+                <p>${notificationMessage}</p>
+                <hr />
+                <p><strong>Date:</strong> ${formattedDate}</p>
+                <p><strong>Time:</strong> ${formattedTime}</p>
+                <br />
+                <p>Manage your appointments in the DentalCare+ mobile app.</p>
+              </div>
+            `;
+            sendEmail(appt.patient.email, emailSubject, notificationMessage, emailHtml)
+              .then(() => console.log("✅ Email trigger successful"))
+              .catch(e => console.error("❌ Email trigger failed:", e.message));
+          } else {
+            console.log("⚠️ No patient email found, skipping email notification.");
+          }
+
+          if (appt.patient && appt.patient.phone) {
+            sendSMS(appt.patient.phone, notificationMessage)
+              .then(() => console.log("✅ SMS trigger successful"))
+              .catch(e => console.error("❌ SMS trigger failed:", e.message));
+          } else {
+            console.log("⚠️ No patient phone found, skipping SMS notification.");
+          }
         }
-      } catch (notifError) {
+    } catch (notifError) {
+
         // Don't fail the appointment update if notification creation fails
         console.error(" Error creating notification:", notifError);
       }
