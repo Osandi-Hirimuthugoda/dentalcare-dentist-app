@@ -1,4 +1,5 @@
 import ScanQA from "../models/ScanQA.js";
+import Notification from "../models/Notification.js";
 import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
 
@@ -63,45 +64,54 @@ export const getPendingScansForDentist = async (req, res) => {
   }
 };
 
-// Create scan Q&A session after image processing
+// Create a new scan Q&A session (for mobile app after AI scan)
 export const createScanQA = async (req, res) => {
-  console.log("Creating scan Q&A session...");
   try {
     const user = getUserFromToken(req);
-    const allowWithoutAuth = process.env.ALLOW_DB_FAILURE === 'true';
-    
-    if (!allowWithoutAuth && (!user || user.role !== "patient")) {
-      return res.status(401).json({ message: "Unauthorized. Patient authentication required." });
+    const patientId = user?.id || req.body.patientId;
+
+    if (!patientId) {
+      console.error("❌ Cannot create scan QA: Missing patientId");
+      return res.status(400).json({ message: "Patient ID is required. Please login again." });
     }
 
-    const { imageUrl, analysisResults } = req.body;
-
-    console.log("Received imageUrl:", imageUrl);
+    const { scanId, imageUrl, analysisResults, reportType } = req.body;
+    
     if (!imageUrl || !analysisResults) {
       return res.status(400).json({ message: "Image URL and analysis results are required" });
     }
 
-    // Generate unique scan ID
-    const scanId = uuidv4();
-    const patientId = user?.id || req.body.patientId;
+    const finalScanId = scanId || uuidv4();
+    console.log(`📝 Session: ${finalScanId} | Patient: ${patientId} | Type: ${reportType || 'scan'}`);
 
-    // Create scan Q&A session
-    const scanQA = new ScanQA({
-      scanId,
-      patientId,
-      doctorId: null, // Will be assigned when dentist starts Q&A
-      imageUrl,
-      analysisResults,
-      status: "pending_qa",
-      questions: []
-    });
+    // Check for existing session (idempotency)
+    let scanQA = await ScanQA.findOne({ scanId: finalScanId });
+
+    if (scanQA) {
+      console.log(`   Updating existing session: ${finalScanId}`);
+      scanQA.imageUrl = imageUrl;
+      scanQA.analysisResults = analysisResults;
+      scanQA.status = "pending_qa";
+      if (reportType) scanQA.reportType = reportType;
+    } else {
+      console.log(`   Creating new session: ${finalScanId}`);
+      scanQA = new ScanQA({
+        scanId: finalScanId,
+        patientId,
+        imageUrl,
+        analysisResults,
+        status: "pending_qa",
+        reportType: reportType || "scan"
+      });
+    }
 
     await scanQA.save();
+    console.log(`✅ Scan Q&A session ready. ID: ${scanQA._id}`);
 
-    res.status(200).json({
+    res.status(201).json({
       success: true,
-      message: "Scan Q&A session created",
-      scanId,
+      message: "Scan Q&A session created successfully",
+      scanId: finalScanId,
       scanQA: {
         id: scanQA._id,
         scanId: scanQA.scanId,
@@ -109,9 +119,8 @@ export const createScanQA = async (req, res) => {
         imageUrl: scanQA.imageUrl
       }
     });
-    console.log("Scan Q&A session finished with ID:", scanId);
   } catch (error) {
-    console.error("Error creating scan Q&A:", error);
+    console.error("❌ createScanQA Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -180,7 +189,9 @@ export const addQuestion = async (req, res) => {
       return res.status(400).json({ message: "Question is required" });
     }
 
-    const scanQA = await ScanQA.findOne({ scanId });
+    const scanQA = await ScanQA.findOne({ scanId })
+      .populate("patientId", "name email")
+      .populate("doctorId", "fullName");
 
     if (!scanQA) {
       return res.status(404).json({ message: "Scan Q&A session not found" });
@@ -192,12 +203,63 @@ export const addQuestion = async (req, res) => {
       askedAt: new Date()
     });
 
+    // Assign doctor if not set
+    if (!scanQA.doctorId) {
+      scanQA.doctorId = user.id;
+    }
+
     await scanQA.save();
+
+    const newQuestion = scanQA.questions[scanQA.questions.length - 1];
+
+    // Send notification to patient
+    if (scanQA.patientId) {
+      const patientId = scanQA.patientId._id || scanQA.patientId;
+      const doctorName = user.fullName || "Your Doctor";
+
+      try {
+        const notification = new Notification({
+          recipient: patientId,
+          recipientModel: "Patient",
+          sender: user.id,
+          senderModel: "Doctor",
+          type: "scan",
+          title: "Doctor has a question for you",
+          message: `${doctorName} asked: "${question.trim().substring(0, 80)}${question.trim().length > 80 ? '...' : ''}"`,
+          data: { scanId, questionId: newQuestion._id },
+          actionUrl: `/scan-qa/${scanId}`
+        });
+        await notification.save();
+
+        // Emit socket notification to patient
+        if (global.io) {
+          const roomName = `Patient_${patientId}`;
+          console.log(`📡 Emitting scan_question to room: ${roomName}`);
+          
+          global.io.to(roomName).emit("notification", {
+            type: "scan",
+            title: "Doctor has a question for you",
+            message: `${doctorName} asked: "${question.trim().substring(0, 80)}${question.trim().length > 80 ? '...' : ''}"`,
+            data: { scanId, questionId: newQuestion._id }
+          });
+
+          global.io.to(roomName).emit("scan_question", {
+            scanId,
+            question: newQuestion
+          });
+          console.log(`✅ Emitted scan_question successfully`);
+        } else {
+          console.error("❌ global.io is not defined, socket emission failed");
+        }
+      } catch (notifErr) {
+        console.error("Notification error (non-fatal):", notifErr.message);
+      }
+    }
 
     res.status(200).json({
       success: true,
       message: "Question added successfully",
-      question: scanQA.questions[scanQA.questions.length - 1]
+      question: newQuestion
     });
   } catch (error) {
     console.error("Error adding question:", error);
@@ -238,6 +300,23 @@ export const addAnswer = async (req, res) => {
     question.answeredAt = new Date();
 
     await scanQA.save();
+
+    // Notify doctor via socket
+    if (scanQA.doctorId && global.io) {
+      const doctorId = scanQA.doctorId._id || scanQA.doctorId;
+      const roomName = `Doctor_${doctorId}`;
+      console.log(`📡 Emitting answer notification to room: ${roomName}`);
+      
+      global.io.to(roomName).emit("notification", {
+        type: "scan",
+        title: "New answer from patient",
+        message: `Patient answered your question for scan #${scanId.substring(0, 6)}`,
+        data: { scanId }
+      });
+      console.log(`✅ Emitted answer notification successfully`);
+    } else if (!global.io) {
+      console.error("❌ global.io is not defined, socket emission failed");
+    }
 
     res.status(200).json({
       success: true,
@@ -284,6 +363,43 @@ export const completeQA = async (req, res) => {
     });
   } catch (error) {
     console.error("Error completing Q&A:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get all scan QA sessions for patient (list view)
+export const getPatientScanSessions = async (req, res) => {
+  try {
+    const user = getUserFromToken(req);
+    const allowWithoutAuth = process.env.ALLOW_DB_FAILURE === 'true';
+
+    const patientId = user?.id;
+    if (!patientId) {
+      return res.status(401).json({ message: "Patient authentication required." });
+    }
+
+    console.log(`🔍 Fetching scan sessions for patient: ${patientId}`);
+
+    const sessions = await ScanQA.find({
+      patientId: patientId,
+      reportType: { $ne: "pdf_report" },
+    })
+      .populate("doctorId", "fullName specialization")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      sessions: sessions.map((s) => ({
+        scanId: s.scanId,
+        doctor: s.doctorId ? { fullName: s.doctorId.fullName, specialization: s.doctorId.specialization } : null,
+        questions: s.questions,
+        status: s.status,
+        createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
+      })),
+    });
+  } catch (error) {
+    console.error("Error getting patient scan sessions:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -377,7 +493,7 @@ export const sendScanReport = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized. Patient authentication required." });
     }
 
-    const { scanResults, note } = req.body;
+    const { scanResults, note, doctorId } = req.body;
     const pdfFile = req.file;
 
     if (!pdfFile) {
@@ -394,6 +510,7 @@ export const sendScanReport = async (req, res) => {
     const scanQA = new ScanQA({
       scanId,
       patientId: user.id,
+      doctorId: (doctorId && doctorId !== "") ? doctorId : undefined,
       imageUrl: pdfFile.path,
       analysisResults: parsedResults,
       status: "pending_qa",
@@ -448,12 +565,15 @@ export const sendReportToPatient = async (req, res) => {
 export const getReportsSentToPatient = async (req, res) => {
   try {
     const user = getUserFromToken(req);
-    if (!user || user.role !== "patient") {
+    const patientId = user?.id;
+    if (!patientId) {
       return res.status(401).json({ message: "Unauthorized. Patient authentication required." });
     }
 
+    console.log(`🔍 Fetching doctor-sent reports for patient: ${patientId}`);
+
     const reports = await ScanQA.find({
-      patientId: user.id,
+      patientId: patientId,
       sentToPatient: true,
       reportType: "pdf_report",
     })
