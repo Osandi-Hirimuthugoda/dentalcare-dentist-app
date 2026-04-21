@@ -7,6 +7,7 @@ import {
   getPendingScansForDentist,
   getScanQAForDentist,
   getScanQAForPatient,
+  getPatientScanSessions,
   addQuestion,
   addAnswer,
   completeQA,
@@ -29,9 +30,11 @@ const reportUpload = multer({
 });
 
 // Patient routes
-router.post("/create", createScanQA);
+router.post("/", createScanQA);
+router.post("/create", createScanQA); // Keep legacy for compatibility
+router.get("/patient/sent-reports", getReportsSentToPatient);  // must be before :scanId
+router.get("/patient/sessions", getPatientScanSessions);       // all sessions for patient
 router.get("/patient/:scanId", getScanQAForPatient);
-router.get("/patient/sent-reports", getReportsSentToPatient);
 router.post("/:scanId/answer/:questionId", addAnswer);
 router.post("/:scanId/mark-shown", markResultsShown);
 router.post("/send-report", reportUpload.single("report"), sendScanReport);

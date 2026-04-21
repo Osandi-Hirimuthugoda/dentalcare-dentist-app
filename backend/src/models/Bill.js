@@ -27,14 +27,15 @@ const billSchema = new mongoose.Schema({
   total: { type: Number, required: true }
 }, { timestamps: true });
 
-// Generate bill number before saving
-billSchema.pre('save', async function(next) {
+// Generate bill number before validation
+billSchema.pre('validate', async function(next) {
   if (!this.billNumber) {
     const count = await mongoose.model('Bill').countDocuments();
     this.billNumber = `INV-${String(count + 1).padStart(6, '0')}`;
   }
   next();
 });
+
 
 export default mongoose.model("Bill", billSchema);
 

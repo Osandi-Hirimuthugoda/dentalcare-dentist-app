@@ -63,8 +63,8 @@ const doctorAvailabilitySchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Index for efficient queries
-doctorAvailabilitySchema.index({ doctor: 1 });
+// Index for efficient queries is handled by unique: true in schema
+
 
 export default mongoose.model("DoctorAvailability", doctorAvailabilitySchema);
 

@@ -55,8 +55,24 @@ router.put('/read-all', async (req, res) => {
   }
 });
 
-// Get notifications for a user
-router.get('/:userType/:userId', notificationController.getNotifications);
+// Get notifications for a user - admin cannot see doctor/patient private notifications
+router.get('/:userType/:userId', (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+      const token = authHeader.split(' ')[1];
+      const decoded = jwt.verify(token, JWT_SECRET);
+      const { userType } = req.params;
+      // Admin can only see Admin notifications, not Doctor or Patient
+      if (decoded.role === 'admin' && (userType === 'Doctor' || userType === 'Patient')) {
+        return res.status(403).json({ 
+          message: 'Access denied. Admin cannot view private notifications.' 
+        });
+      }
+    }
+  } catch { /* let controller handle */ }
+  next();
+}, notificationController.getNotifications);
 
 // Get unread count
 router.get('/:userType/:userId/unread-count', notificationController.getUnreadCount);

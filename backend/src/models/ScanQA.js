@@ -73,8 +73,8 @@ const scanQASchema = new mongoose.Schema({
   timestamps: true // Adds createdAt and updatedAt fields
 });
 
-// Create indexes for faster lookups
-scanQASchema.index({ scanId: 1 });
+// Create indexes for faster lookups (scanId index handled by property definition)
+
 scanQASchema.index({ patientId: 1 });
 scanQASchema.index({ doctorId: 1 });
 scanQASchema.index({ status: 1 });

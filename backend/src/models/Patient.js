@@ -20,9 +20,9 @@ const patientSchema = new mongoose.Schema({
     trim: true 
   },
   passwordHash: { 
-    type: String, 
-    required: [true, "Password is required"]
+    type: String
   },
+
   age: { 
     type: Number,
     min: [1, "Age must be greater than 0"],
@@ -55,13 +55,22 @@ const patientSchema = new mongoose.Schema({
   },
   emailVerificationOTP: { 
     type: String 
-  }
+  },
+  selectedDoctor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Doctor"
+  },
+  diagnosis: String,
+  doctorNotes: String,
+  history: [String],
+  images: [String]
+
 }, { 
   timestamps: true // Adds createdAt and updatedAt fields
 });
 
-// Create index on email for faster lookups
-patientSchema.index({ email: 1 });
+// Create index on email is handled by unique: true in schema
+
 
 const Patient = mongoose.model("Patient", patientSchema);
 

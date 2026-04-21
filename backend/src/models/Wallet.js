@@ -80,8 +80,8 @@ walletTransactionSchema.pre('save', async function(next) {
   next();
 });
 
-// Index for efficient queries
-walletSchema.index({ patient: 1 });
+// Index for efficient queries is handled by unique: true in schema
+
 walletTransactionSchema.index({ wallet: 1, createdAt: -1 });
 walletTransactionSchema.index({ patient: 1, createdAt: -1 });
 
