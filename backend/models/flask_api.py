@@ -39,9 +39,9 @@ def load_model():
     global predictor
     try:
         if os.path.exists(MODEL_PATH):
-            print(f"📦 Loading model from: {MODEL_PATH}")
+            print(f"Model loaded from: {MODEL_PATH}")
             predictor = DentalDiseasePredictor(MODEL_PATH)
-            print("✅ Model loaded successfully!")
+            print("Model loaded successfully!")
             return True
         else:
             print(f"❌ Model file not found: {MODEL_PATH}")
@@ -154,7 +154,7 @@ def predict():
         return jsonify(response)
     
     except Exception as e:
-        print(f"❌ Prediction error: {e}")
+        print(f"Prediction error: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({
@@ -196,18 +196,18 @@ def index():
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("🦷 DENTAL DISEASE DETECTION API")
+    print("DENTAL DISEASE DETECTION API")
     print("=" * 60)
     
     # Load model on startup
     model_loaded = load_model()
     
     if not model_loaded:
-        print("\n⚠️  WARNING: Model not loaded!")
-        print("   The API will start but predictions will fail.")
-        print(f"   Please ensure {MODEL_PATH} exists in this directory.")
+      print("\nWARNING: Model not loaded!")
+      print("   The API will start but predictions will fail.")
+      print(f"   Please ensure {MODEL_PATH} exists in this directory.")
     
-    print("\n🚀 Starting Flask API server...")
+    print("\nStarting Flask API server...")
     print("   URL: http://localhost:5000")
     print("   Endpoints:")
     print("      GET  /health  - Health check")

@@ -54,6 +54,10 @@ services:
       MONGO_URI: mongodb://mongodb:27017/dentalcare
       JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production}
       FLASK_API_URL: http://ai-model:5000
+      EMAIL_USER: osandihirimuthugodage23.se@gmail.com
+      EMAIL_PASS: tcvc yyle ylxx orhg
+    env_file:
+      - ./backend/.env
     depends_on:
       mongodb:
         condition: service_healthy

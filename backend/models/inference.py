@@ -73,7 +73,7 @@ class DentalDiseasePredictor:
             device: Device to run inference on (default: auto-detect)
         """
         self.device = device if device else torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        print(f"🔧 Using device: {self.device}")
+        print(f"Using device: {self.device}")
         
         # Load class labels if available
         model_dir = Path(model_path).parent
@@ -85,7 +85,7 @@ class DentalDiseasePredictor:
         else:
             self.classes = CLASSES
         
-        print(f"📊 Classes: {self.classes}")
+        print(f"Classes: {self.classes}")
         
         # Define preprocessing transforms (MUST match training)
         self.transform = transforms.Compose([
@@ -97,7 +97,7 @@ class DentalDiseasePredictor:
         ])
         
         # Load model
-        print(f"📦 Loading model from: {model_path}")
+        print(f"Loading model from: {model_path}")
         self.model = CustomEfficientNet(len(self.classes))
         
         # Try loading full model dict first, then state dict
@@ -112,9 +112,8 @@ class DentalDiseasePredictor:
             print("here3")
             self.model.load_state_dict(checkpoint)
         
-        self.model.to(self.device)
         self.model.eval()
-        print("✅ Model loaded successfully!")
+        print("Model loaded successfully!")
     
     def preprocess_image(self, image_path):
         """

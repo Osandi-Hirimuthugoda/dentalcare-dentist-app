@@ -20,11 +20,19 @@ import healthRoutes from "./src/routes/healthRoutes.js";
 import walletRoutes from "./src/routes/walletRoutes.js";
 import aiScanRoutes from "./src/routes/aiScanRoutes.js";
 import scanQARoutes from "./src/routes/scanQARoutes.js";
+import prescriptionRoutes from "./src/routes/prescriptionRoutes.js";
+import inventoryRoutes from "./src/routes/inventoryRoutes.js";
+import reportRoutes from "./src/routes/reportRoutes.js";
+
+
+
 // Load environment variables
 dotenv.config();
 
-// Connect to database
-connectDB();
+// Connect to database (skip in test environment as tests handle their own db connection)
+if (process.env.NODE_ENV !== "test") {
+  connectDB();
+}
 
 // Create Express app
 const app = express();
@@ -123,6 +131,18 @@ app.use("/api/ai-scan", aiScanRoutes);
 // Scan Q&A routes (for dentist-patient Q&A after scan processing)
 app.use("/api/scan-qa", scanQARoutes);
 
+// Prescription routes (for doctor to prescribe and patient to view)
+app.use("/api/prescriptions", prescriptionRoutes);
+
+// Inventory routes (for admin to manage clinic stock)
+app.use("/api/inventory", inventoryRoutes);
+
+// Report routes (for admin analytics and insights)
+app.use("/api/reports", reportRoutes);
+
+
+
+
 // Health check (keep existing endpoint for server health)
 app.get("/api/health-check", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
@@ -179,4 +199,8 @@ function startServer(port) {
   });
 }
 
-startServer(PORT);
+if (process.env.NODE_ENV !== "test") {
+  startServer(PORT);
+}
+
+export { app, io, httpServer };
