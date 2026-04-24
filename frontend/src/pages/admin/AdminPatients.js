@@ -7,7 +7,7 @@ import {
 import axios from "axios";
 import "../../styles/pages/AdminPatients.css";
 
-const API = "http://localhost:4000/api";
+const API = "/api";
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "N/A";
 const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "N/A";
 

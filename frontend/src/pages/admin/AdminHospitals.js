@@ -4,7 +4,7 @@ import { Search, Plus, Edit, Trash2, MapPin, Phone, Mail, Globe, Building2, X, C
 import axios from "axios";
 import "../../styles/pages/AdminHospitals.css";
 
-const API = "http://localhost:4000/api";
+const API = "/api";
 const getToken = () => { try { return JSON.parse(localStorage.getItem("admin") || "{}").token || ""; } catch { return ""; } };
 
 const DISTRICTS = ["Colombo","Gampaha","Kalutara","Kandy","Matale","Nuwara Eliya","Galle","Matara","Hambantota","Jaffna","Kilinochchi","Mannar","Vavuniya","Mullaitivu","Batticaloa","Ampara","Trincomalee","Kurunegala","Puttalam","Anuradhapura","Polonnaruwa","Badulla","Moneragala","Ratnapura","Kegalle"];

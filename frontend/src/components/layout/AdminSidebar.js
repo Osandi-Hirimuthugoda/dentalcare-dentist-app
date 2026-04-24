@@ -3,8 +3,11 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, UserPlus, Users, Calendar,
   Activity, LogOut, Shield, UserCircle, Building2,
+  PieChart, Package
 } from "lucide-react";
+
 import NotificationBell from "../common/NotificationBell";
+import { useNotifications } from "../../contexts/NotificationContext";
 import styles from "../../styles/components/DoctorSidebar.module.css";
 
 const NavLink = ({ to, icon: Icon, label, isActive }) => (
@@ -21,7 +24,14 @@ export default function AdminSidebar() {
   const navigate = useNavigate();
   const isActive = (path) => location.pathname === path;
 
+  const { initializeSocket, disconnectSocket } = useNotifications();
+
+  React.useEffect(() => {
+    initializeSocket();
+  }, [initializeSocket]);
+
   const handleLogout = () => {
+    disconnectSocket();
     localStorage.removeItem("admin");
     localStorage.removeItem("role");
     navigate("/");
@@ -44,8 +54,11 @@ export default function AdminSidebar() {
           <p className={styles.navSectionLabel}>Main</p>
           <ul>
             <NavLink to="/admin-dashboard"       icon={LayoutDashboard} label="Dashboard"        isActive={isActive} />
+            <NavLink to="/admin/reports"         icon={PieChart}        label="Reports"          isActive={isActive} />
+            <NavLink to="/admin/inventory"       icon={Package}         iconClass={styles.iconBlue} label="Inventory"  isActive={isActive} />
             <NavLink to="/admin/appointments"    icon={Calendar}        label="Appointments"     isActive={isActive} />
             <NavLink to="/admin/activity"        icon={Activity}        label="Activity"         isActive={isActive} />
+
           </ul>
         </div>
 

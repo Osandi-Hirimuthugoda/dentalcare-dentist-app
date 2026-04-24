@@ -5,7 +5,7 @@ import axios from "axios";
 import { DENTAL_SPECIALIZATIONS } from "../../utils/constants";
 import "../../styles/pages/AdminDoctors.css";
 
-const API = "http://localhost:4000/api";
+const API = "/api";
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) : "—";
 

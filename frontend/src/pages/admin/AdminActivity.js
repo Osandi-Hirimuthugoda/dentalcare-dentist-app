@@ -4,7 +4,7 @@ import { Activity, TrendingUp, Users, Calendar, Clock, RefreshCw } from "lucide-
 import axios from "axios";
 import "../../styles/pages/AdminActivity.css";
 
-const API = "http://localhost:4000/api";
+const API = "/api";
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "N/A";
 
 export default function AdminActivity() {

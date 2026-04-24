@@ -4,7 +4,7 @@ import { Calendar, Clock, User, Search, Filter, CheckCircle, XCircle, AlertCircl
 import axios from "axios";
 import "../../styles/pages/AdminAppointments.css";
 
-const API = "http://localhost:4000/api";
+const API = "/api";
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }) : "N/A";
 const fmtTime = (d) => d ? new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "N/A";
 

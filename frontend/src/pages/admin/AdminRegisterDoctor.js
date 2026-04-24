@@ -10,7 +10,7 @@ import PasswordInput from "../../components/common/PasswordInput";
 import { DENTAL_SPECIALIZATIONS } from "../../utils/constants";
 import "../../styles/pages/AdminRegisterDoctor.css";
 
-const API = "http://localhost:4000/api";
+const API = "/api";
 
 export default function AdminRegisterDoctor() {
   const navigate = useNavigate();

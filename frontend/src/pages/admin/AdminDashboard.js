@@ -6,7 +6,7 @@ import axios from "axios";
 import styles from "../../styles/pages/DoctorDashboard.module.css";
 import statCardStyles from "../../styles/components/StatCard.module.css";
 
-const API = "http://localhost:4000/api";
+const API = "/api";
 
 const StatCard = ({ title, count, icon: Icon, iconClass, linkTo, navigate: nav }) => (
   <div
