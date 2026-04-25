@@ -10,7 +10,7 @@ import axios from "axios";
 import styles from "../../styles/pages/DoctorDashboard.module.css";
 import statCardStyles from "../../styles/components/StatCard.module.css";
 
-const API = "http://localhost:4000/api";
+const API = "/api";
 
 const StatCard = ({ title, count, icon: Icon, iconClass, linkTo, navigate: nav }) => (
   <div
@@ -83,7 +83,7 @@ export default function DoctorDashboard() {
           setRecentMessages(msgs.slice(0, 3).map(c => ({
             id: c.patientId, patientName: c.name || c.patientName,
             message: c.lastMessage,
-            time: new Date(c.lastMessageTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+            time: new Date(c.lastMessageTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Colombo" }),
             unread: c.unreadCount > 0,
           })));
         }
@@ -97,8 +97,8 @@ export default function DoctorDashboard() {
             setRecentPayments(d.recentPayments.map(p => ({
               id: p._id, patientName: p.patient?.name || "Unknown", amount: p.amount,
               method: p.paymentMethod, status: p.status,
-              date: new Date(p.createdAt).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }),
-              time: new Date(p.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+              date: new Date(p.createdAt).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Colombo" }),
+              time: new Date(p.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Colombo" }),
               billNumber: p.bill?.billNumber,
             })));
           }
@@ -118,8 +118,8 @@ export default function DoctorDashboard() {
             .slice(0, 5)
             .map(a => ({
               id: a._id, patientName: a.patient?.name || "Unknown",
-              time: new Date(a.startTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-              date: new Date(a.startTime).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }),
+              time: new Date(a.startTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Colombo" }),
+              date: new Date(a.startTime).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Colombo" }),
               status: a.status,
             }))
         );
@@ -281,8 +281,35 @@ export default function DoctorDashboard() {
                     </div>
                   </div>
                   <div className={styles.appointmentDetails}>
-                    <span>{apt.time}</span>
-                    <span style={{ fontSize: "0.72rem", padding: "2px 8px", borderRadius: "20px", background: apt.status === "confirmed" ? "#f0fdf4" : "#fffbeb", color: apt.status === "confirmed" ? "#15803d" : "#b45309", fontWeight: 600, textTransform: "capitalize" }}>{apt.status}</span>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.5rem" }}>
+                      <span>{apt.time}</span>
+                      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.72rem", padding: "2px 8px", borderRadius: "20px", background: apt.status === "confirmed" ? "#f0fdf4" : "#fffbeb", color: apt.status === "confirmed" ? "#15803d" : "#b45309", fontWeight: 600, textTransform: "capitalize" }}>{apt.status}</span>
+                        {apt.status === "pending" && (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateStatus(apt.id, "confirmed");
+                            }}
+                            style={{ 
+                              padding: "2px 8px", 
+                              borderRadius: "4px", 
+                              background: "#10b981", 
+                              color: "white", 
+                              border: "none", 
+                              fontSize: "0.7rem", 
+                              cursor: "pointer",
+                              fontWeight: "600",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "2px"
+                            }}
+                          >
+                            <CheckCircle size={10} /> Confirm
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -295,4 +322,14 @@ export default function DoctorDashboard() {
       </div>
     </div>
   );
+}
+
+async function updateStatus(id, status) {
+  try {
+    const API = "/api";
+    await axios.put(`${API}/appointments/${id}`, { status });
+    window.location.reload(); // Simple refresh to show updated status
+  } catch (err) {
+    alert("Failed to update status");
+  }
 }

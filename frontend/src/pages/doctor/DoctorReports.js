@@ -8,7 +8,7 @@ import {
 import DoctorSidebar from "../../components/layout/DoctorSidebar";
 import "../../styles/pages/DoctorReports.css";
 
-const API = "http://localhost:4000/api";
+const API = "/api";
 const getToken = () => localStorage.getItem("token") || localStorage.getItem("doctorToken") || "";
 
 const fmtDate = (d) => d

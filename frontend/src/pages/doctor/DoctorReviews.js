@@ -4,7 +4,7 @@ import { Star, MessageSquare, Calendar, Search, Filter, TrendingUp, CheckCircle 
 import DoctorSidebar from "../../components/layout/DoctorSidebar";
 import "../../styles/pages/DoctorReviews.css";
 
-const API = "http://localhost:4000/api";
+const API = "/api";
 
 const fmtDate = (d) => d
   ? new Date(d).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })

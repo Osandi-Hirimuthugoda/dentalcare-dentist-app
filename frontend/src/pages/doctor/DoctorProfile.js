@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import "../../styles/pages/DoctorProfile.css";
 
-const API = process.env.REACT_APP_API_URL || "http://localhost:4000/api";
+const API = process.env.REACT_APP_API_URL || "/api";
 const getToken = () => localStorage.getItem("token") || "";
 
 export default function DoctorProfile() {

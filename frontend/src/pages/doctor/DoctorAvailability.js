@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import "../../styles/pages/DoctorAvailability.css";
 
-const API = "http://localhost:4000/api";
+const API = "/api";
 
 const DEFAULT_SCHEDULE = [
   { dayOfWeek: 1, dayName: "Monday",    startTime: "09:00", endTime: "17:00", isAvailable: true  },

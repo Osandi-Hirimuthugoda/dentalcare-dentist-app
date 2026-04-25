@@ -6,7 +6,7 @@ import { DENTAL_SPECIALIZATIONS } from "../../utils/constants";
 import { Settings, User, Lock, Bell, AlertTriangle, CheckCircle, AlertCircle, Save } from "lucide-react";
 import "../../styles/pages/DoctorSettings.css";
 
-const API = "http://localhost:4000/api";
+const API = "/api";
 const getToken = () => localStorage.getItem("token") || "";
 
 export default function DoctorSettings() {

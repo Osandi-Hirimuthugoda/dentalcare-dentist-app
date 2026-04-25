@@ -6,6 +6,7 @@ import {
   Star, Camera, Clock,
 } from "lucide-react";
 import NotificationBell from "../common/NotificationBell";
+import { useNotifications } from "../../contexts/NotificationContext";
 import styles from "../../styles/components/DoctorSidebar.module.css";
 
 const NavLink = ({ to, icon: Icon, label, isActive }) => (
@@ -25,7 +26,14 @@ export default function DoctorSidebar() {
   const navigate = useNavigate();
   const isActive = (path) => location.pathname === path;
 
+  const { initializeSocket, disconnectSocket } = useNotifications();
+
+  React.useEffect(() => {
+    initializeSocket();
+  }, [initializeSocket]);
+
   const handleLogout = () => {
+    disconnectSocket();
     localStorage.removeItem("token");
     localStorage.removeItem("doctor");
     navigate("/");

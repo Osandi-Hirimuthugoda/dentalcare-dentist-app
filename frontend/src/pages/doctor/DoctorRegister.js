@@ -93,7 +93,7 @@ const DoctorRegister = () => {
       const { confirmPassword, ...submitData } = formData;
 
       const response = await axios.post(
-        "http://localhost:4000/api/doctors/register",
+        "/api/doctors/register",
         submitData
       );
 
@@ -141,7 +141,7 @@ const DoctorRegister = () => {
     const fetchServices = async () => {
       try {
         setLoadingServices(true);
-        const response = await axios.get("http://localhost:4000/api/services");
+        const response = await axios.get("/api/services");
         setAvailableServices(response.data || []);
       } catch (error) {
         console.error("Error fetching services:", error);

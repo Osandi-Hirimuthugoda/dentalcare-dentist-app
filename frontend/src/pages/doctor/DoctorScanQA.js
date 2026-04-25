@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import "../../styles/pages/DoctorScanQA.css";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:4000/api";
+const API_URL = process.env.REACT_APP_API_URL || "/api";
 
 const getAuthHeader = () => {
   const doctor = JSON.parse(localStorage.getItem("doctor") || "{}");
@@ -40,9 +40,14 @@ export default function DoctorScanQA() {
 
   useEffect(() => {
     fetchScans();
-    const interval = setInterval(fetchScans, 8000);
+    const interval = setInterval(() => {
+      fetchScans();
+      if (selectedScan) {
+        fetchDetail(selectedScan.scanId);
+      }
+    }, 8000);
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedScan?.scanId]); // Re-run effect when selection changes to ensure interval has latest id
 
   const fetchScans = async (manual = false) => {
     try {
@@ -219,9 +224,9 @@ export default function DoctorScanQA() {
                     </a>
                   </div>
                 ) : selectedScan.imageUrl ? (
-                  <div className="scan-image-container">
+                  <div className="scan_image_container">
                     <img
-                      src={`http://localhost:4000${selectedScan.imageUrl}`}
+                      src={selectedScan.imageUrl.startsWith("http") ? selectedScan.imageUrl : `${API_URL.replace("/api", "")}${selectedScan.imageUrl}`}
                       alt="Dental Scan"
                       onError={(e) => { e.target.src = "https://via.placeholder.com/400x300?text=Image+Not+Found"; }}
                     />

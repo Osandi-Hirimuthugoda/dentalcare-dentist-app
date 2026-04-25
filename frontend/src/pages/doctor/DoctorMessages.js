@@ -5,8 +5,8 @@ import { MessageSquare, Search, Send, Megaphone, X } from "lucide-react";
 import DoctorSidebar from "../../components/layout/DoctorSidebar";
 import "../../styles/pages/DoctorMessages.css";
 
-const API          = "http://localhost:4000/api";
-const SOCKET_URL   = "http://localhost:4000";
+const API          = "/api";
+const SOCKET_URL   = "";
 const getToken     = () => localStorage.getItem("token") || "";
 const getDoctor    = () => JSON.parse(localStorage.getItem("doctor") || "{}");
 

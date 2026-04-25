@@ -15,7 +15,7 @@ export default function DoctorLogin() {
     e.preventDefault();
     console.log("🔐 Login attempt:", { email, passwordLength: password.length });
     try {
-      const res = await axios.post("http://localhost:4000/api/doctors/login", {
+      const res = await axios.post("/api/doctors/login", {
         email,
         password,
       });
