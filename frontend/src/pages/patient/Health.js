@@ -117,24 +117,15 @@ const Health = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-blue-100 flex flex-col">
-      {/* Header */}
-      <div className="bg-white shadow-md sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center space-x-4">
-            <Link
-              to="/"
-              className="text-cyan-600 hover:text-cyan-700 transition-colors"
-            >
-              <ArrowLeft size={24} />
-            </Link>
-            <h1 className="text-2xl font-bold text-cyan-700 flex items-center space-x-2">
-              <Heart size={28} className="text-red-500" />
-              <span>Dental Health</span>
-            </h1>
-          </div>
-        </div>
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+          <Heart size={28} className="text-rose-500" />
+          Dental Health
+        </h2>
       </div>
+
+      <div className="max-w-4xl space-y-6">
 
       {/* Content */}
       <div className="container mx-auto px-6 py-8 flex-1">
@@ -498,8 +489,7 @@ const Health = () => {
         )}
       </AnimatePresence>
 
-      {/* Footer */}
-      <Footer />
+      </div>
     </div>
   );
 };
