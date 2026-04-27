@@ -42,16 +42,8 @@ export const NotificationProvider = ({ children }) => {
     });
   };
 
-  useEffect(() => {
-    // Initialize socket connection
-    const newSocket = io('http://localhost:4000', {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 5
-    });
-
-    setSocket(newSocket);
+  const initializeSocket = () => {
+    if (socket) return; // Already connected
 
     // Get user data
     const doctorData = localStorage.getItem('doctor');
@@ -72,65 +64,78 @@ export const NotificationProvider = ({ children }) => {
       userType = 'Admin';
     }
 
-    if (userData && userData._id) {
-      // Connection event
-      newSocket.on('connect', () => {
-        console.log('✅ Socket connected:', newSocket.id);
-        setConnected(true);
-        
-        // Join user's room
-        newSocket.emit('join', { userId: userData._id, userType });
-      });
+    if (!userData || !userData._id) return;
 
-      // Listen for notifications
-      newSocket.on('notification', (notification) => {
-        console.log('🔔 New notification received:', notification);
-        
-        setNotifications(prev => [notification, ...prev]);
-        setUnreadCount(prev => prev + 1);
-        
-        // Show toast notification
-        showToast(notification);
-      });
+    // Initialize socket connection
+    const newSocket = io('', {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5
+    });
 
-      // Disconnect event
-      newSocket.on('disconnect', () => {
-        console.log('❌ Socket disconnected');
-        setConnected(false);
-      });
+    setSocket(newSocket);
 
-      // Fetch existing notifications
-      fetchNotifications(userData._id, userType);
-    }
+    // Connection event
+    newSocket.on('connect', () => {
+      console.log('✅ Socket connected:', newSocket.id);
+      setConnected(true);
+      
+      // Join user's room
+      newSocket.emit('join', { userId: userData._id, userType });
+    });
 
-    return () => {
-      if (newSocket) {
-        newSocket.close();
+    // Listen for notifications
+    newSocket.on('notification', (notification) => {
+      console.log('🔔 New notification received:', notification);
+      
+      // Admin should not receive message notifications between doctors/patients
+      if (userType === 'Admin' && notification.type === 'message') {
+        return;
       }
-    };
-  }, []);
+      
+      setNotifications(prev => [notification, ...prev]);
+      setUnreadCount(prev => prev + 1);
+      
+      // Show toast notification
+      showToast(notification);
+    });
+
+    // Disconnect event
+    newSocket.on('disconnect', () => {
+      console.log('❌ Socket disconnected');
+      setConnected(false);
+    });
+
+    // Fetch existing notifications
+    fetchNotifications(userData._id, userType);
+  };
+
+  const disconnectSocket = () => {
+    if (socket) {
+      socket.close();
+      setSocket(null);
+      setConnected(false);
+      setNotifications([]);
+      setUnreadCount(0);
+    }
+  };
 
   const fetchNotifications = async (userId, userType) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/notifications/${userType}/${userId}`);
+      const response = await fetch(`/api/notifications/${userType}/${userId}`);
       const data = await response.json();
       
-      const notifs = data.notifications || [];
-      setNotifications(notifs);
-      setUnreadCount(data.unreadCount || 0);
-
-      // Show toast for latest unread notification on load
-      const latestUnread = notifs.find(n => !n.read);
-      if (latestUnread && latestUnread.title && latestUnread.message) {
-        setTimeout(() => showToast(latestUnread), 1500);
-      } else if (notifs.length === 0) {
-        // Demo toast so UI is visible — remove in production
-        setTimeout(() => showToast({
-          type: 'system',
-          title: 'Welcome to DentalCare+',
-          message: 'You have no new notifications right now.',
-        }), 1500);
+      let notifs = data.notifications || [];
+      
+      // Admin should not see message notifications between doctors/patients
+      if (userType === 'Admin') {
+        notifs = notifs.filter(n => n.type !== 'message');
       }
+      
+      setNotifications(notifs);
+      setUnreadCount(notifs.filter(n => !n.read && !n.isRead).length);
+
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
@@ -138,7 +143,7 @@ export const NotificationProvider = ({ children }) => {
 
   const markAsRead = async (notificationId) => {
     try {
-      await fetch(`http://localhost:4000/api/notifications/${notificationId}/read`, {
+      await fetch(`/api/notifications/${notificationId}/read`, {
         method: 'PUT'
       });
       
@@ -173,7 +178,7 @@ export const NotificationProvider = ({ children }) => {
     if (!userData) return;
 
     try {
-      await fetch('http://localhost:4000/api/notifications/mark-all-read', {
+      await fetch('/api/notifications/mark-all-read', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: userData._id, userType })
@@ -188,7 +193,7 @@ export const NotificationProvider = ({ children }) => {
 
   const deleteNotification = async (notificationId) => {
     try {
-      await fetch(`http://localhost:4000/api/notifications/${notificationId}`, {
+      await fetch(`/api/notifications/${notificationId}`, {
         method: 'DELETE'
       });
       
@@ -226,7 +231,7 @@ export const NotificationProvider = ({ children }) => {
     if (!userData) return;
 
     try {
-      await fetch('http://localhost:4000/api/notifications/delete-all', {
+      await fetch('/api/notifications/delete-all', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: userData._id, userType })
@@ -247,7 +252,9 @@ export const NotificationProvider = ({ children }) => {
       markAsRead,
       markAllAsRead,
       deleteNotification,
-      deleteAllNotifications
+      deleteAllNotifications,
+      initializeSocket,
+      disconnectSocket
     }}>
       {children}
     </NotificationContext.Provider>

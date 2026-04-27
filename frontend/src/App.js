@@ -31,6 +31,9 @@ import AdminAppointments from "./pages/admin/AdminAppointments";
 import AdminActivity from "./pages/admin/AdminActivity";
 import AdminPatients from "./pages/admin/AdminPatients";
 import AdminHospitals from "./pages/admin/AdminHospitals";
+import AdminReports from "./pages/admin/AdminReports";
+import AdminInventory from "./pages/admin/AdminInventory";
+
 
 // Patient Pages
 import Patients from "./pages/patient/Patients";
@@ -38,6 +41,13 @@ import NearbyHospitals from "./pages/patient/NearbyHospitals";
 import NearbyDoctors from "./pages/patient/NearbyDoctors";
 import Health from "./pages/patient/Health";
 import MyBills from "./pages/patient/MyBills";
+import Appointments from "./pages/patient/Appointments";
+import Wallet from "./pages/patient/Wallet";
+import ScanQA from "./pages/patient/ScanQA";
+import Messages from "./pages/patient/Messages";
+import Reports from "./pages/patient/Reports";
+import Dashboard from "./pages/patient/Dashboard";
+import PatientLayout from "./components/layout/PatientLayout";
 
 // Protected Route Component for Admin
 const AdminProtectedRoute = ({ children }) => {
@@ -74,10 +84,19 @@ const App = () => {
         <Routes>
         {/* Public routes */}
         <Route path="/" element={<Home />} />
-        <Route path="/health" element={<Health />} />
-        <Route path="/my-bills" element={<MyBills />} />
-        <Route path="/nearby-hospitals" element={<NearbyHospitals />} />
         <Route path="/nearby-doctors" element={<NearbyDoctors />} />
+        {/* Patient Private Routes Wrapped in PatientLayout */}
+        <Route element={<PatientLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/appointments" element={<Appointments />} />
+          <Route path="/wallet" element={<Wallet />} />
+          <Route path="/scan-qa" element={<ScanQA />} />
+          <Route path="/messages" element={<Messages />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/my-bills" element={<MyBills />} />
+          <Route path="/health" element={<Health />} />
+        </Route>
+        
         <Route path="/doctor-login" element={<DoctorLogin />} />
         <Route path="/doctor-register" element={<DoctorRegister />} />
         <Route path="/admin-login" element={<AdminLogin />} />
@@ -229,6 +248,23 @@ const App = () => {
             </AdminProtectedRoute>
           }
         />
+        <Route
+          path="/admin/reports"
+          element={
+            <AdminProtectedRoute>
+              <AdminReports />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/inventory"
+          element={
+            <AdminProtectedRoute>
+              <AdminInventory />
+            </AdminProtectedRoute>
+          }
+        />
+
 
         {/* 404 Fallback */}
         <Route path="*" element={<NotFound />} />

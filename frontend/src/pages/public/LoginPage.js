@@ -13,8 +13,8 @@ function LoginPage() {
     try {
       const url =
         role === "admin"
-          ? "http://localhost:4000/api/admin/login"
-          : "http://localhost:4000/api/doctors/login";
+          ? "/api/admin/login"
+          : "/api/doctors/login";
 
       const res = await axios.post(url, { email, password });
       setMessage(res.data.message);
