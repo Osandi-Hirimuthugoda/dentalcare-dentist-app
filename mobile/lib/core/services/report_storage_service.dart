@@ -45,15 +45,43 @@ class ReportStorageService {
     final list = prefs.getStringList(_reportsKey) ?? [];
     final reports = <Map<String, dynamic>>[];
 
+    // Get current app documents directory (path can change after emulator restart)
+    final dir = await getApplicationDocumentsDirectory();
+    final reportsDir = '${dir.path}/scan_reports';
+
+    final updatedList = <String>[];
+
     for (final item in list) {
       try {
         final meta = jsonDecode(item) as Map<String, dynamic>;
-        // Only include if file still exists
-        if (await File(meta['filePath'] as String).exists()) {
+        final storedPath = meta['filePath'] as String;
+        final fileName = storedPath.split('/').last;
+
+        // Try original path first
+        if (await File(storedPath).exists()) {
           reports.add(meta);
+          updatedList.add(item);
+        } else {
+          // Try rebuilding path with current documents directory
+          final rebuiltPath = '$reportsDir/$fileName';
+          if (await File(rebuiltPath).exists()) {
+            // Update stored path to new location
+            final updated = Map<String, dynamic>.from(meta);
+            updated['filePath'] = rebuiltPath;
+            reports.add(updated);
+            updatedList.add(jsonEncode(updated));
+            debugPrint('Report path rebuilt: $rebuiltPath');
+          } else {
+            debugPrint('Report file not found, skipping: $storedPath');
+            // Keep in list in case it's a temporary issue
+            updatedList.add(item);
+          }
         }
       } catch (_) {}
     }
+
+    // Save updated paths back to prefs
+    await prefs.setStringList(_reportsKey, updatedList);
 
     // Sort newest first
     reports.sort((a, b) => (b['createdAt'] as String).compareTo(a['createdAt'] as String));

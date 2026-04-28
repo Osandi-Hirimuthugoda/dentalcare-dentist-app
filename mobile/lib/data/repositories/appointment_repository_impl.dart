@@ -67,8 +67,8 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
       // Patient ID will be extracted from token in the backend
       final appointmentData = {
         'doctor': doctorId,
-        'startTime': dateTime.toIso8601String(),
-        'endTime': endTime.toIso8601String(),
+        'startTime': dateTime.toUtc().toIso8601String(),
+        'endTime': endTime.toUtc().toIso8601String(),
         'status': 'pending',
         'notes': notes ?? service,
         'teleconsult': false,

@@ -27,7 +27,10 @@ import 'package:flutter_application_1/presentation/screens/treatments/my_treatme
 import 'package:flutter_application_1/features/payment/card_payment_screen.dart';
 import 'package:flutter_application_1/presentation/screens/messages/messages_screen.dart';
 import 'package:flutter_application_1/presentation/screens/reports/my_reports_screen.dart';
+import 'package:flutter_application_1/presentation/screens/scan_qa/scan_qa_screen.dart';
+import 'package:flutter_application_1/presentation/screens/wallet/wallet_screen.dart';
 import 'package:flutter_application_1/presentation/widgets/auth/protected_route.dart';
+
 import 'package:flutter_application_1/core/utils/theme_notifier.dart';
 
 void main() async {
@@ -160,8 +163,15 @@ class _DentalCareAppState extends State<DentalCareApp> {
         '/my-bills': (context) => const ProtectedRoute(
           child: MyBillsScreen(),
         ),
-        '/my-reports': (context) => const ProtectedRoute(
+        RouteNames.myReports: (context) => const ProtectedRoute(
           child: MyReportsScreen(),
+        ),
+        RouteNames.wallet: (context) => const ProtectedRoute(
+          child: WalletScreen(),
+        ),
+
+        '/scan-qa': (context) => const ProtectedRoute(
+          child: ScanQAScreen(),
         ),
         '/find-dentists': (context) => const ProtectedRoute(
           child: FindDentistsScreen(),
@@ -170,7 +180,7 @@ class _DentalCareAppState extends State<DentalCareApp> {
           child: SearchHospitalsScreen(),
         ),
         '/nearby-hospitals-map': (context) => const ProtectedRoute(
-          child: NearbyHospitalsMapScreen(),
+          child: NearbyHospitalsMapScreen(),  
         ),
         '/nearby-hospitals': (context) => const ProtectedRoute(
           child: NearbyHospitalsScreen(),

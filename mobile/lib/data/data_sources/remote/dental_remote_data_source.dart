@@ -35,20 +35,24 @@ abstract class DentalRemoteDataSource {
   Future<List<dynamic>> getHospitalsByDistrict(String district); // Get hospitals by district
   Future<List<dynamic>> getDistrictsWithCounts(); // Get all districts with hospital counts
   Future<Map<String, dynamic>> getWalletBalance(); // Get wallet balance
-  Future<Map<String, dynamic>> topUpWallet(int amount, String paymentMethod, Map<String, dynamic>? cardDetails); // Top-up wallet
+  Future<Map<String, dynamic>> topUpWallet(double amount, String paymentMethod, {Map<String, dynamic>? cardDetails}); // Top-up wallet
+
   Future<Map<String, dynamic>> payBillWithWallet(String billId); // Pay bill using wallet
   Future<Map<String, dynamic>> payAppointmentWithWallet(String appointmentId, double amount); // Pay appointment using wallet
   Future<List<dynamic>> getWalletTransactions(); // Get wallet transaction history
   Future<List<dynamic>> getRecentActivities(); // Get recent activities for health screen
   Future<Map<String, dynamic>> uploadTeethScan(String imagePath); // Upload and analyze teeth scan image
-  Future<Map<String, dynamic>> createScanQA(String imageUrl, Map<String, dynamic> analysisResults); // Create scan Q&A session
+  Future<Map<String, dynamic>> createScanQA(String imageUrl, Map<String, dynamic> analysisResults, {String? scanId}); // Create scan Q&A session
   Future<Map<String, dynamic>> getScanQAForPatient(String scanId); // Get scan Q&A for patient
   Future<Map<String, dynamic>> addAnswerToQuestion(String scanId, String questionId, String answer); // Add answer to question
   Future<Map<String, dynamic>> markResultsShown(String scanId); // Mark results as shown
-  Future<void> sendScanReportToDoctor({required String pdfPath, required Map<String, dynamic> scanResults, String? note}); // Send scan report to doctor
+  Future<void> sendScanReportToDoctor({required String pdfPath, required Map<String, dynamic> scanResults, required String doctorId, String? note}); // Send scan report to doctor
   Future<List<dynamic>> getDoctorSentReports(); // Get reports sent to patient by doctor
+  Future<List<dynamic>> getPatientScanSessions(); // Get all scan QA sessions for patient
   Future<void> cancelAppointment(String appointmentId); // Cancel an appointment
+  Future<List<dynamic>> getPrescriptions(); // Get prescriptions for patient
 }
+
 
 class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
   final http.Client client;
@@ -846,7 +850,7 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
     try {
       final headers = await _getHeaders();
       final response = await client.get(
-        Uri.parse('${AppConstants.baseUrl}/wallet/balance'),
+        Uri.parse('${AppConstants.baseUrl}/wallet/info'),
         headers: headers,
       );
 
@@ -865,7 +869,8 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
   }
 
   @override
-  Future<Map<String, dynamic>> topUpWallet(int amount, String paymentMethod, Map<String, dynamic>? cardDetails) async {
+  Future<Map<String, dynamic>> topUpWallet(double amount, String paymentMethod, {Map<String, dynamic>? cardDetails}) async {
+
     try {
       final headers = await _getHeaders();
       final body = {
@@ -902,7 +907,7 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
       final body = {'billId': billId};
 
       final response = await client.post(
-        Uri.parse('${AppConstants.baseUrl}/wallet/pay-bill'),
+        Uri.parse('${AppConstants.baseUrl}/wallet/pay'),
         headers: headers,
         body: jsonEncode(body),
       );
@@ -1054,12 +1059,13 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
   }
 
   @override
-  Future<Map<String, dynamic>> createScanQA(String imageUrl, Map<String, dynamic> analysisResults) async {
+  Future<Map<String, dynamic>> createScanQA(String imageUrl, Map<String, dynamic> analysisResults, {String? scanId}) async {
     try {
       final headers = await _getHeaders();
       final body = {
         'imageUrl': imageUrl,
         'analysisResults': analysisResults,
+        if (scanId != null) 'scanId': scanId,
       };
       
       final response = await client.post(
@@ -1089,7 +1095,7 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
     try {
       final headers = await _getHeaders();
       final response = await client.get(
-        Uri.parse('${AppConstants.baseUrl}/scan-qa/$scanId/patient'),
+        Uri.parse('${AppConstants.baseUrl}/scan-qa/patient/$scanId'),
         headers: headers,
       );
 
@@ -1117,7 +1123,7 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
       };
       
       final response = await client.post(
-        Uri.parse('${AppConstants.baseUrl}/scan-qa/$scanId/question/$questionId/answer'),
+        Uri.parse('${AppConstants.baseUrl}/scan-qa/$scanId/answer/$questionId'),
         body: jsonEncode(body),
         headers: headers,
       );
@@ -1165,6 +1171,7 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
   Future<void> sendScanReportToDoctor({
     required String pdfPath,
     required Map<String, dynamic> scanResults,
+    required String doctorId,
     String? note,
   }) async {
     try {
@@ -1186,6 +1193,7 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
 
       // Attach scan results as JSON
       request.fields['scanResults'] = jsonEncode(scanResults);
+      request.fields['doctorId'] = doctorId;
       if (note != null && note.isNotEmpty) {
         request.fields['note'] = note;
       }
@@ -1247,6 +1255,52 @@ class DentalRemoteDataSourceImpl implements DentalRemoteDataSource {
     } catch (e) {
       if (e is ServerException) rethrow;
       throw NetworkException('Network error occurred: $e');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getPatientScanSessions() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.get(
+        Uri.parse('${AppConstants.baseUrl}/scan-qa/patient/sessions'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['sessions'] as List<dynamic>? ?? [];
+      } else {
+        final errorBody = jsonDecode(response.body);
+        throw ServerException(
+          errorBody['message'] ?? 'Failed to load scan sessions',
+          response.statusCode,
+        );
+      }
+    } catch (e) {
+      if (e is ServerException) rethrow;
+      throw NetworkException('Network error occurred: $e');
+    }
+  }
+
+  @override
+  Future<List<dynamic>> getPrescriptions() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await client.get(
+        Uri.parse('${AppConstants.baseUrl}/prescriptions/patient'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data is List ? data : [];
+      } else {
+        throw ServerException('Failed to fetch prescriptions', response.statusCode);
+      }
+    } catch (e) {
+      if (e is ServerException) rethrow;
+      throw NetworkException('Network error occurred');
     }
   }
 }

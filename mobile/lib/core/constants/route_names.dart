@@ -18,7 +18,10 @@ class RouteNames {
   static const String bookAppointment = '/book-appointment';
   static const String myTreatments = '/my-treatments';
   static const String myBills = '/my-bills';
+  static const String myReports = '/my-reports';
+  static const String wallet = '/wallet';
   static const String findDentists = '/find-dentists';
+
   static const String searchHospitals = '/search-hospitals';
   static const String nearbyHospitalsMap = '/nearby-hospitals-map';
   static const String nearbyHospitals = '/nearby-hospitals';

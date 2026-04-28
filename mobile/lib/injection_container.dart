@@ -18,7 +18,7 @@ import 'package:flutter_application_1/domain/use_cases/user/get_user_profile_use
 import 'package:flutter_application_1/domain/use_cases/user/update_user_profile_use_case.dart';
 import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences/shared_preferences.dart'; 
 
 final getIt = GetIt.instance;
 
@@ -47,7 +47,7 @@ Future<void> init() async {
   );
 
   // Repositories
-  getIt.registerLazySingleton<AuthRepository>(
+  getIt.registerLazySingleton<AuthRepository >(
     () => AuthRepositoryImpl(
       remoteDataSource: getIt(),
       localDataSource: getIt(),

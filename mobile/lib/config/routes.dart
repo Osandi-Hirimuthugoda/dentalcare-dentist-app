@@ -4,6 +4,7 @@ import '../presentation/screens/auth/login_page.dart';
 import '../presentation/screens/auth/register_page.dart';
 import '../presentation/screens/home/home_screen.dart';
 import '../presentation/screens/onboarding/splashscreen.dart';
+import '../features/bills/my_bills_screen.dart';
 
 /// Application Routes Configuration
 class AppRoutes {
@@ -31,6 +32,12 @@ class AppRoutes {
       case RouteNames.home:
         return MaterialPageRoute(
           builder: (_) => const HomeScreen(),
+          settings: settings,
+        );
+
+      case '/my-bills':
+        return MaterialPageRoute(
+          builder: (_) => const MyBillsScreen(),
           settings: settings,
         );
       

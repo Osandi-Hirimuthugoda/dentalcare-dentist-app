@@ -19,11 +19,14 @@ class SocketService {
   // Listeners
   final List<void Function(Map<String, dynamic>)> _messageListeners = [];
   final List<void Function(Map<String, dynamic>)> _notificationListeners = [];
+  final List<void Function(Map<String, dynamic>)> _scanQuestionListeners = [];
 
   void addMessageListener(void Function(Map<String, dynamic>) fn) => _messageListeners.add(fn);
   void removeMessageListener(void Function(Map<String, dynamic>) fn) => _messageListeners.remove(fn);
   void addNotificationListener(void Function(Map<String, dynamic>) fn) => _notificationListeners.add(fn);
   void removeNotificationListener(void Function(Map<String, dynamic>) fn) => _notificationListeners.remove(fn);
+  void addScanQuestionListener(void Function(Map<String, dynamic>) fn) => _scanQuestionListeners.add(fn);
+  void removeScanQuestionListener(void Function(Map<String, dynamic>) fn) => _scanQuestionListeners.remove(fn);
 
   Future<void> connect(LocalDataSource localData) async {
     if (_socket != null && _connected) return;
@@ -46,7 +49,7 @@ class SocketService {
 
       final socketUrl = AppConstants.baseUrl.replaceAll('/api', '');
       _socket = IO.io(socketUrl, IO.OptionBuilder()
-          .setTransports(['websocket'])
+          .setTransports(['websocket', 'polling'])
           .disableAutoConnect()
           .build());
 
@@ -73,6 +76,12 @@ class SocketService {
         debugPrint('🔔 Socket notification received: ${notif['title']}');
         for (final fn in List.of(_notificationListeners)) fn(notif);
       });
+
+      _socket!.on('scan_question', (data) {
+        final event = Map<String, dynamic>.from(data as Map);
+        debugPrint('🦷 Scan question received: ${event['scanId']}');
+        for (final fn in List.of(_scanQuestionListeners)) fn(event);
+      });
     } catch (e) {
       debugPrint('SocketService connect error: $e');
     }
@@ -85,5 +94,6 @@ class SocketService {
     _connected = false;
     _messageListeners.clear();
     _notificationListeners.clear();
+    _scanQuestionListeners.clear();
   }
 }
