@@ -367,6 +367,25 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
               ),
               const SizedBox(height: 8),
             ],
+            // View Bill button for confirmed/completed appointments
+            if (status == 'confirmed' || status == 'completed') ...[
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/my-bills');
+                  },
+                  icon: const Icon(Icons.receipt_long, color: Colors.white),
+                  label: const Text('View Bill & Pay', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00897B),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(

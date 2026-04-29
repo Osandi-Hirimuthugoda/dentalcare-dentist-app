@@ -193,14 +193,16 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       setState(() {
         if (_selectedDentist != null && _selectedDentist!['id'] == doctorId) {
           _selectedDentist!['availableSlots'] = slotsByDate;
-          _selectedDentist!['availableDates'] = slotsByDate.keys.toList();
+          final dates = slotsByDate.keys.toList()..sort();
+          _selectedDentist!['availableDates'] = dates;
         }
         
         // Also update in dentists list
         final index = _dentists.indexWhere((d) => d['id'] == doctorId);
         if (index != -1) {
           _dentists[index]['availableSlots'] = slotsByDate;
-          _dentists[index]['availableDates'] = slotsByDate.keys.toList();
+          final dates = slotsByDate.keys.toList()..sort();
+          _dentists[index]['availableDates'] = dates;
         }
       });
     } catch (e) {
@@ -228,19 +230,61 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     final availableSlots = _selectedDentist!['availableSlots'] as Map<String, List<String>>?;
     
     if (availableSlots == null || availableSlots.isEmpty) {
-      // If no availability set, use default slots
-      return _generateTimeSlots();
+      // If doctor hasn't set up availability, show no slots (strict mode)
+      return [];
     }
     
     return availableSlots[dateStr] ?? [];
   }
 
   void _selectDate() async {
+    if (_selectedDentist == null) {
+      _showSnackBar('Please select a dentist first');
+      return;
+    }
+
+    final availableDates = _selectedDentist!['availableDates'] as List<String>? ?? [];
+    
+    if (availableDates.isEmpty) {
+      _showSnackBar('This doctor has no available dates for appointments at the moment.');
+      return;
+    }
+
+    // Predicate to check if a day is available
+    bool isDayAvailable(DateTime day) {
+      final dateStr = DateFormat('yyyy-MM-dd').format(day);
+      return availableDates.contains(dateStr);
+    }
+
+    // Determine initial date
+    DateTime initialDate = DateTime.now().add(const Duration(days: 1));
+    if (!isDayAvailable(initialDate)) {
+      // Find first available date that is not in the past
+      try {
+        for (var dateStr in availableDates) {
+          final date = DateTime.parse(dateStr);
+          if (date.isAfter(DateTime.now().subtract(const Duration(days: 1)))) {
+            initialDate = date;
+            break;
+          }
+        }
+      } catch (e) {
+        // Fallback
+      }
+    }
+
+    // Double check initial date satisfies predicate
+    if (!isDayAvailable(initialDate)) {
+       _showSnackBar('No upcoming available dates found for this doctor.');
+       return;
+    }
+
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().add(const Duration(days: 1)),
+      initialDate: initialDate,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 60)),
+      selectableDayPredicate: isDayAvailable,
     );
 
     if (picked != null) {
@@ -259,15 +303,20 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       final timeFormat = DateFormat('hh:mm a');
       final time = timeFormat.parse(_selectedTime!);
       
-      // Combine date and time
-      return DateTime(
-        _selectedDate!.year,
-        _selectedDate!.month,
-        _selectedDate!.day,
-        time.hour,
-        time.minute,
-      );
+      // Create a date string in YYYY-MM-DD format
+      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate!);
+      // Create a time string in HH:mm:ss format
+      final timeStr = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:00';
+      
+      // Construct ISO 8601 string with Asia/Colombo offset (+05:30)
+      // This ensures the backend receives the exact time intended for the doctor's office
+      final isoString = '${dateStr}T${timeStr}.000+05:30';
+      
+      // Parse it back to a DateTime object. Since it has an offset, 
+      // DateTime.parse will return it correctly.
+      return DateTime.parse(isoString);
     } catch (e) {
+      debugPrint('Error parsing date/time: $e');
       return null;
     }
   }
@@ -407,44 +456,381 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   }
 
   @override
+  void dispose() {
+    _symptomsController.dispose();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  // Step wizard state
+  int _currentStep = 0;
+  final PageController _pageController = PageController();
+
+  static const List<Map<String, dynamic>> _steps = [
+    {'title': 'Condition', 'icon': Icons.medical_information},
+    {'title': 'Service', 'icon': Icons.medical_services},
+    {'title': 'Doctor', 'icon': Icons.person},
+    {'title': 'Date & Time', 'icon': Icons.calendar_today},
+    {'title': 'Confirm', 'icon': Icons.check_circle},
+  ];
+
+  void _nextStep() {
+    if (_currentStep < _steps.length - 1) {
+      setState(() => _currentStep++);
+      _pageController.animateToPage(_currentStep,
+          duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+    }
+  }
+
+  void _prevStep() {
+    if (_currentStep > 0) {
+      setState(() => _currentStep--);
+      _pageController.animateToPage(_currentStep,
+          duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+    }
+  }
+
+  bool _canProceed() {
+    switch (_currentStep) {
+      case 0: return true; // condition optional
+      case 1: return _selectedService != null;
+      case 2: return _selectedDentist != null;
+      case 3: return _selectedDate != null && _selectedTime != null;
+      case 4: return true;
+      default: return false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Get unique categories from services
     final Set<String> categories = {};
     for (var service in _services) {
       final category = service['category']?.toString() ?? 'General';
       categories.add(category);
     }
     final sortedCategories = categories.toList()..sort();
-    
+
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: const Text('Book Appointment'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.white,
+        elevation: 0,
       ),
-      body: SingleChildScrollView(
+      body: Column(
+        children: [
+          // Step indicator
+          _buildStepIndicator(),
+
+          // Page content
+          Expanded(
+            child: PageView(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                _buildStepPage(
+                  step: 0,
+                  child: _buildSymptomsInput(),
+                ),
+                _buildStepPage(
+                  step: 1,
+                  child: Column(
+                    children: [
+                      if (sortedCategories.length > 1) ...[
+                        _buildCategoryFilter(sortedCategories),
+                        const SizedBox(height: 16),
+                      ],
+                      _buildServiceSelection(),
+                    ],
+                  ),
+                ),
+                _buildStepPage(
+                  step: 2,
+                  child: _buildDoctorSelection(),
+                ),
+                _buildStepPage(
+                  step: 3,
+                  child: _buildDateTimeSelection(),
+                ),
+                _buildStepPage(
+                  step: 4,
+                  child: _buildConfirmationSummary(),
+                ),
+              ],
+            ),
+          ),
+
+          // Navigation buttons
+          _buildNavigationBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepIndicator() {
+    return Container(
+      color: AppColors.primary,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(
+        children: [
+          // Step dots
+          Row(
+            children: List.generate(_steps.length, (i) {
+              final isActive = i == _currentStep;
+              final isDone = i < _currentStep;
+              return Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: isActive ? 36 : 28,
+                            height: isActive ? 36 : 28,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isDone
+                                  ? Colors.white
+                                  : isActive
+                                      ? Colors.white
+                                      : Colors.white.withOpacity(0.3),
+                            ),
+                            child: Center(
+                              child: isDone
+                                  ? Icon(Icons.check, size: 16, color: AppColors.primary)
+                                  : Icon(
+                                      _steps[i]['icon'] as IconData,
+                                      size: isActive ? 18 : 14,
+                                      color: isActive
+                                          ? AppColors.primary
+                                          : Colors.white.withOpacity(0.7),
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _steps[i]['title'] as String,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: isActive || isDone
+                                  ? Colors.white
+                                  : Colors.white.withOpacity(0.5),
+                              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (i < _steps.length - 1)
+                      Expanded(
+                        child: Container(
+                          height: 2,
+                          margin: const EdgeInsets.only(bottom: 20),
+                          color: i < _currentStep
+                              ? Colors.white
+                              : Colors.white.withOpacity(0.3),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepPage({required int step, required Widget child}) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Step header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(_steps[step]['icon'] as IconData,
+                    color: AppColors.primary, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Step ${step + 1} of ${_steps.length}: ${_steps[step]['title']}',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavigationBar() {
+    final canProceed = _canProceed();
+    final isLast = _currentStep == _steps.length - 1;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          if (_currentStep > 0)
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _prevStep,
+                icon: const Icon(Icons.arrow_back),
+                label: const Text('Back'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: BorderSide(color: AppColors.primary),
+                  foregroundColor: AppColors.primary,
+                ),
+              ),
+            ),
+          if (_currentStep > 0) const SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: ElevatedButton.icon(
+              onPressed: isLast
+                  ? (_isBooking ? null : _bookAppointment)
+                  : (canProceed ? _nextStep : null),
+              icon: _isBooking
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : Icon(isLast ? Icons.check_circle : Icons.arrow_forward),
+              label: Text(
+                _isBooking
+                    ? 'Booking...'
+                    : isLast
+                        ? 'Confirm Booking'
+                        : 'Next',
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: canProceed || isLast
+                    ? AppColors.primary
+                    : Colors.grey.shade300,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                elevation: canProceed ? 2 : 0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConfirmationSummary() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Category filter dropdown
-            if (sortedCategories.length > 1) ...[
-              _buildCategoryFilter(sortedCategories),
-              const SizedBox(height: 20),
+            Row(
+              children: [
+                const Icon(Icons.check_circle, color: Color(0xFF00897B), size: 24),
+                const SizedBox(width: 8),
+                Text('Appointment Summary',
+                    style: TextStyles.heading4.copyWith(color: const Color(0xFF00897B))),
+              ],
+            ),
+            const Divider(height: 24),
+            _summaryRow(Icons.medical_services, 'Service', _selectedService ?? '-'),
+            _summaryRow(Icons.person, 'Doctor',
+                _selectedDentist?['name']?.toString() ?? '-'),
+            _summaryRow(Icons.local_hospital, 'Hospital',
+                _selectedDentist?['hospital']?.toString() ?? '-'),
+            _summaryRow(
+                Icons.calendar_today,
+                'Date',
+                _selectedDate != null
+                    ? DateFormat('EEEE, dd MMM yyyy').format(_selectedDate!)
+                    : '-'),
+            _summaryRow(Icons.access_time, 'Time', _selectedTime ?? '-'),
+            if (_selectedDiseases.isNotEmpty)
+              _summaryRow(Icons.medical_information, 'Conditions',
+                  _selectedDiseases.join(', ')),
+            if (_symptomsController.text.isNotEmpty)
+              _summaryRow(Icons.notes, 'Notes', _symptomsController.text),
+            if (widget.scanReportData != null && _attachScanReport) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.attach_file, color: Colors.orange, size: 16),
+                    SizedBox(width: 6),
+                    Text('AI Scan Report will be attached',
+                        style: TextStyle(fontSize: 12, color: Colors.orange)),
+                  ],
+                ),
+              ),
             ],
-            _buildServiceSelection(),
-            const SizedBox(height: 20),
-            _buildDoctorSelection(),
-            const SizedBox(height: 20),
-            _buildDateTimeSelection(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             _buildScanReportAttachment(),
-            if (widget.scanReportData != null) const SizedBox(height: 20),
-            _buildSymptomsInput(),
-            const SizedBox(height: 30),
-            _buildBookButton(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _summaryRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: Colors.grey.shade600),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 80,
+            child: Text(label,
+                style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500)),
+          ),
+          Expanded(
+            child: Text(value,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          ),
+        ],
       ),
     );
   }
@@ -788,12 +1174,17 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                 ] else if (_selectedDentist != null) ...[
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      hint: const Text('Select Date First'),
+                      isExpanded: true,
+                      hint: const Text(
+                        'Select Date First',
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       items: [],
                       onChanged: null,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10),
+                        isDense: true,
                       ),
                     ),
                   ),
@@ -962,6 +1353,12 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
 
   String _buildNotesWithReport() {
     final parts = <String>[];
+
+    // Add selected dental diseases
+    if (_selectedDiseases.isNotEmpty) {
+      parts.add('Dental Conditions: ${_selectedDiseases.join(', ')}');
+    }
+
     if (_symptomsController.text.isNotEmpty) {
       parts.add(_symptomsController.text);
     }
@@ -1064,24 +1461,154 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     );
   }
 
+  // Common dental diseases list
+  static const List<Map<String, dynamic>> _dentalDiseases = [
+    {'name': 'Tooth Decay (Dental Caries)', 'emoji': '🦷', 'description': 'Cavities caused by bacteria'},
+    {'name': 'Gum Disease (Gingivitis)', 'emoji': '🩸', 'description': 'Inflammation of the gums'},
+    {'name': 'Periodontitis', 'emoji': '⚠️', 'description': 'Advanced gum disease affecting bone'},
+    {'name': 'Tooth Sensitivity', 'emoji': '❄️', 'description': 'Pain from hot/cold foods'},
+    {'name': 'Toothache', 'emoji': '😣', 'description': 'Severe tooth pain'},
+    {'name': 'Cracked or Broken Tooth', 'emoji': '💔', 'description': 'Fractured tooth'},
+    {'name': 'Tooth Abscess', 'emoji': '🔴', 'description': 'Bacterial infection with pus'},
+    {'name': 'Dry Mouth (Xerostomia)', 'emoji': '💧', 'description': 'Insufficient saliva production'},
+    {'name': 'Bad Breath (Halitosis)', 'emoji': '💨', 'description': 'Persistent bad breath'},
+    {'name': 'Teeth Grinding (Bruxism)', 'emoji': '😬', 'description': 'Grinding or clenching teeth'},
+    {'name': 'Oral Thrush (Candidiasis)', 'emoji': '🍄', 'description': 'Fungal infection in mouth'},
+    {'name': 'Mouth Ulcers (Canker Sores)', 'emoji': '🔵', 'description': 'Painful sores in mouth'},
+    {'name': 'Impacted Wisdom Tooth', 'emoji': '🦷', 'description': 'Wisdom tooth stuck in jaw'},
+    {'name': 'Dental Erosion', 'emoji': '🧪', 'description': 'Acid wearing away enamel'},
+    {'name': 'Temporomandibular Disorder (TMD)', 'emoji': '🦴', 'description': 'Jaw joint pain'},
+    {'name': 'Oral Cancer', 'emoji': '🏥', 'description': 'Cancer in mouth or throat'},
+    {'name': 'Discolored Teeth', 'emoji': '🟡', 'description': 'Stained or yellowed teeth'},
+    {'name': 'Missing Teeth (Edentulism)', 'emoji': '🕳️', 'description': 'One or more missing teeth'},
+    {'name': 'Malocclusion (Misaligned Teeth)', 'emoji': '↔️', 'description': 'Improper bite alignment'},
+    {'name': 'Other / Not Listed', 'emoji': '📝', 'description': 'Describe in notes below'},
+  ];
+
+  List<String> _selectedDiseases = [];
+
   Widget _buildSymptomsInput() {
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Symptoms (Optional)',
-              style: TextStyles.heading4,
+            Row(
+              children: [
+                const Icon(Icons.medical_information, color: Color(0xFF00897B)),
+                const SizedBox(width: 8),
+                Text('Dental Condition', style: TextStyles.heading4),
+              ],
             ),
-            const SizedBox(height: 15),
+            const SizedBox(height: 6),
+            const Text(
+              'Select your condition(s) — helps the doctor prepare',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+
+            // Disease chips
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _dentalDiseases.map((disease) {
+                final name = disease['name'] as String;
+                final emoji = disease['emoji'] as String;
+                final isSelected = _selectedDiseases.contains(name);
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      if (isSelected) {
+                        _selectedDiseases.remove(name);
+                      } else {
+                        _selectedDiseases.add(name);
+                      }
+                    });
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? const Color(0xFF00897B) : Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isSelected ? const Color(0xFF00897B) : Colors.grey.shade300,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(emoji, style: const TextStyle(fontSize: 14)),
+                        const SizedBox(width: 5),
+                        Text(
+                          name,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                            color: isSelected ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        if (isSelected) ...[
+                          const SizedBox(width: 4),
+                          const Icon(Icons.check, size: 14, color: Colors.white),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+
+            if (_selectedDiseases.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0F2F1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle, color: Color(0xFF00897B), size: 16),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '${_selectedDiseases.length} condition(s) selected',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF00695C),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 8),
+
+            Row(
+              children: [
+                const Icon(Icons.notes, color: Color(0xFF00897B), size: 18),
+                const SizedBox(width: 6),
+                Text('Additional Notes (Optional)', style: TextStyles.heading4),
+              ],
+            ),
+            const SizedBox(height: 10),
             TextField(
               controller: _symptomsController,
               maxLines: 3,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Describe your symptoms or concerns...',
+              decoration: InputDecoration(
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                hintText: 'Describe any additional symptoms or concerns...',
+                filled: true,
+                fillColor: Colors.grey.shade50,
               ),
             ),
           ],
@@ -1090,30 +1617,4 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     );
   }
 
-  Widget _buildBookButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _isBooking ? null : _bookAppointment,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.white,
-          padding: const EdgeInsets.symmetric(vertical: 15),
-        ),
-        child: _isBooking
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : const Text(
-                'Book Appointment',
-                style: TextStyle(fontSize: 16),
-              ),
-      ),
-    );
-  }
 }

@@ -8,11 +8,14 @@ import 'package:flutter_application_1/injection_container.dart';
 class CardPaymentScreen extends StatefulWidget {
   final Map<String, dynamic> bill;
   final VoidCallback? onPaymentSuccess;
+  final double? topUpAmount; // If set, this is a wallet top-up, not a bill payment
+
 
   const CardPaymentScreen({
     super.key,
     required this.bill,
     this.onPaymentSuccess,
+    this.topUpAmount,
   });
 
   @override
@@ -42,7 +45,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Card Payment'),
+        title: Text(widget.topUpAmount != null ? 'Wallet Top-Up' : 'Card Payment'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.white,
       ),
@@ -57,27 +60,37 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    Icon(Icons.receipt, color: AppColors.primary, size: 40),
+                    Icon(
+                      widget.topUpAmount != null ? Icons.account_balance_wallet : Icons.receipt,
+                      color: AppColors.primary,
+                      size: 40,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            widget.bill['treatment'],
+                            widget.topUpAmount != null
+                                ? 'Wallet Top-Up'
+                                : widget.bill['treatment']?.toString() ?? 'Treatment',
                             style: TextStyles.bodyMedium.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           Text(
-                            widget.bill['id'],
+                            widget.topUpAmount != null
+                                ? 'Add funds to your wallet'
+                                : widget.bill['id']?.toString() ?? '',
                             style: TextStyles.caption,
                           ),
                         ],
                       ),
                     ),
                     Text(
-                      widget.bill['amount'],
+                      widget.topUpAmount != null
+                          ? 'LKR ${widget.topUpAmount!.toStringAsFixed(0)}'
+                          : widget.bill['amount']?.toString() ?? 'LKR 0',
                       style: TextStyles.heading4.copyWith(
                         color: AppColors.primary,
                       ),
@@ -381,7 +394,9 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                               ),
                             )
                           : Text(
-                              'Pay ${widget.bill['amount']}',
+                              widget.topUpAmount != null
+                                  ? 'LKR ${widget.topUpAmount!.toStringAsFixed(0)}'
+                                  : 'Pay ${widget.bill['amount']?.toString() ?? ''}',
                               style: TextStyles.bodyLarge.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -587,59 +602,55 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
       });
       
       try {
-        // Extract bill ID from widget.bill
-        final billId = widget.bill['_id']?.toString() ?? '';
-        if (billId.isEmpty) {
-          throw Exception('Bill ID is missing');
-        }
-        
-        // Extract last 4 digits of card
         final cardNumber = _cardNumberController.text.replaceAll(' ', '');
         final last4Digits = cardNumber.length >= 4 
             ? cardNumber.substring(cardNumber.length - 4) 
             : cardNumber;
         
-        // Prepare card details
         final cardDetails = {
           'cardType': _cardType,
           'last4Digits': last4Digits,
           'cardHolder': _cardHolderController.text.trim(),
         };
 
-        // Show processing message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Processing payment...'),
-            duration: Duration(seconds: 1),
-          ),
-        );
-      }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Processing payment...'),
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
+
+        Map<String, dynamic> result;
+
+        if (widget.topUpAmount != null) {
+          // Wallet top-up
+          result = await _dentalDataSource.topUpWallet(
+            widget.topUpAmount!,
+            'card',
+            cardDetails: cardDetails,
+          );
+        } else {
+          // Bill payment
+          final billId = widget.bill['_id']?.toString() ?? '';
+          if (billId.isEmpty) throw Exception('Bill ID is missing');
+          result = await _dentalDataSource.processPayment(billId, 'card', cardDetails);
+        }
+
         
-        // Process payment via backend
-        final result = await _dentalDataSource.processPayment(
-          billId,
-          'card',
-          cardDetails,
-        );
-        
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-        
+        if (mounted) {
+          setState(() => _isProcessing = false);
           if (result['success'] == true) {
             _showPaymentSuccess(result);
-        } else {
+          } else {
             _showPaymentFailure(result['message'] ?? 'Payment failed');
+          }
         }
-      }
       } catch (e) {
         debugPrint('Payment error: $e');
         if (mounted) {
-          setState(() {
-            _isProcessing = false;
-          });
+          setState(() => _isProcessing = false);
           _showPaymentFailure(e.toString().replaceAll('Exception: ', ''));
         }
       }
@@ -664,14 +675,18 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              widget.bill['amount'],
+              widget.topUpAmount != null
+                  ? 'LKR ${widget.topUpAmount!.toStringAsFixed(0)}'
+                  : widget.bill['amount']?.toString() ?? 'LKR 0',
               style: TextStyles.heading3.copyWith(
                 color: AppColors.primary,
               ),
             ),
             const SizedBox(height: 10),
             Text(
-              'Payment completed successfully!',
+              widget.topUpAmount != null
+                  ? 'Wallet top-up successful!'
+                  : 'Payment completed successfully!',
               style: TextStyles.bodyMedium,
               textAlign: TextAlign.center,
             ),
@@ -728,7 +743,9 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              widget.bill['amount'],
+              widget.topUpAmount != null
+                  ? 'LKR ${widget.topUpAmount!.toStringAsFixed(0)}'
+                  : widget.bill['amount']?.toString() ?? 'LKR 0',
               style: TextStyles.heading3.copyWith(
                 color: Colors.red,
               ),

@@ -199,7 +199,16 @@ class QuickActionsGrid extends StatelessWidget {
   }
 
   Future<void> _handleMyReports(BuildContext context) async {
-    await Helpers.navigateIfAuthenticated(context, '/my-reports');
+    await Helpers.navigateIfAuthenticated(context, RouteNames.myReports);
+  }
+
+  Future<void> _handleWallet(BuildContext context) async {
+    await Helpers.navigateIfAuthenticated(context, RouteNames.wallet);
+  }
+
+
+  Future<void> _handleScanQA(BuildContext context) async {
+    await Helpers.navigateIfAuthenticated(context, '/scan-qa');
   }
 
   Future<void> _handleMessages(BuildContext context) async {
@@ -249,18 +258,19 @@ class QuickActionsGrid extends StatelessWidget {
         'subtitle': 'Payment history',
       },
       {
-        'icon': Icons.description,
-        'title': 'My Reports',
-        'color': Colors.indigo,
-        'subtitle': 'Scan reports',
-      },
-      {
         'icon': Icons.chat_bubble_outline,
         'title': 'Messages',
         'color': Colors.teal,
         'subtitle': 'Chat with doctor',
       },
+      {
+        'icon': Icons.account_balance_wallet,
+        'title': 'Wallet',
+        'color': Colors.pink,
+        'subtitle': 'Manage funds',
+      },
     ];
+
 
     return Padding(
       padding: const EdgeInsets.all(20),
@@ -304,13 +314,14 @@ class QuickActionsGrid extends StatelessWidget {
                   handler = _handleMyBills;
                   break;
                 case 4:
-                  handler = _handleMyReports;
+                  handler = _handleMessages;
                   break;
                 case 5:
-                  handler = _handleMessages;
+                  handler = _handleWallet;
                   break;
                 default:
                   handler = _handleAITeethScan;
+
               }
               
               return _InteractiveActionCard(

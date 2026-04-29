@@ -55,11 +55,16 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _unreadNotificationCount++);
     final title = notif['title']?.toString() ?? 'New notification';
     final message = notif['message']?.toString() ?? '';
+    final type = notif['type']?.toString() ?? '';
+
+    // Determine where to navigate on tap
+    final targetRoute = type == 'scan' ? '/scan-qa' : '/messages';
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            const Text('💬 ', style: TextStyle(fontSize: 18)),
+            Text(type == 'scan' ? '🦷 ' : '💬 ', style: const TextStyle(fontSize: 18)),
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -75,11 +80,11 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         backgroundColor: AppColors.primary,
-        duration: const Duration(seconds: 4),
+        duration: const Duration(seconds: 5),
         action: SnackBarAction(
           label: 'View',
           textColor: Colors.white,
-          onPressed: () => Navigator.pushNamed(context, '/messages'),
+          onPressed: () => Navigator.pushNamed(context, targetRoute),
         ),
       ),
     );
