@@ -3,8 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_application_1/shared/widgets/custom_button.dart';
 
 void main() {
-  group('CustomButton', () {
-    testWidgets('renders button text', (tester) async {
+  group('CustomButton Widget', () {
+
+    testWidgets('renders button text correctly', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -53,5 +54,35 @@ void main() {
       );
       expect(find.byIcon(Icons.login), findsOneWidget);
     });
+
+    testWidgets('button is tappable when onPressed is set', (tester) async {
+      bool tapped = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CustomButton(
+              text: 'Tap Me',
+              onPressed: () { tapped = true; },
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byType(ElevatedButton));
+      expect(tapped, isTrue);
+    });
+
+    testWidgets('renders different text values', (tester) async {
+      for (final label in ['Register', 'Submit', 'Save', 'Book Appointment']) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: CustomButton(text: label, onPressed: () {}),
+            ),
+          ),
+        );
+        expect(find.text(label), findsOneWidget);
+      }
+    });
+
   });
 }
