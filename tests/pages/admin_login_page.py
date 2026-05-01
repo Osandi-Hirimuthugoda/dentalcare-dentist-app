@@ -8,8 +8,8 @@ class AdminLoginPage(BasePage):
     LOGIN_BUTTON   = (By.CSS_SELECTOR, "button[type='submit']")
     ERROR_MSG      = (By.CSS_SELECTOR, ".error-message")
 
-    def open(self):
-        self.go_to("/admin-login")
+    def open(self, path=None):
+        super().open(path if path is not None else "/admin-login")
         return self
 
     def login(self, email, password):

@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DentalCare+ Test Report</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh}
+a{color:#0891b2}
+
+/* Sidebar */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:220px;background:#ffffff;border-right:1px solid #e2e8f0;padding:24px 0;display:flex;flex-direction:column;gap:4px;z-index:10}
+.sidebar-logo{padding:0 20px 20px;font-size:1.1rem;font-weight:800;color:#0f172a;display:flex;align-items:center;gap:8px;border-bottom:1px solid #f1f5f9;margin-bottom:8px}
+.sidebar-logo span{color:#0d9488}
+.nav-item{padding:10px 20px;font-size:0.85rem;color:#64748b;cursor:pointer;border-radius:0 8px 8px 0;margin-right:12px;display:flex;align-items:center;gap:8px;transition:all .15s}
+.nav-item.active,.nav-item:hover{background:#f0fdfa;color:#0d9488;font-weight:600}
+.nav-item .dot{width:8px;height:8px;border-radius:50%;background:#0d9488}
+.nav-item .dot.fail{background:#ef4444}
+
+/* Main */
+.main{margin-left:220px;padding:32px;min-height:100vh}
+.page-title{font-size:1.5rem;font-weight:700;color:#0f172a;margin-bottom:4px}
+.page-sub{font-size:0.85rem;color:#94a3b8;margin-bottom:28px}
+
+/* Stat cards */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+.stat-card{background:#ffffff;border-radius:14px;padding:20px 22px;border:1px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.stat-card .s-label{font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8;margin-bottom:8px}
+.stat-card .s-value{font-size:2.2rem;font-weight:800;line-height:1}
+.stat-card .s-sub{font-size:0.78rem;color:#94a3b8;margin-top:4px}
+.stat-card.pass .s-value{color:#16a34a}
+.stat-card.fail .s-value{color:#dc2626}
+.stat-card.total .s-value{color:#0d9488}
+.stat-card.time .s-value{color:#7c3aed;font-size:1.6rem}
+
+/* Charts row */
+.charts-row{display:grid;grid-template-columns:280px 1fr;gap:16px;margin-bottom:28px}
+.chart-card{background:#ffffff;border-radius:14px;padding:22px;border:1px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.chart-card h3{font-size:0.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8;margin-bottom:16px}
+.pie-wrap{display:flex;flex-direction:column;align-items:center;gap:14px}
+.pie-legend{display:flex;gap:20px;font-size:0.82rem;color:#64748b}
+.pie-legend span{display:flex;align-items:center;gap:6px}
+.pie-legend .dot{width:10px;height:10px;border-radius:50%}
+
+/* Module bars */
+.mod-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.mod-name{width:160px;font-size:0.83rem;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mod-bar-wrap{flex:1;background:#f1f5f9;border-radius:6px;height:10px;overflow:hidden}
+.mod-bar{height:100%;border-radius:6px;transition:width .4s}
+.mod-bar.bar-pass{background:linear-gradient(90deg,#0d9488,#16a34a)}
+.mod-bar.bar-fail{background:linear-gradient(90deg,#dc2626,#f97316)}
+.mod-count{width:50px;text-align:right;font-size:0.78rem}
+.pass-text{color:#16a34a}
+.fail-text{color:#dc2626}
+
+/* Results table */
+.results-card{background:#ffffff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.results-card h3{font-size:0.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8;padding:18px 22px;border-bottom:1px solid #f1f5f9}
+table{width:100%;border-collapse:collapse}
+thead th{background:#f8fafc;padding:11px 16px;font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;text-align:left;border-bottom:1px solid #e2e8f0}
+.test-row td{padding:11px 16px;border-bottom:1px solid #f8fafc;cursor:pointer;transition:background .1s;color:#374151}
+.test-row:hover td{background:#f0fdfa}
+.test-row.passed td{border-left:3px solid #16a34a}
+.test-row.failed td,.test-row.error td{border-left:3px solid #dc2626}
+.test-name{display:flex;flex-direction:column;gap:2px}
+.cls{font-size:0.72rem;color:#94a3b8}
+.fn{font-size:0.85rem;color:#1e293b;font-weight:500}
+.dur{font-size:0.8rem;color:#94a3b8;white-space:nowrap}
+
+/* Badges */
+.badge{padding:3px 10px;border-radius:20px;font-size:0.7rem;font-weight:700;letter-spacing:.5px}
+.badge-passed{background:#dcfce7;color:#16a34a}
+.badge-failed,.badge-error{background:#fee2e2;color:#dc2626}
+.badge-skipped{background:#dbeafe;color:#2563eb}
+
+/* Log */
+.log-row{display:none}
+.log-row.visible{display:table-row}
+.log-block{background:#f8fafc;padding:14px 18px;font-family:'Cascadia Code','Fira Code',monospace;font-size:0.78rem;line-height:1.7;border-top:1px solid #e2e8f0;color:#334155}
+.log-block.log-empty{color:#94a3b8;font-style:italic}
+.log-line{margin-bottom:2px}
+.log-level{font-weight:700;margin-right:8px}
+.log-line.log-info .log-level{color:#0d9488}
+.log-line.log-warning .log-level{color:#d97706}
+.log-line.log-error .log-level{color:#dc2626}
+
+/* Footer */
+.footer{margin-top:40px;padding-top:20px;border-top:1px solid #e2e8f0;font-size:0.78rem;color:#cbd5e1;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-logo">🦷 <span>DentalCare+</span></div>
+  <div class="nav-item active"><span class="dot"></span> Test Results</div>
+  <div class="nav-item"><span class="dot "></span> Web: 72/72</div>
+  <div class="nav-item"><span class="dot "></span> Mobile: 96/96</div>
+  <div class="nav-item"><span class="dot" style="background:#a78bfa"></span> 12 Modules</div>
+</div>
+
+<div class="main">
+  <div class="page-title">Automation Test Report</div>
+  <div class="page-sub">Generated 27 Apr 2026, 06:50 &nbsp;·&nbsp; Web (Selenium) + Mobile (Flutter) &nbsp;·&nbsp; Docker Environment</div>
+
+  <!-- Grand Total Stats -->
+  <div class="stats">
+    <div class="stat-card total">
+      <div class="s-label">Total Tests</div>
+      <div class="s-value">243</div>
+      <div class="s-sub">web + mobile</div>
+    </div>
+    <div class="stat-card pass">
+      <div class="s-label">Passed</div>
+      <div class="s-value">243</div>
+      <div class="s-sub">100% pass rate</div>
+    </div>
+    <div class="stat-card fail">
+      <div class="s-label">Failed</div>
+      <div class="s-value">0</div>
+      <div class="s-sub">0% fail rate</div>
+    </div>
+    <div class="stat-card time">
+      <div class="s-label">Duration</div>
+      <div class="s-value">302.48s</div>
+      <div class="s-sub">web test time</div>
+    </div>
+  </div>
+
+  <!-- Web vs Mobile breakdown -->
+  <div class="charts-row" style="grid-template-columns:1fr 1fr 1fr 1fr;margin-bottom:16px">
+    <div class="chart-card" style="display:flex;align-items:center;gap:16px;padding:14px 18px">
+      <div style="font-size:1.8rem">🌐</div>
+      <div>
+        <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8;margin-bottom:3px">Web UI (Selenium)</div>
+        <div style="font-size:1.5rem;font-weight:800;color:#0d9488">72<span style="font-size:0.9rem;color:#94a3b8">/72</span></div>
+        <div style="font-size:0.72rem;color:#94a3b8">E2E automation</div>
+      </div>
+    </div>
+    <div class="chart-card" style="display:flex;align-items:center;gap:16px;padding:14px 18px">
+      <div style="font-size:1.8rem">⚛️</div>
+      <div>
+        <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8;margin-bottom:3px">Frontend Unit (Jest)</div>
+        <div style="font-size:1.5rem;font-weight:800;color:#0891b2">58<span style="font-size:0.9rem;color:#94a3b8">/58</span></div>
+        <div style="font-size:0.72rem;color:#94a3b8">helpers + constants</div>
+      </div>
+    </div>
+    <div class="chart-card" style="display:flex;align-items:center;gap:16px;padding:14px 18px">
+      <div style="font-size:1.8rem">🔧</div>
+      <div>
+        <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8;margin-bottom:3px">Backend Unit (Jest)</div>
+        <div style="font-size:1.5rem;font-weight:800;color:#d97706">17<span style="font-size:0.9rem;color:#94a3b8">/17</span></div>
+        <div style="font-size:0.72rem;color:#94a3b8">auth + validation</div>
+      </div>
+    </div>
+    <div class="chart-card" style="display:flex;align-items:center;gap:16px;padding:14px 18px">
+      <div style="font-size:1.8rem">📱</div>
+      <div>
+        <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8;margin-bottom:3px">Mobile (Flutter)</div>
+        <div style="font-size:1.5rem;font-weight:800;color:#7c3aed">96<span style="font-size:0.9rem;color:#94a3b8">/96</span></div>
+        <div style="font-size:0.72rem;color:#94a3b8">unit + widget tests</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>Pass Rate</h3>
+      <div class="pie-wrap">
+        <canvas id="pie" width="160" height="160"></canvas>
+        <div class="pie-legend">
+          <span><span class="dot" style="background:#4ade80"></span>Pass (243)</span>
+          <span><span class="dot" style="background:#f87171"></span>Fail (0)</span>
+        </div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Coverage by Module</h3>
+      
+        <div class="mod-row">
+          <span class="mod-name">Admin Actions.Py</span>
+          <div class="mod-bar-wrap"><div class="mod-bar bar-pass" style="width:100%"></div></div>
+          <span class="mod-count pass-text">9/9</span>
+        </div>
+        <div class="mod-row">
+          <span class="mod-name">Admin Dashboard.Py</span>
+          <div class="mod-bar-wrap"><div class="mod-bar bar-pass" style="width:89%"></div></div>
+          <span class="mod-count pass-text">8/8</span>
+        </div>
+        <div class="mod-row">
+          <span class="mod-name">Admin Login.Py</span>
+          <div class="mod-bar-wrap"><div class="mod-bar bar-pass" style="width:44%"></div></div>
+          <span class="mod-count pass-text">4/4</span>
+        </div>
+        <div class="mod-row">
+          <span class="mod-name">Doctor Dashboard.Py</span>
+          <div class="mod-bar-wrap"><div class="mod-bar bar-pass" style="width:67%"></div></div>
+          <span class="mod-count pass-text">6/6</span>
+        </div>
+        <div class="mod-row">
+          <span class="mod-name">Doctor Login.Py</span>
+          <div class="mod-bar-wrap"><div class="mod-bar bar-pass" style="width:78%"></div></div>
+          <span class="mod-count pass-text">7/7</span>
+        </div>
+        <div class="mod-row">
+          <span class="mod-name">Doctor Messages.Py</span>
+          <div class="mod-bar-wrap"><div class="mod-bar bar-pass" style="width:56%"></div></div>
+          <span class="mod-count pass-text">5/5</span>
+        </div>
+        <div class="mod-row">
+          <span class="mod-name">Doctor Pages.Py</span>
+          <div class="mod-bar-wrap"><div class="mod-bar bar-pass" style="width:100%"></div></div>
+          <span class="mod-count pass-text">9/9</span>
+        </div>
+        <div class="mod-row">
+          <span class="mod-name">Doctor Profile Actions.Py</span>
+          <div class="mod-bar-wrap"><div class="mod-bar bar-pass" style="width:44%"></div></div>
+          <span class="mod-count pass-text">4/4</span>
+        </div>
+        <div class="mod-row">
+          <span class="mod-name">Doctor Register.Py</span>
+          <div class="mod-bar-wrap"><div class="mod-bar bar-pass" style="width:56%"></div></div>
+          <span class="mod-count pass-text">5/5</span>
+        </div>
+        <div class="mod-row">
+          <span class="mod-name">E2E Management Flow.Py</span>
+          <div class="mod-bar-wrap"><div class="mod-bar bar-pass" style="width:11%"></div></div>
+          <span class="mod-count pass-text">1/1</span>
+        </div>
+        <div class="mod-row">
+          <span class="mod-name">Patient Pages.Py</span>
+          <div class="mod-bar-wrap"><div class="mod-bar bar-pass" style="width:78%"></div></div>
+          <span class="mod-count pass-text">7/7</span>
+        </div>
+        <div class="mod-row">
+          <span class="mod-name">Public Pages.Py</span>
+          <div class="mod-bar-wrap"><div class="mod-bar bar-pass" style="width:78%"></div></div>
+          <span class="mod-count pass-text">7/7</span>
+        </div>
+    </div>
+  </div>
+
+  <div class="results-card">
+    <h3>Test Results &nbsp;<span style="color:#475569;font-weight:400;text-transform:none;letter-spacing:0">— click a row to expand logs</span></h3>
+    <table>
+      <thead><tr><th style="width:90px">Status</th><th>Test</th><th style="width:80px">Duration</th></tr></thead>
+      <tbody>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminActions</span><span class="fn">test_doctors_list_shows_data</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminActions</span><span class="fn">test_doctors_page_has_search</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminActions</span><span class="fn">test_patients_list_shows_data</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminActions</span><span class="fn">test_register_doctor_form_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminActions</span><span class="fn">test_register_doctor_empty_validation</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminActions</span><span class="fn">test_appointments_has_status_filters</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminActions</span><span class="fn">test_hospitals_page_shows_list</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminActions</span><span class="fn">test_activity_page_shows_logs</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminActions</span><span class="fn">test_admin_logout</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminDashboard</span><span class="fn">test_admin_dashboard_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminDashboard</span><span class="fn">test_admin_sidebar_visible</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminDashboard</span><span class="fn">test_navigate_to_doctors</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminDashboard</span><span class="fn">test_navigate_to_patients</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminDashboard</span><span class="fn">test_navigate_to_appointments</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminDashboard</span><span class="fn">test_navigate_to_hospitals</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminDashboard</span><span class="fn">test_navigate_to_activity</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminDashboard</span><span class="fn">test_navigate_to_register_doctor</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminLogin</span><span class="fn">test_admin_login_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminLogin</span><span class="fn">test_wrong_credentials_show_error</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminLogin</span><span class="fn">test_successful_admin_login</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestAdminLogin</span><span class="fn">test_admin_role_saved_in_localstorage</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorDashboard</span><span class="fn">test_dashboard_shows_stats</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorDashboard</span><span class="fn">test_sidebar_is_visible</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorDashboard</span><span class="fn">test_navigate_to_appointments</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorDashboard</span><span class="fn">test_navigate_to_messages</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorDashboard</span><span class="fn">test_navigate_to_profile</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorDashboard</span><span class="fn">test_notification_bell_visible</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorLogin</span><span class="fn">test_login_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorLogin</span><span class="fn">test_empty_form_shows_validation</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorLogin</span><span class="fn">test_wrong_password_shows_error</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorLogin</span><span class="fn">test_invalid_email_format</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorLogin</span><span class="fn">test_successful_login_redirects_to_dashboard</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorLogin</span><span class="fn">test_token_saved_in_localstorage_after_login</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorLogin</span><span class="fn">test_doctor_data_saved_in_localstorage</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorMessages</span><span class="fn">test_messages_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorMessages</span><span class="fn">test_search_bar_present</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorMessages</span><span class="fn">test_tabs_visible</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorMessages</span><span class="fn">test_send_button_present</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorMessages</span><span class="fn">test_announcement_button_present</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorPages</span><span class="fn">test_profile_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorPages</span><span class="fn">test_settings_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorPages</span><span class="fn">test_availability_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorPages</span><span class="fn">test_services_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorPages</span><span class="fn">test_reviews_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorPages</span><span class="fn">test_reports_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorPages</span><span class="fn">test_scan_qa_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorPages</span><span class="fn">test_appointments_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorPages</span><span class="fn">test_patients_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorProfileActions</span><span class="fn">test_profile_navigation_and_content</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorProfileActions</span><span class="fn">test_availability_management_access</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorProfileActions</span><span class="fn">test_settings_security_section</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorProfileActions</span><span class="fn">test_doctor_full_logout_flow</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorRegister</span><span class="fn">test_register_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorRegister</span><span class="fn">test_register_form_has_required_fields</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorRegister</span><span class="fn">test_register_empty_form_validation</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorRegister</span><span class="fn">test_register_has_login_link</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestDoctorRegister</span><span class="fn">test_register_password_mismatch_validation</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestE2EManagementFlow</span><span class="fn">test_full_doctor_onboarding_lifecycle</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestPatientPages</span><span class="fn">test_health_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestPatientPages</span><span class="fn">test_health_page_has_emergency_button</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestPatientPages</span><span class="fn">test_my_bills_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestPatientPages</span><span class="fn">test_nearby_hospitals_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestPatientPages</span><span class="fn">test_nearby_doctors_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestPatientPages</span><span class="fn">test_doctor_login_page_has_register_link</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestPatientPages</span><span class="fn">test_admin_login_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestPublicPages</span><span class="fn">test_home_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestPublicPages</span><span class="fn">test_nearby_hospitals_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestPublicPages</span><span class="fn">test_nearby_doctors_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestPublicPages</span><span class="fn">test_doctor_register_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestPublicPages</span><span class="fn">test_404_page_loads</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestPublicPages</span><span class="fn">test_unauthenticated_redirect_doctor</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr>
+        <tr class="test-row passed" onclick="toggleLog(this)">
+          <td><span class="badge badge-passed">PASSED</span></td>
+          <td class="test-name"><span class="cls">TestPublicPages</span><span class="fn">test_unauthenticated_redirect_admin</span></td>
+          <td class="dur">0s</td>
+        </tr>
+        <tr class="log-row hidden"><td colspan="3"><div class="log-block log-empty">No log output captured.</div></td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="footer">DentalCare+ &nbsp;·&nbsp; Automated UI Test Suite &nbsp;·&nbsp; pytest 1777272611.5410087</div>
+</div>
+
+<script>
+function toggleLog(row) {
+  var next = row.nextElementSibling;
+  if (next && next.classList.contains('log-row')) {
+    next.classList.toggle('visible');
+    next.style.display = next.classList.contains('visible') ? 'table-row' : 'none';
+  }
+}
+
+// Pie chart
+(function() {
+  var canvas = document.getElementById('pie');
+  var ctx = canvas.getContext('2d');
+  var cx=80, cy=80, r=68;
+  var passed=243, total=243;
+  var passAngle = total > 0 ? (passed/total)*2*Math.PI : 0;
+
+  // Fail slice
+  ctx.beginPath(); ctx.moveTo(cx,cy);
+  ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+2*Math.PI);
+  ctx.closePath(); ctx.fillStyle='#f87171'; ctx.fill();
+
+  // Pass slice
+  ctx.beginPath(); ctx.moveTo(cx,cy);
+  ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+passAngle);
+  ctx.closePath(); ctx.fillStyle='#4ade80'; ctx.fill();
+
+  // Center hole
+  ctx.beginPath(); ctx.arc(cx,cy,42,0,2*Math.PI);
+  ctx.fillStyle='#ffffff'; ctx.fill();
+
+  // Text
+  ctx.fillStyle='#0f172a'; ctx.font='bold 22px Segoe UI';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('100%', cx, cy-8);
+  ctx.font='12px Segoe UI'; ctx.fillStyle='#64748b';
+  ctx.fillText('pass rate', cx, cy+14);
+})();
+</script>
+</body>
+</html>

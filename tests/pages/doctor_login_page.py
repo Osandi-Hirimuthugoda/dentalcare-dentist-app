@@ -10,7 +10,7 @@ class DoctorLoginPage(BasePage):
     ERROR_MSG      = (By.CSS_SELECTOR, ".error-message")
 
     def open(self):
-        self.go_to("/doctor-login")
+        super().open("/doctor-login")
         return self
 
     def login(self, email, password):
