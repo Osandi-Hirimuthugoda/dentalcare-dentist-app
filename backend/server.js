@@ -1,4 +1,6 @@
 import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import cors from "cors";
 import { createServer } from "http";
@@ -23,11 +25,14 @@ import scanQARoutes from "./src/routes/scanQARoutes.js";
 import prescriptionRoutes from "./src/routes/prescriptionRoutes.js";
 import inventoryRoutes from "./src/routes/inventoryRoutes.js";
 import reportRoutes from "./src/routes/reportRoutes.js";
+import swaggerUi from "swagger-ui-express";
+import swaggerSpec from "./src/config/swagger.js";
+
 
 
 
 // Load environment variables
-dotenv.config();
+dotenv.config({ quiet: true });
 
 // Connect to database (skip in test environment as tests handle their own db connection)
 if (process.env.NODE_ENV !== "test") {
@@ -70,18 +75,27 @@ io.on('connection', (socket) => {
 // Make io available globally for notifications
 global.io = io;
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Middleware
 app.use(cors()); 
 app.use(express.json()); 
+app.use("/uploads", express.static(path.join(__dirname, "uploads"))); 
 
 // Routes
 app.get("/", (req, res) => {
   res.json({
     message: "DentalCare+ Mobile App Backend API",
     version: "1.0.0",
-    status: "running"
+    status: "running",
+    docs: "/api-docs"
   });
 });
+
+// Swagger Documentation Route
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 
 // Authentication routes
 app.use("/api/auth", authRoutes);
@@ -185,7 +199,9 @@ function startServer(port) {
     console.log(`📱 Android Emulator URL: http://10.0.2.2:${port}/api`);
     console.log(`🔔 Socket.io enabled for real-time notifications`);
     console.log(`💚 Health check: http://localhost:${port}/api/health`);
+    console.log(`📚 Swagger Docs: http://localhost:${port}/api-docs`);
     console.log(`✅ Server is accessible from Android emulator`);
+
   });
 
   httpServer.on("error", (err) => {
@@ -203,4 +219,4 @@ if (process.env.NODE_ENV !== "test") {
   startServer(PORT);
 }
 
-export { app, io, httpServer };
+export { app, io, httpServer, startServer };

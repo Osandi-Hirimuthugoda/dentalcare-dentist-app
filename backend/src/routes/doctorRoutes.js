@@ -14,25 +14,64 @@ import {
 
 const router = express.Router();
 
-router.post("/register", registerDoctor);
+/**
+ * @swagger
+ * tags:
+ *   name: Doctors
+ *   description: Doctor management and discovery
+ */
 
-// You added these later:
-router.post("/login", loginDoctor);
+/**
+ * @swagger
+ * /api/doctors/all:
+ *   get:
+ *     summary: Get all doctors
+ *     tags: [Doctors]
+ *     responses:
+ *       200:
+ *         description: List of all doctors
+ */
+router.get("/all", getAllDoctors);
+
+/**
+ * @swagger
+ * /api/doctors/available-now:
+ *   get:
+ *     summary: Get doctors available right now
+ *     tags: [Doctors]
+ *     responses:
+ *       200:
+ *         description: List of available doctors
+ */
+router.get("/available-now", getAvailableDoctorsNow);
+
+/**
+ * @swagger
+ * /api/doctors/profile/{id}:
+ *   get:
+ *     summary: Get doctor profile by ID
+ *     tags: [Doctors]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The doctor ID
+ *     responses:
+ *       200:
+ *         description: Doctor profile data
+ *       404:
+ *         description: Doctor not found
+ */
 router.get("/profile/:id", getDoctorProfile);
-router.get("/all", getAllDoctors); // Get all doctors (for admin)
-router.get("/available-now", getAvailableDoctorsNow); // Get available doctors at current time
-router.get("/nearby", getNearbyDoctors); // Location-based search
 
-// Update doctor profile
+router.post("/register", registerDoctor);
+router.post("/login", loginDoctor);
+router.get("/nearby", getNearbyDoctors); 
 router.put("/:doctorId/profile", updateDoctorProfile);
-
-// Update doctor services
 router.put("/:doctorId/services", updateDoctorServices);
-
-// Change password
 router.put("/:doctorId/change-password", changePassword);
-
-// Reset password (for fixing password issues)
 router.post("/reset-password", resetPassword);
 
 export default router;

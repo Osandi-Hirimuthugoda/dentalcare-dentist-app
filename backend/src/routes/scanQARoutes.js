@@ -2,6 +2,10 @@ import express from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import {
   createScanQA,
   getPendingScansForDentist,
@@ -24,8 +28,12 @@ const reportUpload = multer({
   dest: "uploads/scan-reports/",
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === "application/pdf") cb(null, true);
-    else cb(new Error("Only PDF files allowed"), false);
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (file.mimetype === "application/pdf" || ext === ".pdf") {
+      cb(null, true);
+    } else {
+      cb(new Error("Only PDF files allowed"), false);
+    }
   },
 });
 
@@ -55,7 +63,9 @@ router.get("/report-file/:scanId", (req, res) => {
     import("../models/ScanQA.js").then(({ default: ScanQA }) => {
       ScanQA.findOne({ scanId }).then((scan) => {
         if (!scan) return res.status(404).json({ message: "Report not found" });
-        const filePath = path.resolve(scan.imageUrl);
+        const filePath = path.isAbsolute(scan.imageUrl)
+          ? scan.imageUrl
+          : path.join(__dirname, "../../", scan.imageUrl);
         if (!fs.existsSync(filePath)) return res.status(404).json({ message: "File not found" });
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Disposition", `inline; filename="report_${scanId}.pdf"`);
