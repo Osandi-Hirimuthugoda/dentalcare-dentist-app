@@ -103,11 +103,14 @@ const checkFlaskService = async () => {
           try {
             console.log('🔍 Flask API health check response:', data);
             const json = JSON.parse(data);
-            const isAvailable = json.model_exists === true;
-            if (isAvailable) {
+            // Service is usable if model is loaded OR if model file exists (will retry load)
+            const isAvailable = json.model_loaded === true || json.model_exists === true;
+            if (json.model_loaded) {
               console.log(' Flask API service is available and model is loaded');
+            } else if (json.model_exists) {
+              console.log('⚠️  Flask API: model file exists but not loaded yet — will attempt prediction');
             } else {
-              console.log('  Flask API service is available but model is not loaded');
+              console.log('❌ Flask API: model file missing');
             }
             resolve(isAvailable);
           } catch (error) {

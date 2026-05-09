@@ -509,6 +509,38 @@ export const getConversation = async (req, res) => {
       return res.status(400).json({ message: "Either patientId or otherDoctorId is required" });
     }
 
+    // Auto-mark messages sent to the current user in this conversation as read
+    try {
+      const currentUser = getUserFromToken(req);
+      if (currentUser && currentUser.id) {
+        const currentUserId = new mongoose.Types.ObjectId(currentUser.id);
+        
+        const markReadQuery = {
+          receiver: currentUserId,
+          read: false,
+          $or: []
+        };
+        
+        if (patientId) {
+          markReadQuery.$or.push(
+            { sender: doctorId, receiver: patientId },
+            { sender: patientId, receiver: doctorId }
+          );
+        } else if (otherDoctorId) {
+          markReadQuery.$or.push(
+            { sender: doctorId, receiver: otherDoctorId },
+            { sender: otherDoctorId, receiver: doctorId }
+          );
+        }
+        
+        if (markReadQuery.$or.length > 0) {
+          await Message.updateMany(markReadQuery, { read: true });
+        }
+      }
+    } catch (readErr) {
+      console.error("Error auto-marking messages as read:", readErr);
+    }
+
     const messages = await Message.find(query)
       .populate("sender", "name email fullName")
       .populate("receiver", "name email fullName")

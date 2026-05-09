@@ -15,17 +15,32 @@ export const getDoctorAvailability = async (req, res) => {
     
     let availability = await DoctorAvailability.findOne({ doctor: doctorId });
     
-    // If no availability set, return default
-    if (!availability) {
-      return res.status(200).json({
-        doctor: doctorId,
-        weeklySchedule: [],
-        unavailableDates: [],
-        specialDates: [],
-        appointmentDuration: 30,
-        slotInterval: 30,
-        availableSlots: [] // No slots if not configured
-      });
+    // If no availability set, automatically initialize and save a standard default schedule
+    if (!availability || !availability.weeklySchedule || availability.weeklySchedule.length === 0) {
+      const defaultWeeklySchedule = [
+        { dayOfWeek: 1, startTime: "09:00 AM", endTime: "05:00 PM", isAvailable: true }, // Monday
+        { dayOfWeek: 2, startTime: "09:00 AM", endTime: "05:00 PM", isAvailable: true }, // Tuesday
+        { dayOfWeek: 3, startTime: "09:00 AM", endTime: "05:00 PM", isAvailable: true }, // Wednesday
+        { dayOfWeek: 4, startTime: "09:00 AM", endTime: "05:00 PM", isAvailable: true }, // Thursday
+        { dayOfWeek: 5, startTime: "09:00 AM", endTime: "05:00 PM", isAvailable: true }, // Friday
+        { dayOfWeek: 6, startTime: "09:00 AM", endTime: "01:00 PM", isAvailable: true }  // Saturday
+      ];
+      
+      if (!availability) {
+        availability = new DoctorAvailability({
+          doctor: doctorId,
+          weeklySchedule: defaultWeeklySchedule,
+          unavailableDates: [],
+          specialDates: [],
+          appointmentDuration: 30,
+          slotInterval: 30
+        });
+      } else {
+        availability.weeklySchedule = defaultWeeklySchedule;
+      }
+      
+      await availability.save();
+      console.log(`✅ Automatically initialized/restored standard weekly schedule for doctor: ${doctorId}`);
     }
     
     // Generate available time slots for next 30 days
