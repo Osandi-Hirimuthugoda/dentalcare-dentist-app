@@ -1,34 +1,46 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { 
-  Package, Plus, Search, AlertTriangle, Edit3, Trash2, 
-  ChevronRight, Box, Filter, Download
+import {
+  Package, Plus, Search, AlertTriangle, Edit3, Trash2,
+  Box, Filter, Download, X, CheckCircle, AlertCircle,
 } from "lucide-react";
 import AdminSidebar from "../../components/layout/AdminSidebar";
-import styles from "../../styles/pages/DoctorDashboard.module.css";
-import { toast } from "react-toastify";
+import "../../styles/pages/AdminInventory.css";
 
 const API = "/api";
 
-export default function AdminInventory() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [newItem, setNewItem] = useState({
-    itemName: "", category: "Supplies", quantity: 0, unit: "Units", minThreshold: 5, supplier: "", location: ""
-  });
+const EMPTY_ITEM = {
+  itemName: "", category: "Supplies", quantity: 0,
+  unit: "Units", minThreshold: 5, supplier: "", location: "",
+};
 
-  useEffect(() => {
-    fetchInventory();
-  }, []);
+const getAdminToken = () => {
+  const admin = JSON.parse(localStorage.getItem("admin") || "{}");
+  return admin.token || localStorage.getItem("token") || "";
+};
+
+export default function AdminInventory() {
+  const [items, setItems]               = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [deleteId, setDeleteId]         = useState(null);
+  const [searchTerm, setSearchTerm]     = useState("");
+  const [newItem, setNewItem]           = useState(EMPTY_ITEM);
+  const [toast, setToast]               = useState({ type: "", text: "" });
+
+  useEffect(() => { fetchInventory(); }, []);
+
+  const showToast = (type, text) => {
+    setToast({ type, text });
+    setTimeout(() => setToast({ type: "", text: "" }), 3000);
+  };
 
   const fetchInventory = async () => {
     try {
       const res = await axios.get(`${API}/inventory/all`);
-      setItems(res.data);
-    } catch (error) {
-      console.error("Error fetching inventory:", error);
+      setItems(res.data || []);
+    } catch (err) {
+      console.error("Error fetching inventory:", err);
     } finally {
       setLoading(false);
     }
@@ -37,225 +49,271 @@ export default function AdminInventory() {
   const handleAddItem = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem("token") || "";
+      const token = getAdminToken();
       await axios.post(`${API}/inventory/add`, newItem, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
-      toast.success("Item added successfully");
+      showToast("success", "Item added successfully.");
       setShowAddModal(false);
+      setNewItem(EMPTY_ITEM);
       fetchInventory();
-      setNewItem({ itemName: "", category: "Supplies", quantity: 0, unit: "Units", minThreshold: 5, supplier: "", location: "" });
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Error adding item");
+    } catch (err) {
+      showToast("error", err.response?.data?.message || "Error adding item.");
     }
   };
 
   const handleUpdateStock = async (id, quantity, type) => {
     try {
-      const token = localStorage.getItem("token") || "";
+      const token = getAdminToken();
       await axios.put(`${API}/inventory/update/${id}`, { quantity, type }, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       fetchInventory();
-    } catch (error) {
-      toast.error("Error updating stock");
+    } catch {
+      showToast("error", "Error updating stock.");
     }
   };
 
-  const filteredItems = items.filter(item => 
-    item.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.category.toLowerCase().includes(searchTerm.toLowerCase())
+  const handleDelete = async () => {
+    try {
+      const token = getAdminToken();
+      await axios.delete(`${API}/inventory/${deleteId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      showToast("success", "Item deleted.");
+      setDeleteId(null);
+      fetchInventory();
+    } catch {
+      showToast("error", "Error deleting item.");
+      setDeleteId(null);
+    }
+  };
+
+  const filtered = items.filter(item =>
+    item.itemName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.category?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const lowStockCount = items.filter(i => i.quantity <= i.minThreshold).length;
+
+  if (loading) return (
+    <div className="ainv-wrapper">
+      <AdminSidebar />
+      <div className="ainv-content">
+        <div className="ainv-loading"><div className="ainv-spinner" /><p>Loading inventory...</p></div>
+      </div>
+    </div>
   );
 
   return (
-    <div className={styles.dashboardWrapper}>
+    <div className="ainv-wrapper">
       <AdminSidebar />
-      
-      <div className={styles.mainContentArea}>
-        <header className={styles.header}>
-          <div>
-            <h1 className={styles.mainTitle}>Inventory Management</h1>
-            <p className={styles.statsGridLabel}>Track clinic supplies and equipment</p>
-          </div>
-          <button 
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white rounded-xl text-sm font-bold hover:bg-teal-700 transition-all shadow-md active:scale-95"
-          >
-            <Plus size={18} /> Add New Item
-          </button>
-        </header>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-            <div className="p-3 bg-teal-50 rounded-xl text-teal-600"><Box size={24} /></div>
+      <div className="ainv-content">
+        {/* Header */}
+        <div className="ainv-header">
+          <div>
+            <h1><Package size={22} /> Inventory Management</h1>
+            <p>Track clinic supplies and equipment</p>
+          </div>
+          <button className="ainv-add-btn" onClick={() => setShowAddModal(true)}>
+            <Plus size={17} /> Add New Item
+          </button>
+        </div>
+
+        {/* Toast */}
+        {toast.text && (
+          <div className={`ainv-toast ${toast.type}`}>
+            {toast.type === "success" ? <CheckCircle size={15} /> : <AlertCircle size={15} />}
+            {toast.text}
+          </div>
+        )}
+
+        {/* Stats */}
+        <div className="ainv-stats">
+          <div className="ainv-stat-card">
+            <div className="ainv-stat-icon teal"><Box size={22} /></div>
             <div>
-              <p className="text-sm font-medium text-gray-500">Total Items</p>
-              <h3 className="text-xl font-bold text-gray-900">{items.length}</h3>
+              <div className="ainv-stat-label">Total Items</div>
+              <div className="ainv-stat-value">{items.length}</div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-            <div className="p-3 bg-red-50 rounded-xl text-red-600"><AlertTriangle size={24} /></div>
+          <div className="ainv-stat-card">
+            <div className="ainv-stat-icon red"><AlertTriangle size={22} /></div>
             <div>
-              <p className="text-sm font-medium text-gray-500">Low Stock Alert</p>
-              <h3 className="text-xl font-bold text-gray-900">{items.filter(i => i.quantity <= i.minThreshold).length}</h3>
+              <div className="ainv-stat-label">Low Stock Alerts</div>
+              <div className="ainv-stat-value">{lowStockCount}</div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-            <div className="p-3 bg-blue-50 rounded-xl text-blue-600"><Package size={24} /></div>
+          <div className="ainv-stat-card">
+            <div className="ainv-stat-icon blue"><Package size={22} /></div>
             <div>
-              <p className="text-sm font-medium text-gray-500">Recently Restocked</p>
-              <h3 className="text-xl font-bold text-gray-900">4</h3>
+              <div className="ainv-stat-label">Categories</div>
+              <div className="ainv-stat-value">{new Set(items.map(i => i.category)).size}</div>
             </div>
           </div>
         </div>
 
-        {/* Search and Filters */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search items by name or category..." 
-              className="w-full pl-12 pr-4 py-3 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all shadow-sm"
+        {/* Toolbar */}
+        <div className="ainv-toolbar">
+          <div className="ainv-search">
+            <Search size={16} />
+            <input
+              type="text"
+              placeholder="Search by name or category..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex gap-2">
-            <button className="p-3 bg-white border border-gray-100 rounded-xl text-gray-600 hover:bg-gray-50 shadow-sm"><Filter size={18} /></button>
-            <button className="p-3 bg-white border border-gray-100 rounded-xl text-gray-600 hover:bg-gray-50 shadow-sm"><Download size={18} /></button>
-          </div>
+          <button className="ainv-icon-btn" title="Filter"><Filter size={17} /></button>
+          <button className="ainv-icon-btn" title="Export"><Download size={17} /></button>
         </div>
 
-        {/* Inventory List */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <table className="w-full">
+        {/* Table */}
+        <div className="ainv-table-card">
+          <table className="ainv-table">
             <thead>
-              <tr className="bg-gray-50/50">
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Item Name</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Category</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Stock Level</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+              <tr>
+                <th>Item Name</th>
+                <th>Category</th>
+                <th>Stock Level</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filteredItems.map((item) => (
-                <tr key={item._id} className="hover:bg-gray-50/30 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="font-semibold text-gray-900">{item.itemName}</div>
-                    <div className="text-xs text-gray-400">{item.location || "No location set"}</div>
+            <tbody>
+              {filtered.map(item => (
+                <tr key={item._id}>
+                  <td>
+                    <div className="ainv-item-name">{item.itemName}</div>
+                    <div className="ainv-item-loc">{item.location || "No location set"}</div>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium">
-                      {item.category}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <span className={`text-sm font-bold ${item.quantity <= item.minThreshold ? "text-red-600" : "text-gray-900"}`}>
+                  <td><span className="ainv-cat-badge">{item.category}</span></td>
+                  <td>
+                    <div className="ainv-stock-row">
+                      <span className={`ainv-qty${item.quantity <= item.minThreshold ? " low" : ""}`}>
                         {item.quantity} {item.unit}
                       </span>
-                      <div className="flex gap-1">
-                        <button 
-                          onClick={() => handleUpdateStock(item._id, 1, 'subtract')}
-                          className="w-6 h-6 flex items-center justify-center bg-gray-100 text-gray-600 rounded hover:bg-red-50 hover:text-red-600 transition-colors"
-                        >-</button>
-                        <button 
-                          onClick={() => handleUpdateStock(item._id, 1, 'add')}
-                          className="w-6 h-6 flex items-center justify-center bg-gray-100 text-gray-600 rounded hover:bg-teal-50 hover:text-teal-600 transition-colors"
+                      <div className="ainv-qty-btns">
+                        <button
+                          className="ainv-qty-btn minus"
+                          onClick={() => handleUpdateStock(item._id, 1, "subtract")}
+                        >−</button>
+                        <button
+                          className="ainv-qty-btn plus"
+                          onClick={() => handleUpdateStock(item._id, 1, "add")}
                         >+</button>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td>
                     {item.quantity <= item.minThreshold ? (
-                      <span className="flex items-center gap-1 text-xs font-bold text-red-600">
-                        <AlertTriangle size={12} /> Low Stock
-                      </span>
+                      <span className="ainv-status-low"><AlertTriangle size={12} /> Low Stock</span>
                     ) : (
-                      <span className="text-xs font-bold text-teal-600">In Stock</span>
+                      <span className="ainv-status-ok">In Stock</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit3 size={16} /></button>
-                      <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
+                  <td className="ainv-actions-cell">
+                    <div className="ainv-row-actions">
+                      <button className="ainv-edit-btn" title="Edit"><Edit3 size={15} /></button>
+                      <button className="ainv-del-btn" title="Delete" onClick={() => setDeleteId(item._id)}>
+                        <Trash2 size={15} />
+                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {filteredItems.length === 0 && !loading && (
-            <div className="p-12 text-center text-gray-400">
-              <Box size={40} className="mx-auto mb-4 opacity-20" />
-              <p>No items found in inventory.</p>
+
+          {filtered.length === 0 && (
+            <div className="ainv-empty">
+              <Box size={40} />
+              <p>{searchTerm ? "No items match your search." : "No items in inventory yet."}</p>
             </div>
           )}
         </div>
+      </div>
 
-        {/* Add Modal */}
-        {showAddModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-              <div className="px-8 py-6 bg-teal-600 text-white flex justify-between items-center">
-                <h2 className="text-xl font-bold">Add New Item</h2>
-                <button onClick={() => setShowAddModal(false)} className="hover:rotate-90 transition-transform">
-                  <ChevronRight size={24} className="rotate-90" />
-                </button>
-              </div>
-              <form onSubmit={handleAddItem} className="p-8 space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Item Name</label>
-                  <input 
-                    required type="text" className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none"
-                    value={newItem.itemName} onChange={e => setNewItem({...newItem, itemName: e.target.value})}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Category</label>
-                    <select 
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none"
-                      value={newItem.category} onChange={e => setNewItem({...newItem, category: e.target.value})}
-                    >
-                      <option>Supplies</option><option>Equipment</option><option>Medicine</option><option>Other</option>
+      {/* Add Modal */}
+      {showAddModal && (
+        <div className="ainv-modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="ainv-modal" onClick={e => e.stopPropagation()}>
+            <div className="ainv-modal-header">
+              <h2>Add New Item</h2>
+              <button className="ainv-modal-close" onClick={() => setShowAddModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="ainv-modal-body">
+              <form onSubmit={handleAddItem}>
+                <div className="ainv-form-grid">
+                  <div className="ainv-form-field full">
+                    <label>Item Name</label>
+                    <input required type="text" value={newItem.itemName}
+                      onChange={e => setNewItem({ ...newItem, itemName: e.target.value })} />
+                  </div>
+                  <div className="ainv-form-field">
+                    <label>Category</label>
+                    <select value={newItem.category}
+                      onChange={e => setNewItem({ ...newItem, category: e.target.value })}>
+                      <option>Supplies</option>
+                      <option>Equipment</option>
+                      <option>Medicine</option>
+                      <option>Other</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Quantity</label>
-                    <input 
-                      required type="number" className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none"
-                      value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: parseInt(e.target.value)})}
-                    />
+                  <div className="ainv-form-field">
+                    <label>Quantity</label>
+                    <input required type="number" min="0" value={newItem.quantity}
+                      onChange={e => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 0 })} />
+                  </div>
+                  <div className="ainv-form-field">
+                    <label>Unit (e.g. Boxes)</label>
+                    <input required type="text" value={newItem.unit}
+                      onChange={e => setNewItem({ ...newItem, unit: e.target.value })} />
+                  </div>
+                  <div className="ainv-form-field">
+                    <label>Min. Threshold</label>
+                    <input required type="number" min="0" value={newItem.minThreshold}
+                      onChange={e => setNewItem({ ...newItem, minThreshold: parseInt(e.target.value) || 0 })} />
+                  </div>
+                  <div className="ainv-form-field">
+                    <label>Supplier</label>
+                    <input type="text" value={newItem.supplier}
+                      onChange={e => setNewItem({ ...newItem, supplier: e.target.value })} />
+                  </div>
+                  <div className="ainv-form-field">
+                    <label>Location</label>
+                    <input type="text" value={newItem.location}
+                      onChange={e => setNewItem({ ...newItem, location: e.target.value })} />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Unit</label>
-                    <input 
-                      required type="text" placeholder="e.g. Boxes" className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none"
-                      value={newItem.unit} onChange={e => setNewItem({...newItem, unit: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Min. Threshold</label>
-                    <input 
-                      required type="number" className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none"
-                      value={newItem.minThreshold} onChange={e => setNewItem({...newItem, minThreshold: parseInt(e.target.value)})}
-                    />
-                  </div>
-                </div>
-                <button type="submit" className="w-full py-3 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 transition-all shadow-lg active:scale-[0.98] mt-4">
-                  Confirm and Add
-                </button>
+                <button type="submit" className="ainv-submit-btn">Confirm and Add</button>
               </form>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Delete Confirm Modal */}
+      {deleteId && (
+        <div className="ainv-modal-overlay" onClick={() => setDeleteId(null)}>
+          <div className="ainv-modal ainv-modal-sm" onClick={e => e.stopPropagation()}>
+            <div className="ainv-confirm-body">
+              <AlertCircle size={44} style={{ color: "#ef4444" }} />
+              <h3>Delete Item?</h3>
+              <p>This action cannot be undone.</p>
+              <div className="ainv-confirm-actions">
+                <button className="ainv-cancel-btn" onClick={() => setDeleteId(null)}>Cancel</button>
+                <button className="ainv-delete-confirm-btn" onClick={handleDelete}>
+                  <Trash2 size={14} /> Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
