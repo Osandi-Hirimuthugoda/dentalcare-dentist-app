@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Calendar, Users, MessageSquare,
   Settings, LogOut, Stethoscope, FileText, User,
-  Star, Camera, Clock,
+  Star, Camera, Clock, Package,
 } from "lucide-react";
 import NotificationBell from "../common/NotificationBell";
 import { useNotifications } from "../../contexts/NotificationContext";
@@ -72,6 +72,7 @@ export default function DoctorSidebar() {
             <NavLink to="/doctor/scan-qa" icon={Camera} label="Scan Q&A" isActive={isActive} />
             <NavLink to="/doctor/availability" icon={Clock} label="Availability" isActive={isActive} />
             <NavLink to="/doctor/services" icon={Stethoscope} label="Services" isActive={isActive} />
+            <NavLink to="/doctor/inventory" icon={Package} label="Inventory" isActive={isActive} />
           </ul>
         </div>
 

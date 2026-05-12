@@ -9,6 +9,16 @@ import "../../styles/pages/DoctorScanQA.css";
 
 const API_URL = process.env.REACT_APP_API_URL || "/api";
 
+const getBackendUrl = () => {
+  const apiVal = process.env.REACT_APP_API_URL;
+  if (apiVal && apiVal.startsWith("http")) {
+    return apiVal.replace("/api", "");
+  }
+  const protocol = window.location.protocol;
+  const hostname = window.location.hostname;
+  return `${protocol}//${hostname}:4000`;
+};
+
 const getAuthHeader = () => {
   const doctor = JSON.parse(localStorage.getItem("doctor") || "{}");
   const token = localStorage.getItem("token") || localStorage.getItem("doctorToken") || doctor.token || "";
@@ -226,7 +236,7 @@ export default function DoctorScanQA() {
                 ) : selectedScan.imageUrl ? (
                   <div className="scan_image_container">
                     <img
-                      src={selectedScan.imageUrl.startsWith("http") ? selectedScan.imageUrl : `${API_URL.replace("/api", "")}${selectedScan.imageUrl}`}
+                      src={selectedScan.imageUrl.startsWith("http") ? selectedScan.imageUrl : `${getBackendUrl()}${selectedScan.imageUrl}`}
                       alt="Dental Scan"
                       onError={(e) => { e.target.src = "https://via.placeholder.com/400x300?text=Image+Not+Found"; }}
                     />

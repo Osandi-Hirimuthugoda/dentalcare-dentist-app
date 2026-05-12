@@ -1,0 +1,257 @@
+/* DoctorInventory.css */
+
+.dinv-wrapper { display: flex; min-height: 100vh; background: #f8fafc; }
+
+.dinv-content {
+  flex: 1;
+  margin-left: 220px;
+  padding: 2rem 2.5rem;
+  box-sizing: border-box;
+}
+
+/* ── Header ── */
+.dinv-header { margin-bottom: 1.75rem; }
+
+.dinv-header h1 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #111827;
+  margin: 0 0 0.25rem;
+  letter-spacing: -0.4px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dinv-header p { color: #6b7280; font-size: 0.875rem; margin: 0; }
+
+/* ── Stats ── */
+.dinv-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.75rem;
+}
+
+.dinv-stat-card {
+  background: #fff;
+  border-radius: 1rem;
+  border: 1.5px solid #f0f0f0;
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.dinv-stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.625rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dinv-stat-icon.teal   { background: #f0faf9; color: #00897B; }
+.dinv-stat-icon.red    { background: #fef2f2; color: #dc2626; }
+.dinv-stat-icon.blue   { background: #eff6ff; color: #2563eb; }
+.dinv-stat-icon.orange { background: #fff7ed; color: #ea580c; }
+
+.dinv-stat-label { font-size: 0.75rem; font-weight: 600; color: #6b7280; margin-bottom: 2px; }
+.dinv-stat-value { font-size: 1.25rem; font-weight: 800; color: #111827; }
+
+/* ── Toolbar ── */
+.dinv-toolbar {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.dinv-search {
+  flex: 1;
+  min-width: 200px;
+  position: relative;
+}
+
+.dinv-search svg {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.dinv-search input {
+  width: 100%;
+  padding: 0.65rem 0.875rem 0.65rem 2.5rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  color: #111827;
+  outline: none;
+  box-sizing: border-box;
+  background: #fff;
+  transition: border-color 0.15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.dinv-search input:focus { border-color: #00897B; }
+
+.dinv-filter-select {
+  padding: 0.65rem 0.875rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  color: #374151;
+  outline: none;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.dinv-filter-select:focus { border-color: #00897B; }
+
+/* ── Table ── */
+.dinv-table-card {
+  background: #fff;
+  border-radius: 1rem;
+  border: 1.5px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  overflow: hidden;
+}
+
+.dinv-table { width: 100%; border-collapse: collapse; }
+
+.dinv-table thead tr { background: #f8fafc; }
+
+.dinv-table th {
+  padding: 0.75rem 1.25rem;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.dinv-table tbody tr {
+  border-top: 1px solid #f5f5f5;
+  transition: background 0.12s;
+}
+
+.dinv-table tbody tr:hover { background: #f8fafc; }
+
+.dinv-table td {
+  padding: 0.875rem 1.25rem;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.dinv-item-name { font-weight: 700; color: #111827; margin-bottom: 2px; }
+.dinv-item-loc  { font-size: 0.75rem; color: #9ca3af; }
+
+.dinv-cat-badge {
+  display: inline-block;
+  padding: 0.2rem 0.625rem;
+  background: #f3f4f6;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.dinv-cat-badge.medicine   { background: #eff6ff; color: #2563eb; }
+.dinv-cat-badge.equipment  { background: #f5f3ff; color: #7c3aed; }
+.dinv-cat-badge.supplies   { background: #f0faf9; color: #00897B; }
+
+.dinv-qty { font-weight: 700; color: #111827; }
+.dinv-qty.low { color: #dc2626; }
+
+.dinv-status-low {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.25rem 0.625rem;
+  background: #fef2f2;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #dc2626;
+}
+
+.dinv-status-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.25rem 0.625rem;
+  background: #f0fdf4;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #16a34a;
+}
+
+/* ── Low stock alert banner ── */
+.dinv-alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.25rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 0.75rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+/* ── Empty ── */
+.dinv-empty {
+  padding: 4rem 1rem;
+  text-align: center;
+  color: #9ca3af;
+}
+
+.dinv-empty svg { margin-bottom: 1rem; opacity: 0.25; }
+.dinv-empty p { font-size: 0.875rem; margin: 0; }
+
+/* ── Loading ── */
+.dinv-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  flex-direction: column;
+  gap: 1rem;
+  color: #6b7280;
+}
+
+.dinv-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #00897B;
+  border-radius: 50%;
+  animation: dinv-spin 0.8s linear infinite;
+}
+
+@keyframes dinv-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .dinv-content { margin-left: 0; padding: 1rem; }
+  .dinv-stats { grid-template-columns: 1fr 1fr; }
+  .dinv-table-card { overflow-x: auto; }
+}
+
+@media (max-width: 480px) {
+  .dinv-stats { grid-template-columns: 1fr; }
+}

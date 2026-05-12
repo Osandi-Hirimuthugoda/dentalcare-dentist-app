@@ -82,7 +82,9 @@ export default function DoctorMessages() {
     try {
       const doc = getDoctor();
       if (!doc._id) return;
-      const res = await axios.get(`${API}/messages/doctor/${doc._id}?type=${tab}`);
+      const res = await axios.get(`${API}/messages/doctor/${doc._id}?type=${tab}`, {
+        headers: { Authorization: `Bearer ${getToken()}` }
+      });
       setConvs(res.data || []);
     } catch { setConvs([]); }
     finally { setLoading(false); }
@@ -90,7 +92,9 @@ export default function DoctorMessages() {
 
   const fetchAllDoctors = async () => {
     try {
-      const res = await axios.get(`${API}/messages/doctors`);
+      const res = await axios.get(`${API}/messages/doctors`, {
+        headers: { Authorization: `Bearer ${getToken()}` }
+      });
       const myId = getDoctor()._id;
       // Exclude self
       setAllDoctors((res.data || []).filter(d => d._id !== myId));
@@ -104,8 +108,12 @@ export default function DoctorMessages() {
       const url = conv.type === "doctor"
         ? `${API}/messages/conversation/doctors/${doc._id}/${conv.id}`
         : `${API}/messages/conversation/${doc._id}/${conv.id}`;
-      const res = await axios.get(url);
+      const res = await axios.get(url, {
+        headers: { Authorization: `Bearer ${getToken()}` }
+      });
       setMessages(res.data || []);
+      // Instantly reset unread count in state
+      setConvs(prev => prev.map(c => c.id === conv.id ? { ...c, unreadCount: 0 } : c));
     } catch { setMessages([]); }
   };
 
