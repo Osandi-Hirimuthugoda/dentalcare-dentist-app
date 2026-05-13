@@ -12,6 +12,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_application_1/core/constants/app_constants.dart';
 import 'package:flutter_application_1/data/data_sources/local/shared_prefs.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MyReportsScreen extends StatefulWidget {
   const MyReportsScreen({super.key});
@@ -128,7 +129,26 @@ class _MyReportsScreenState extends State<MyReportsScreen>
     }
   }
 
-
+  Future<void> _downloadReportToDevice(String scanId) async {
+    final url = Uri.parse('${AppConstants.baseUrl}/scan-qa/report-file/$scanId');
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open browser to download report')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error downloading file')),
+        );
+      }
+    }
+  }
 
   String _formatDate(String? iso) {
     if (iso == null) return '';
@@ -291,21 +311,38 @@ class _MyReportsScreenState extends State<MyReportsScreen>
               ),
             ],
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: isDownloading ? null : () => _openDoctorReport(report),
-                icon: isDownloading
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.open_in_new, size: 16),
-                label: Text(isDownloading ? 'Opening...' : 'Open Report'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: isDownloading ? null : () => _openDoctorReport(report),
+                    icon: isDownloading 
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
+                        : const Icon(Icons.open_in_new, size: 16),
+                    label: Text(isDownloading ? 'Opening...' : 'Open'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _downloadReportToDevice(scanId),
+                    icon: const Icon(Icons.download, size: 16),
+                    label: const Text('Download'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

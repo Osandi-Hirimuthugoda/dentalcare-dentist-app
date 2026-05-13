@@ -9,7 +9,8 @@ import 'package:flutter_application_1/injection_container.dart';
 import 'package:intl/intl.dart';
 
 class ScanQAScreen extends StatefulWidget {
-  const ScanQAScreen({super.key});
+  final String? initialScanId;
+  const ScanQAScreen({super.key, this.initialScanId});
 
   @override
   State<ScanQAScreen> createState() => _ScanQAScreenState();
@@ -46,6 +47,10 @@ class _ScanQAScreenState extends State<ScanQAScreen> with SingleTickerProviderSt
     _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (_selectedSession != null) _refreshSelected();
     });
+
+    if (widget.initialScanId != null) {
+      _openSessionWithId(widget.initialScanId!);
+    }
   }
 
   @override
@@ -104,6 +109,30 @@ class _ScanQAScreenState extends State<ScanQAScreen> with SingleTickerProviderSt
         });
       }
     } catch (_) {}
+  }
+
+  Future<void> _openSessionWithId(String scanId) async {
+    setState(() => _selectedSession = null);
+    try {
+      final result = await _dataSource.getScanQAForPatient(scanId);
+      final qa = result['scanQA'] as Map<String, dynamic>?;
+      if (qa != null && mounted) {
+        final questions = qa['questions'] as List<dynamic>? ?? [];
+        for (final q in questions) {
+          final qm = q as Map<String, dynamic>;
+          final id = qm['_id']?.toString() ?? '';
+          final answer = qm['answer']?.toString() ?? '';
+          if (id.isNotEmpty && answer.isEmpty) {
+            _answerControllers[id] = TextEditingController();
+          }
+        }
+        setState(() => _selectedSession = qa);
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading session: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   Future<void> _openSession(Map<String, dynamic> session) async {

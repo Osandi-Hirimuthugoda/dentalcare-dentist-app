@@ -1054,7 +1054,13 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
         leading: CircleAvatar(
           backgroundColor: AppColors.primary,
           child: Text(
-            dentist['name'].split(' ').map((e) => e[0]).join(),
+            dentist['name']
+                .toString()
+                .split(' ')
+                .where((e) => e.isNotEmpty)
+                .map((e) => e[0])
+                .take(2)
+                .join(),
             style: const TextStyle(color: Colors.white),
           ),
         ),

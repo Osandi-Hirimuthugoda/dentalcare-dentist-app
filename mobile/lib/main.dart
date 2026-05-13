@@ -101,7 +101,7 @@ class _DentalCareAppState extends State<DentalCareApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Dental Care+',
+      title: 'Dental Care+', 
       theme: _getCurrentTheme(),
       darkTheme: AppTheme.darkTheme,
       themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,

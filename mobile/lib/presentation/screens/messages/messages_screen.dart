@@ -5,6 +5,7 @@ import 'package:flutter_application_1/core/themes/text_styles.dart';
 import 'package:flutter_application_1/data/data_sources/remote/dental_remote_data_source.dart';
 import 'package:flutter_application_1/injection_container.dart';
 import 'conversation_screen.dart';
+import 'package:flutter_application_1/presentation/screens/scan_qa/scan_qa_screen.dart';
 
 class MessagesScreen extends StatefulWidget {
   final String? filterType;
@@ -22,23 +23,28 @@ class _MessagesScreenState extends State<MessagesScreen>
 
   List<Map<String, dynamic>> _conversations = [];
   List<dynamic> _announcements = [];
+  List<Map<String, dynamic>> _scanSessions = [];
   bool _isLoading = true;
   bool _isLoadingAnnouncements = true;
+  bool _isLoadingScanSessions = true;
 
   @override
   void initState() {
     super.initState();
     _dentalDataSource = getIt<DentalRemoteDataSource>();
     _socketService = getIt<SocketService>();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _socketService.addMessageListener(_onSocketMessage);
+    _socketService.addScanQuestionListener(_onScanQuestionReceived);
     _loadMessages();
     _loadAnnouncements();
+    _loadScanSessions();
   }
 
   @override
   void dispose() {
     _socketService.removeMessageListener(_onSocketMessage);
+    _socketService.removeScanQuestionListener(_onScanQuestionReceived);
     _tabController.dispose();
     super.dispose();
   }
@@ -46,6 +52,11 @@ class _MessagesScreenState extends State<MessagesScreen>
   void _onSocketMessage(Map<String, dynamic> msg) {
     // Refresh conversation list when a new message arrives
     _loadMessages();
+  }
+
+  void _onScanQuestionReceived(Map<String, dynamic> event) {
+    // Refresh scan sessions list when doctor asks a question
+    _loadScanSessions();
   }
 
   Future<void> _loadMessages() async {
@@ -79,6 +90,22 @@ class _MessagesScreenState extends State<MessagesScreen>
       if (mounted) setState(() { _announcements = list; _isLoadingAnnouncements = false; });
     } catch (_) {
       if (mounted) setState(() => _isLoadingAnnouncements = false);
+    }
+  }
+
+  Future<void> _loadScanSessions() async {
+    if (!mounted) return;
+    setState(() => _isLoadingScanSessions = true);
+    try {
+      final list = await _dentalDataSource.getPatientScanSessions();
+      if (mounted) {
+        setState(() {
+          _scanSessions = List<Map<String, dynamic>>.from(list);
+          _isLoadingScanSessions = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingScanSessions = false);
     }
   }
 
@@ -224,7 +251,7 @@ class _MessagesScreenState extends State<MessagesScreen>
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: () { _loadMessages(); _loadAnnouncements(); }),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: () { _loadMessages(); _loadAnnouncements(); _loadScanSessions(); }),
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -254,6 +281,23 @@ class _MessagesScreenState extends State<MessagesScreen>
               ),
             ),
             const Tab(icon: Icon(Icons.campaign_outlined, size: 18), text: 'Announcements'),
+            Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.psychology_outlined, size: 18),
+                  const SizedBox(width: 6),
+                  const Text('Scan Q&A'),
+                  if (_scanSessions.any((s) => (s['questions'] as List? ?? []).any((q) => (q['answer']?.toString() ?? '').isEmpty))) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -268,6 +312,7 @@ class _MessagesScreenState extends State<MessagesScreen>
         children: [
           _buildChatsTab(),
           _buildAnnouncementsTab(),
+          _buildScanQATab(),
         ],
       ),
     );
@@ -572,5 +617,166 @@ class _MessagesScreenState extends State<MessagesScreen>
     } catch (_) {
       return '';
     }
+  }
+
+  Widget _buildScanQATab() {
+    if (_isLoadingScanSessions) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_scanSessions.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _loadScanSessions,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.psychology_outlined, size: 72, color: AppColors.primary),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'No Scan Consultations Yet',
+                  style: TextStyles.heading3.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  child: Text(
+                    'When doctors review your teeth scans and ask follow-up questions, they will appear here.',
+                    textAlign: TextAlign.center,
+                    style: TextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadScanSessions,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        itemCount: _scanSessions.length,
+        itemBuilder: (ctx, index) {
+          final session = _scanSessions[index];
+          final scanId = session['scanId']?.toString() ?? '';
+          final doctor = session['doctor'] as Map<String, dynamic>?;
+          final doctorName = doctor?['fullName']?.toString() ?? 'Consultant Doctor';
+          final doctorSpec = doctor?['specialization']?.toString() ?? 'Dentist';
+          final questions = session['questions'] as List? ?? [];
+          final pendingCount = questions.where((q) => (q['answer']?.toString() ?? '').isEmpty).length;
+          
+          Color badgeColor = Colors.green;
+          String badgeText = 'Answered';
+          if (pendingCount > 0) {
+            badgeColor = Colors.orange;
+            badgeText = '$pendingCount Pending';
+          }
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ScanQAScreen(initialScanId: scanId),
+                    ),
+                  ).then((_) => _loadScanSessions());
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: badgeColor.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          pendingCount > 0 ? Icons.question_answer_outlined : Icons.check_circle_outlined,
+                          color: badgeColor,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Scan #${scanId.length > 8 ? scanId.substring(0, 8) : scanId}',
+                                    style: TextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: badgeColor.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    badgeText,
+                                    style: TextStyle(
+                                      color: badgeColor,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Dr. $doctorName ($doctorSpec)',
+                              style: TextStyles.caption.copyWith(fontWeight: FontWeight.w500),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${questions.length} total questions · $pendingCount pending your reply',
+                              style: TextStyles.caption.copyWith(color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 }

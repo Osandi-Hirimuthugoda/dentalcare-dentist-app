@@ -64,7 +64,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
               debugPrint('Login timeout - Server did not respond in 30 seconds');
               throw NetworkException(
                 'Login request timed out. Please check:\n'
-                '1. Backend server is running (port 4001)\n'
+                '1. Backend server is running (port 4000)\n'
                 '2. API URL is correct: http://10.0.2.2:4000/api\n'
                 '3. Your internet connection'
               );
@@ -116,7 +116,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           errorString.contains('network is unreachable')) {
         throw NetworkException(
           'Cannot connect to server. Please check:\n'
-          '1. Backend server is running on port 4001\n'
+          '1. Backend server is running on port 4000\n'
           '2. Run: cd backend && npm start\n'
           '3. API URL: ${AppConstants.baseUrl}\n'
           '4. For Android emulator: http://10.0.2.2:4000/api\n'
@@ -202,7 +202,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           e.toString().contains('Connection refused')) {
         throw NetworkException(
           'Cannot connect to server. Please check:\n'
-          '1. Backend server is running on port 4001\n'
+          '1. Backend server is running on port 4000\n'
           '2. Your computer and emulator are on the same network\n'
           '3. API URL is correct: http://10.0.2.2:4000/api'
         );
