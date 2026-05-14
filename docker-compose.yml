@@ -28,9 +28,8 @@ services:
     restart: unless-stopped
     ports:
       - "5000:5000"
-    # Uncomment and put model_weights.pth in backend/models/ for real AI predictions:
-    # volumes:
-    #   - ./backend/models/model_weights.pth:/app/model_weights.pth:ro
+    volumes:
+      - ./backend/models/model_weights.pth:/app/model_weights.pth:ro
     # Optional: use GPU (uncomment if host has nvidia-docker)
     # deploy:
     #   resources:
@@ -51,7 +50,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
-      MONGO_URI: mongodb://mongodb:27017/dentalcare
+      # MONGO_URI: mongodb://mongodb:27017/dentalcare
       JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production}
       FLASK_API_URL: http://ai-model:5000
       EMAIL_USER: osandihirimuthugodage23.se@gmail.com
