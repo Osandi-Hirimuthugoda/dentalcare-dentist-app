@@ -1,6 +1,8 @@
 # Model weights - too large for git
 backend/models/model_weights.pth
 backend/models/*.pth
+backend/models/*.pth*/
+backend/models/best_model*/
 
 # Node modules
 node_modules/
